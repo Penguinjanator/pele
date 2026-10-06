@@ -81,6 +81,9 @@ export default defineConfig({
   trailingSlash: 'never',
   build: { format: 'file' },
   vite: {
+    // The dev server keeps a cache of its own. A build or a check that runs beside it would
+    // otherwise replace the prebundled dependencies it is serving.
+    cacheDir: process.argv.includes('dev') ? 'node_modules/.vite-dev' : 'node_modules/.vite',
     plugins: [refreshDevCss()],
     resolve: {
       alias: [
