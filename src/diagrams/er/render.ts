@@ -1,7 +1,7 @@
-import { cnode, compoundLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num, type IconResolver } from '../../svg/builder.js';
-import { routePath } from '../../svg/edges.js';
+import { edgeLabelSvg, routePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -33,10 +33,6 @@ const NO_LOOPS: Loop[] = [];
 const PORT_GAP = 18;
 const PORT_MARGIN = 14;
 const BOX_ATTRS = ' fill="var(--_s)" stroke="var(--_b)"';
-
-function direction(dir: string | undefined): Dir {
-  return dir === 'BT' || dir === 'LR' || dir === 'RL' ? dir : 'TB';
-}
 
 function numberOption(config: Config, key: string, fallback: number): number {
   const value = (config.er as Config | undefined)?.[key];
@@ -482,13 +478,7 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
     if (label.width > 0) {
       const x = ce.labelX;
       const y = ce.labelY;
-      const w = label.width + 8;
-      const h = label.height;
-      labelsOut +=
-        `<g class="pele-edge-label" data-id="${esc(edge.id)}">` +
-        `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="3" fill="var(--_bg)"/>` +
-        labelSvg(label, x, y, '', icons) +
-        '</g>';
+      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, '', icons);
     }
   }
 

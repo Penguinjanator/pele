@@ -1,8 +1,8 @@
-import { cnode, compoundLayout, type CEdge, type CNode, type CompoundResult, type Dir } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, type CEdge, type CNode, type CompoundResult, type Dir } from '../../layout/compound.js';
 import type { LayeredOptions } from '../../layout/layered.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
-import { marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
+import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape, shapeHasLabel, shapeInset, shapeSize } from '../../svg/shapes.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
@@ -22,10 +22,6 @@ const GROUP_PAD = 20;
 const LOOP = 26;
 const SHAPE_ATTRS = ' fill="var(--_s)" stroke="var(--_b)"';
 const LINE_ATTRS = ' stroke="var(--_b)"';
-
-function direction(dir: string | undefined): Dir {
-  return dir === 'BT' || dir === 'LR' || dir === 'RL' ? dir : 'TB';
-}
 
 function numberOption(section: Config, key: string, fallback: number): number {
   const value = section[key];
@@ -371,13 +367,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     if (label.width > 0) {
       const x = ce.labelX;
       const y = ce.labelY;
-      const w = label.width + 8;
-      const h = label.height;
-      labelsOut +=
-        `<g class="pele-edge-label" data-id="${esc(edge.id)}">` +
-        `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="3" fill="var(--_bg)"/>` +
-        labelSvg(label, x, y, style?.text ?? '', icons) +
-        '</g>';
+      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, style?.text ?? '', icons);
     }
   }
 

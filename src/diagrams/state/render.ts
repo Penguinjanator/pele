@@ -1,7 +1,7 @@
-import { cnode, compoundLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
-import { marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
+import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { withTitle } from '../../svg/title.js';
 import { classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
@@ -76,10 +76,6 @@ interface View {
   w: number;
   h: number;
   titleH: number;
-}
-
-function direction(dir: string | undefined): Dir {
-  return dir === 'BT' || dir === 'LR' || dir === 'RL' ? dir : 'TB';
 }
 
 function vertical(dir: Dir | undefined): boolean {
@@ -634,12 +630,7 @@ export function renderState(db: StateDb, config: Config, options: RenderOptions)
     if (label.width > 0) {
       const x = ce.labelX + pad;
       const y = ce.labelY + pad;
-      const w = label.width + 8;
-      labelsOut +=
-        `<g class="pele-edge-label" data-id="${esc(edge.id)}">` +
-        rect(x - w / 2, y - label.height / 2, w, label.height, ' rx="3" fill="var(--_bg)"') +
-        labelSvg(label, x, y, '', icons) +
-        '</g>';
+      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, '', icons);
     }
   }
 

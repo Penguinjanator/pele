@@ -1,7 +1,7 @@
-import { cnode, compoundLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
-import { marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
+import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { PAD_X, PAD_Y, drawShape, shapeInset, shapeSize } from '../../svg/shapes.js';
 import { RADIUS, classNames, resolveStyle, seriesColor, type ResolvedStyle } from '../../svg/theme.js';
@@ -39,10 +39,6 @@ export function agentGraph(db: AgentflowDb, config: Config): AgentGraph {
     graphs.set(db, graph);
   }
   return graph;
-}
-
-function direction(dir: string | undefined): Dir {
-  return dir === 'BT' || dir === 'LR' || dir === 'RL' ? dir : 'TB';
 }
 
 function numberOption(config: Config, key: string, fallback: number): number {
@@ -386,13 +382,7 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
       marker(endType, path.ex, path.ey, path.edx, path.edy, color) +
       '</g>';
     if (label.width > 0) {
-      const w = label.width + 8;
-      const h = label.height;
-      labelsOut +=
-        `<g class="pele-edge-label" data-id="${esc(edge.id)}">` +
-        `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="3" fill="var(--_bg)"/>` +
-        labelSvg(label, x, y, style?.text ?? '', icons) +
-        '</g>';
+      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, style?.text ?? '', icons);
     }
   };
 

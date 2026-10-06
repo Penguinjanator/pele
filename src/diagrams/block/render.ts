@@ -1,6 +1,6 @@
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
-import { marker, markerTrim, type EdgePath } from '../../svg/edges.js';
+import { edgeLabelSvg, marker, markerTrim, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape, shapeInset, shapeSize } from '../../svg/shapes.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
@@ -577,12 +577,7 @@ export function renderBlock(model: BlockModel, config: Config, options: RenderOp
     if (label.width > 0) {
       const x = routes[i].lx + ox;
       const y = routes[i].ly + oy;
-      const w = label.width + 8;
-      labels +=
-        `<g class="pele-edge-label" data-id="${id}">` +
-        `<rect x="${num(x - w / 2)}" y="${num(y - label.height / 2)}" width="${num(w)}" height="${num(label.height)}" rx="3" fill="var(--_bg)"/>` +
-        labelSvg(label, x, y, '', icons) +
-        '</g>';
+      labels += edgeLabelSvg(id, label, x, y, '', icons);
     }
   }
 

@@ -1,4 +1,6 @@
-import { num } from './builder.js';
+import type { Label } from '../text/label.js';
+import type { IconResolver } from '../types.js';
+import { labelSvg, num } from './builder.js';
 
 export const ARROW = 8;
 
@@ -109,4 +111,17 @@ export function marker(type: string, x: number, y: number, dx: number, dy: numbe
     )},${num(cy - vy)}L${num(cx + vx)},${num(cy + vy)}"/>`;
   }
   return '';
+}
+
+// An edge label on a patch of the background, so the line does not run through the text.
+// `id` is already escaped.
+export function edgeLabelSvg(id: string, label: Label, x: number, y: number, attrs: string, icons?: IconResolver): string {
+  const w = label.width + 8;
+  const h = label.height;
+  return (
+    `<g class="pele-edge-label" data-id="${id}">` +
+    `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="3" fill="var(--_bg)"/>` +
+    labelSvg(label, x, y, attrs, icons) +
+    '</g>'
+  );
 }

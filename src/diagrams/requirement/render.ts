@@ -1,7 +1,7 @@
-import { cnode, compoundLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
-import { routePath, type EdgePath } from '../../svg/edges.js';
+import { edgeLabelSvg, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -64,10 +64,6 @@ function restyle(label: Label, bits: number, measurer: TextMeasurer): Label {
     return spans;
   });
   return { ...label, lines, widths, width };
-}
-
-function direction(dir: string): Dir {
-  return dir === 'BT' || dir === 'LR' || dir === 'RL' ? dir : 'TB';
 }
 
 // Writes a measured label with its lines starting at x, the first line's box starting at top.
@@ -351,14 +347,7 @@ export function renderRequirement(model: RequirementModel, _config: Config, opti
         ? containsMarker(path.sx, path.sy, path.sdx, path.sdy)
         : arrowMarker(path.ex, path.ey, path.edx, path.edy)) +
       '</g>';
-    const w = label.width + 8;
-    labelsOut +=
-      `<g class="pele-edge-label" data-id="${esc(edge.id)}">` +
-      `<rect x="${num(labelX - w / 2)}" y="${num(labelY - label.height / 2)}" width="${num(w)}" height="${num(
-        label.height
-      )}" rx="3" fill="var(--_bg)"/>` +
-      labelSvg(label, labelX, labelY, '') +
-      '</g>';
+    labelsOut += edgeLabelSvg(esc(edge.id), label, labelX, labelY, '');
   }
 
   const svg = svgDocument(

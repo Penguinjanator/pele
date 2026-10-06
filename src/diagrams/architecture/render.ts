@@ -1,6 +1,6 @@
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
-import { marker, markerTrim } from '../../svg/edges.js';
+import { edgeLabelSvg, marker, markerTrim } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS } from '../../svg/theme.js';
 import { layoutLabel, type Label, type Span } from '../../text/label.js';
@@ -476,11 +476,7 @@ export function renderArchitecture(model: ArchitectureModel, config: Config, opt
       maxX = Math.max(maxX, x + w / 2);
       minY = Math.min(minY, y - label.height / 2);
       maxY = Math.max(maxY, y + label.height / 2);
-      labelsOut +=
-        `<g class="pele-edge-label" data-id="${id}">` +
-        `<rect x="${num(x - w / 2)}" y="${num(y - label.height / 2)}" width="${num(w)}" height="${num(label.height)}" rx="3" fill="var(--_bg)"/>` +
-        labelSvg(label, x, y, '', icons) +
-        '</g>';
+      labelsOut += edgeLabelSvg(id, label, x, y, '', icons);
     }
   }
 

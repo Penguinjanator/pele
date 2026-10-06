@@ -1,7 +1,7 @@
-import { cnode, compoundLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num, type IconResolver } from '../../svg/builder.js';
-import { marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
+import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -47,10 +47,6 @@ interface View {
   keyW: number;
   headH: number;
   loops: number;
-}
-
-function direction(dir: string): Dir {
-  return dir === 'BT' || dir === 'RL' || dir === 'LR' ? dir : 'TB';
 }
 
 function numberOption(config: Config, key: string, fallback: number): number {
@@ -526,14 +522,8 @@ export function renderUsecase(model: UsecaseModel, config: Config, options: Rend
     if (label.width > 0) {
       const x = ce.labelX;
       const y = ce.labelY;
-      const w = label.width + 8;
-      const h = label.height;
       const semantic = edge.relationshipType === 'include' || edge.relationshipType === 'extend';
-      labelsOut +=
-        `<g class="pele-edge-label" data-id="${esc(edge.id)}">` +
-        `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="3" fill="var(--_bg)"/>` +
-        labelSvg(label, x, y, (semantic ? ' fill="var(--_m)"' : '') + (style?.text ?? ''), icons) +
-        '</g>';
+      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, (semantic ? ' fill="var(--_m)"' : '') + (style?.text ?? ''), icons);
     }
   }
 

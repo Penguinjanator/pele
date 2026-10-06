@@ -2,6 +2,11 @@ import { Kind, layered, ledge, lnode, orient, rank, type LEdge, type LNode, type
 
 export type Dir = 'TB' | 'BT' | 'LR' | 'RL';
 
+// The direction a diagram names, or top to bottom for anything else.
+export function direction(dir: string | undefined): Dir {
+  return dir === 'BT' || dir === 'LR' || dir === 'RL' ? dir : 'TB';
+}
+
 export interface CNode {
   w: number;
   h: number;
