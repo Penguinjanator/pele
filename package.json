@@ -1,0 +1,44 @@
+{
+  "name": "@kepano/pele",
+  "version": "0.0.1",
+  "description": "A fast, lightweight Mermaid renderer that outputs themeable SVG.",
+  "license": "MIT",
+  "author": "kepano",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kepano/pele.git"
+  },
+  "type": "module",
+  "main": "./dist/pele.js",
+  "module": "./dist/pele.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/pele.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "node scripts/bench.mjs",
+    "playground": "node scripts/playground.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "jison": "^0.4.18",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}
