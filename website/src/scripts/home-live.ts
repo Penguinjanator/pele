@@ -56,7 +56,7 @@ async function draw(area: HTMLTextAreaElement, panel: HTMLElement, show = true):
   } catch (error) {
     failure = error;
   }
-  if (clock) clock.textContent = drawn ? `Pele ${time}` : '';
+  if (clock) clock.textContent = drawn ? time : '';
   if (!show) return;
 
   // What was last drawn stays, dimmed, while the text does not parse.
