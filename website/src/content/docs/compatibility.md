@@ -40,11 +40,14 @@ See [Examples](/examples) for a drawing of each implemented type.
 | Cynefin | `cynefin-beta` | Implemented |
 | Wardley map | `wardley-beta` | Implemented |
 | Event modeling | `eventmodeling` | Implemented |
+| Use case | `usecase-beta` | Implemented |
+| Venn | `venn-beta` | Implemented |
+| Ishikawa | `ishikawa`, `ishikawa-beta` | Implemented |
 | Packet | `packet`, `packet-beta` | Implemented |
 | Radar | `radar-beta` | Implemented |
 | Treemap | `treemap`, `treemap-beta` | Implemented |
 | Info | `info` | Implemented |
-| Other Mermaid diagram types | `swimlane-beta`, `usecase-beta`, `venn-beta`, `ishikawa-beta` | Planned |
+| Swimlane | `swimlane-beta` | Planned |
 
 For a type that is not implemented, [`supports()`](/api#supports) returns `false` and [`render()`](/api#render) throws a `PeleError` with the code `unsupported-diagram`. An app can use this to fall back to Mermaid for those diagrams.
 
