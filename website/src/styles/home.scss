@@ -82,6 +82,8 @@
   font-size: var(--font-size-small);
 
   .doc-code-actions { margin-left: auto; }
+  // Taller than the row, which has to stay level with the label beside it.
+  .playground-link { margin-block: -3px; }
 }
 
 .home-example-source {
@@ -137,6 +139,10 @@
 
 .get-started-link {
   margin: 18px 0 0;
+}
+
+.install-note {
+  margin: 24px 0 16px;
 }
 
 .guide-section {

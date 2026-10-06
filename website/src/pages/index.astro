@@ -54,7 +54,6 @@ document.querySelector('#diagram').innerHTML = svg;`;
         <section class="home-example" aria-labelledby="how-it-works">
           <header class="home-example-heading">
             <h2 id="how-it-works">How it works</h2>
-            <PlaygroundLink source={homeExample} />
           </header>
           <p class="home-example-description">Pass Mermaid text to Pele. It returns an SVG.</p>
           <div class="home-example-panel">
@@ -63,7 +62,7 @@ document.querySelector('#diagram').innerHTML = svg;`;
               <pre><code class="language-mermaid" data-language="mermaid" set:html={highlightCode(homeExample, 'mermaid')} /></pre>
             </div>
             <div class="home-example-block">
-              <div class="home-example-label"><span>Pele</span></div>
+              <div class="home-example-label"><span>Pele</span><span class="doc-code-actions"><PlaygroundLink source={homeExample} /></span></div>
               <figure class="home-example-figure" data-pele-theme="dark" data-pele-example={homeExample} data-pele-prefix="home-" aria-label="Flowchart rendered by Pele" set:html={draw(homeExample, 'home-')} />
             </div>
           </div>
@@ -82,6 +81,7 @@ document.querySelector('#diagram').innerHTML = svg;`;
 
         <Install title="Pele in your app">
           <p slot="description" class="get-started-link">Add Pele to your app using the <a href="/api">API</a>.</p>
+          <p class="install-note">Pass Mermaid text to the render function, then insert the SVG it returns into your page.</p>
           <CodeBlock language="ts" code={usage} />
         </Install>
 

@@ -46,6 +46,8 @@ Add Pele to your app using the [API](/api).
 npm install pele
 ```
 
+Pass Mermaid text to `render()`, then insert the SVG it returns into your page.
+
 ```ts
 import { render } from 'pele';
 
