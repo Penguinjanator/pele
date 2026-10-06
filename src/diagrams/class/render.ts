@@ -457,7 +457,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
       const titleY = y - h / 2 + 8 + view.label.height / 2;
       const titleAttrs = ' class="pele-cluster-label" fill="var(--_m)"';
       const struck = c.isGroup && titleCrossed(c, view.label.width, titleX, crossings);
-      if (struck) struckTitles += struckTitle(view.label, titleX + ox, titleY, titleAttrs, id);
+      if (struck) struckTitles += struckTitle(view.label, titleX + ox, titleY, titleAttrs, id, graph.nodes, i);
       clusters +=
         `<g class="pele-cluster pele-namespace" data-id="${id}">` +
         `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"/>` +

@@ -213,7 +213,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
       const titleY = y - c.h / 2 + 8 + view.label.height / 2;
       const titleAttrs = ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`;
       const struck = titleCrossed(c, view.label.width, titleX, crossings);
-      if (struck) struckTitles += struckTitle(view.label, titleX, titleY, titleAttrs, id, icons);
+      if (struck) struckTitles += struckTitle(view.label, titleX, titleY, titleAttrs, id, cnodes, i, icons);
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${id}">` +
         `<rect x="${num(x - c.w / 2)}" y="${num(y - c.h / 2)}" width="${num(c.w)}" height="${num(c.h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${
