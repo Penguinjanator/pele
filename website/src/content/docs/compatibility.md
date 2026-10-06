@@ -36,11 +36,15 @@ See [Examples](/examples) for a drawing of each implemented type.
 | Block | `block`, `block-beta` | Implemented |
 | Agentflow | `agentflow-beta` | Implemented |
 | Railroad | `railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta` | Implemented |
+| Tree view | `treeView-beta` | Implemented |
+| Cynefin | `cynefin-beta` | Implemented |
+| Wardley map | `wardley-beta` | Implemented |
+| Event modeling | `eventmodeling` | Implemented |
 | Packet | `packet`, `packet-beta` | Implemented |
 | Radar | `radar-beta` | Implemented |
 | Treemap | `treemap`, `treemap-beta` | Implemented |
 | Info | `info` | Implemented |
-| Other Mermaid diagram types | `swimlane-beta`, `venn-beta`, `treeView-beta`, and the rest | Planned |
+| Other Mermaid diagram types | `swimlane-beta`, `usecase-beta`, `venn-beta`, `ishikawa-beta` | Planned |
 
 For a type that is not implemented, [`supports()`](/api#supports) returns `false` and [`render()`](/api#render) throws a `PeleError` with the code `unsupported-diagram`. An app can use this to fall back to Mermaid for those diagrams.
 
