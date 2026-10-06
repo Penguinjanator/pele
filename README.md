@@ -86,11 +86,13 @@ pnpm install
 pnpm dev
 ```
 
+After installing the website dependencies, run `npm run test:website` from the repository root to check the playground.
+
 ## Deploy the website
 
 GitHub Actions checks the library and builds the website on pull requests and pushes to `main`. After the checks pass, pushes to `main` deploy the site to [pele.run](https://pele.run).
 
-CI reuses a successful full library test run when the library source, tests, tooling, locked dependencies, and Node version are unchanged. Website tests, typechecks, and both builds still run on every push. `npm test` always runs the complete suite locally.
+CI reuses a successful full library test run when the library source, tests, tooling, locked dependencies, and Node version are unchanged. Website tests, typechecks, and both builds still run on every push. `npm test` always runs the complete library suite locally; website tests run separately with `npm run test:website`.
 
 Add these repository secrets under **Settings → Secrets and variables → Actions**:
 

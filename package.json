@@ -42,9 +42,10 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --exclude \"tests/website/**\"",
+    "test:website": "vitest run tests/website",
     "prepublishOnly": "npm run typecheck && npm test && npm run build",
-    "test:watch": "vitest",
+    "test:watch": "vitest --exclude \"tests/website/**\"",
     "bench": "node scripts/bench.mjs",
     "website": "cd website && pnpm dev"
   },
