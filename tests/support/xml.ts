@@ -34,6 +34,18 @@ export interface XmlElement {
   attrs: Map<string, string>;
 }
 
+// An attribute value as a browser reads it, with character references turned into their characters.
+function decode(value: string): string {
+  return value
+    .replace(/&#x([0-9a-fA-F]+);/g, (_m, hex: string) => String.fromCodePoint(Math.min(parseInt(hex, 16), 0x10ffff)))
+    .replace(/&#(\d+);/g, (_m, dec: string) => String.fromCodePoint(Math.min(Number(dec), 0x10ffff)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
 // Lists every element with its attributes. Call assertWellFormed first.
 export function elements(xml: string): XmlElement[] {
   const out: XmlElement[] = [];
@@ -45,10 +57,7 @@ export function elements(xml: string): XmlElement[] {
     let a: RegExpExecArray | null;
     attr.lastIndex = 0;
     while ((a = attr.exec(m[2])) !== null) {
-      attrs.set(
-        a[1],
-        a[2].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
-      );
+      attrs.set(a[1], a[2].includes('&') ? decode(a[2]) : a[2]);
     }
     out.push({ name: m[1], attrs });
   }

@@ -20,35 +20,55 @@ const STYLE_PROPERTIES = new Set([
 ]);
 const NUMERIC = new Set(['x', 'y', 'width', 'height', 'r', 'cx', 'cy', 'rx', 'ry']);
 
-export function assertInert(svg: string, where: string): void {
-  expect(() => assertWellFormed(svg), where).not.toThrow();
+const RE_NUMBER = /^(?:-?\d+(?:\.\d+)?(?:e[-+]?\d+)?|100%|var\(--pele-radius,4px\))$/;
+const RE_SCRIPT_URL = /^[\s\u0000-\u001f]*(?:javascript|vbscript|data)\s*:/i;
+const RE_ALLOWED_URL = /^(?:about:blank$|(?:https?|mailto|tel):|(?![\\/]{2}|[a-z][a-z0-9+.-]*:))/i;
+const RE_TARGET = /^_(?:self|blank|parent|top)$/;
+const RE_UNSAFE_STYLE = /url\s*\(|expression|@import|javascript:|[<>{}\\]/i;
+const RE_UNSAFE_PAINT = /url\s*\(|javascript:/i;
+
+// The first thing about the markup that is not inert, or undefined when there is none.
+export function inertProblem(svg: string): string | undefined {
+  try {
+    assertWellFormed(svg);
+  } catch (error) {
+    return (error as Error).message;
+  }
   for (const el of elements(svg)) {
-    expect(ELEMENTS.has(el.name), `${where}: element <${el.name}>`).toBe(true);
+    if (!ELEMENTS.has(el.name)) return `element <${el.name}>`;
     for (const [name, value] of el.attrs) {
-      expect(ATTRIBUTES.has(name), `${where}: attribute ${name} on <${el.name}>`).toBe(true);
-      if (NUMERIC.has(name)) expect(value, `${where}: ${name}`).toMatch(/^(?:-?\d+(?:\.\d+)?(?:e[-+]?\d+)?|100%|var\(--pele-radius,4px\))$/);
+      if (!ATTRIBUTES.has(name)) return `attribute ${name} on <${el.name}>`;
+      if (NUMERIC.has(name) && !RE_NUMBER.test(value)) return `${name}="${value}" is not a number`;
       if (name === 'href') {
-        expect(el.name === 'a' || el.name === 'image', `${where}: href on <${el.name}>`).toBe(true);
-        expect(value, `${where}: href`).not.toMatch(/^[\s\u0000-\u001f]*(?:javascript|vbscript|data)\s*:/i);
+        if (el.name !== 'a' && el.name !== 'image') return `href on <${el.name}>`;
+        if (RE_SCRIPT_URL.test(value)) return `href="${value}" can run script`;
         // What a browser makes of the value: tabs and line breaks dropped, then leading spaces and controls.
         const seen = value.replace(/[\t\n\r]/g, '').replace(/^[\u0000-\u0020]+/, '');
-        expect(seen, `${where}: href`).toMatch(/^(?:about:blank$|(?:https?|mailto|tel):|(?![\\/]{2}|[a-z][a-z0-9+.-]*:))/i);
-      }
-      if (name === 'target') expect(value, `${where}: target`).toMatch(/^_(?:self|blank|parent|top)$/);
-      if (name === 'style') {
-        expect(value, `${where}: style`).not.toMatch(/url\s*\(|expression|@import|javascript:|[<>{}\\]/i);
+        if (!RE_ALLOWED_URL.test(seen)) return `href="${value}" has a scheme that is not allowed`;
+      } else if (name === 'target') {
+        if (!RE_TARGET.test(value)) return `target="${value}"`;
+      } else if (name === 'style') {
+        if (RE_UNSAFE_STYLE.test(value)) return `style="${value}"`;
         for (const decl of value.split(';')) {
-          if (decl.trim() === '') continue;
+          const trimmed = decl.trim();
+          if (trimmed === '') continue;
           const prop = decl.slice(0, decl.indexOf(':')).trim();
-          const sizing = el.name === 'svg' && decl.trim() === 'height:auto';
-          expect(sizing || STYLE_PROPERTIES.has(prop) || prop.startsWith('--_'), `${where}: style property ${prop}`).toBe(true);
+          const sizing = el.name === 'svg' && trimmed === 'height:auto';
+          if (!sizing && !STYLE_PROPERTIES.has(prop) && !prop.startsWith('--_')) return `style property ${prop}`;
         }
-      }
-      if (['fill', 'stroke', 'font-family', 'rx'].includes(name)) {
-        expect(value, `${where}: ${name}`).not.toMatch(/url\s*\(|javascript:/i);
+      } else if (name === 'fill' || name === 'stroke' || name === 'font-family' || name === 'rx') {
+        if (RE_UNSAFE_PAINT.test(value)) return `${name}="${value}"`;
       }
     }
   }
+  return undefined;
+}
+
+// Checked with plain conditions: an assertion call for every attribute made these tests many
+// times slower than the rendering they check.
+export function assertInert(svg: string, where: string): void {
+  const problem = inertProblem(svg);
+  if (problem !== undefined) expect.fail(`${where}: ${problem}`);
 }
 
 
