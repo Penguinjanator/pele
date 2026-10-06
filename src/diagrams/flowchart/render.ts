@@ -11,7 +11,7 @@ import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
 import { safeUrl, sanitizeUrl } from '../../util/url.js';
-import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
+import type { IconResolver, LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { FlowDb } from './db.js';
 import { buildFlowGraph, type FlowGraph, type GraphEdge, type GraphNode } from './graph.js';
 import { canonicalShape } from './shapes.js';
@@ -29,11 +29,12 @@ function numberOption(section: Config, key: string, fallback: number): number {
   return typeof value === 'number' && value > 0 ? Math.min(value, 2000) : fallback;
 }
 
-// A diagram type that is a flowchart with a different layout. Its top-level groups are lanes.
+// A diagram type that is a flowchart with a different layout, which may draw its top-level groups itself.
 export interface FlowVariant {
   type: string;
   prepare(graph: FlowGraph): void;
   layout(nodes: CNode[], edges: CEdge[], dir: Dir, opt: LayeredOptions): CompoundResult;
+  drawGroup?(c: CNode, label: Label, style: ResolvedStyle, classes: string, id: string, dir: Dir, icons: IconResolver | undefined): string;
 }
 
 function assetSize(value: number | undefined, fallback: number): number {
@@ -193,22 +194,8 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     const y = c.y;
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
     const id = esc(node.id);
-    if (c.isGroup && variant && c.parent < 0) {
-      // A lane: an outline the length of the diagram, with its title in a band at the start.
-      const left = x - c.w / 2;
-      const top = y - c.h / 2;
-      const sideways = rootDir === 'LR' || rootDir === 'RL';
-      const cx = sideways ? left + c.padTop / 2 : x;
-      const cy = sideways ? y : top + c.padTop / 2;
-      const text = labelSvg(view.label, cx, cy, ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`, icons);
-      clusters +=
-        `<g class="pele-cluster pele-lane${classes}" data-id="${id}">` +
-        `<rect x="${num(left)}" y="${num(top)}" width="${num(c.w)}" height="${num(c.h)}" fill="none" stroke="var(--_b)"/>` +
-        `<rect x="${num(left)}" y="${num(top)}" width="${num(sideways ? c.padTop : c.w)}" height="${num(
-          sideways ? c.h : c.padTop
-        )}" fill="var(--_a)" stroke="var(--_b)"${view.style.shape}/>` +
-        (sideways && text ? `<g transform="rotate(-90 ${num(cx)} ${num(cy)})">${text}</g>` : text) +
-        '</g>';
+    if (c.isGroup && variant?.drawGroup && c.parent < 0) {
+      clusters += variant.drawGroup(c, view.label, view.style, classes, id, rootDir, icons);
       continue;
     }
     if (c.isGroup) {

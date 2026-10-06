@@ -69,6 +69,14 @@ describe('every diagram type', () => {
     expect(drawn.size).toBe(all.length);
   });
 
+  it('honours useMaxWidth under the section name Mermaid uses for the type', () => {
+    const fixed = (src: string): boolean => !render(src, options).svg.includes('max-width');
+    expect(fixed('---\nconfig:\n  xyChart:\n    useMaxWidth: false\n---\nxychart\n  x-axis [a, b]\n  bar [1, 2]')).toBe(true);
+    expect(fixed('---\nconfig:\n  wardley-beta:\n    useMaxWidth: false\n---\nwardley-beta\n  component A [0.5, 0.5]')).toBe(true);
+    expect(fixed('---\nconfig:\n  pie:\n    useMaxWidth: false\n---\npie\n  "a": 1')).toBe(true);
+    expect(fixed('---\nconfig:\n  flowchart:\n    useMaxWidth: false\n---\npie\n  "a": 1')).toBe(false);
+  });
+
   it('only gives ids that start with the prefix, so two diagrams on a page do not clash', () => {
     for (const { name, sources } of corpora) {
       for (const src of sources) {

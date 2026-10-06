@@ -1,5 +1,9 @@
+import type { CNode, Dir } from '../../layout/compound.js';
 import { laneLayout } from '../../layout/lanes.js';
-import type { Diagram } from '../../types.js';
+import { labelSvg, num } from '../../svg/builder.js';
+import type { ResolvedStyle } from '../../svg/theme.js';
+import type { Label } from '../../text/label.js';
+import type { Diagram, IconResolver } from '../../types.js';
 import type { FlowDb } from '../flowchart/db.js';
 import type { FlowGraph } from '../flowchart/graph.js';
 import { flowchart } from '../flowchart/index.js';
@@ -34,7 +38,26 @@ function prepare(graph: FlowGraph): void {
   });
 }
 
-const variant: FlowVariant = { type: 'swimlane', prepare, layout: laneLayout };
+// A lane: an outline the length of the diagram, with its title in a band at the start.
+function drawLane(c: CNode, label: Label, style: ResolvedStyle, classes: string, id: string, dir: Dir, icons: IconResolver | undefined): string {
+  const left = c.x - c.w / 2;
+  const top = c.y - c.h / 2;
+  const sideways = dir === 'LR' || dir === 'RL';
+  const cx = sideways ? left + c.padTop / 2 : c.x;
+  const cy = sideways ? c.y : top + c.padTop / 2;
+  const text = labelSvg(label, cx, cy, ` class="pele-cluster-label" fill="var(--_m)"${style.text}`, icons);
+  return (
+    `<g class="pele-cluster pele-lane${classes}" data-id="${id}">` +
+    `<rect x="${num(left)}" y="${num(top)}" width="${num(c.w)}" height="${num(c.h)}" fill="none" stroke="var(--_b)"/>` +
+    `<rect x="${num(left)}" y="${num(top)}" width="${num(sideways ? c.padTop : c.w)}" height="${num(
+      sideways ? c.h : c.padTop
+    )}" fill="var(--_a)" stroke="var(--_b)"${style.shape}/>` +
+    (sideways && text ? `<g transform="rotate(-90 ${num(cx)} ${num(cy)})">${text}</g>` : text) +
+    '</g>'
+  );
+}
+
+const variant: FlowVariant = { type: 'swimlane', prepare, layout: laneLayout, drawGroup: drawLane };
 
 // A swimlane diagram is a flowchart whose top-level subgraphs are lanes: same syntax, same model.
 export const swimlane: Diagram<FlowDb> = {

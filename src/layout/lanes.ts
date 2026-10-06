@@ -189,8 +189,24 @@ export function laneLayout(nodes: CNode[], edges: CEdge[], dir: Dir, opt: Layere
     }
   }
 
-  // Lane breadth: enough for its fullest rank, and for its title.
+  // The items of one rank that share a lane sit side by side as a run.
   const gap = (a: number, b: number): number => (DUMMY[a] || DUMMY[b] ? opt.edgeSep : opt.nodeSep);
+  const eachRun = (row: number[], visit: (row: number[], from: number, to: number) => void): void => {
+    let from = 0;
+    while (from < row.length) {
+      let to = from;
+      while (to + 1 < row.length && LANE[row[to + 1]] === LANE[row[from]]) to++;
+      visit(row, from, to);
+      from = to + 1;
+    }
+  };
+  const runSize = (row: number[], from: number, to: number): number => {
+    let size = SIZE[row[from]];
+    for (let k = from; k < to; k++) size += gap(row[k], row[k + 1]) + SIZE[row[k + 1]];
+    return size;
+  };
+
+  // Lane breadth: enough for its fullest rank, and for its title.
   const breadth = new Float64Array(laneCount);
   let head = lanes.length > 0 ? LANE_HEAD : 0;
   for (let k = 0; k < lanes.length; k++) {
@@ -199,17 +215,10 @@ export function laneLayout(nodes: CNode[], edges: CEdge[], dir: Dir, opt: Layere
     if (lane.padTop > head) head = lane.padTop;
   }
   for (const row of rows) {
-    let from = 0;
-    while (from < row.length) {
-      let to = from;
-      let size = SIZE[row[from]];
-      while (to + 1 < row.length && LANE[row[to + 1]] === LANE[row[from]]) {
-        size += gap(row[to], row[to + 1]) + SIZE[row[to + 1]];
-        to++;
-      }
+    eachRun(row, (_, from, to) => {
+      const size = runSize(row, from, to);
       if (size > breadth[LANE[row[from]]]) breadth[LANE[row[from]]] = size;
-      from = to + 1;
-    }
+    });
   }
   const laneStart = new Float64Array(laneCount + 1);
   for (let k = 0; k < laneCount; k++) laneStart[k + 1] = laneStart[k] + breadth[k] + 2 * pad[k];
@@ -217,44 +226,31 @@ export function laneLayout(nodes: CNode[], edges: CEdge[], dir: Dir, opt: Layere
   // Across the flow: each lane's items start centered, then line up with their neighbours in
   // the same lane as far as the lane and the items beside them allow.
   const C = new Float64Array(total);
-  const place = (row: number[], from: number, to: number, want: Float64Array | undefined): void => {
+  const want = new Float64Array(total);
+  const center = (row: number[], from: number, to: number): void => {
     const lane = LANE[row[from]];
-    const lo = laneStart[lane] + pad[lane];
-    const hi = laneStart[lane + 1] - pad[lane];
-    if (want === undefined) {
-      let size = SIZE[row[from]];
-      for (let k = from; k < to; k++) size += gap(row[k], row[k + 1]) + SIZE[row[k + 1]];
-      let at = (lo + hi - size) / 2;
-      for (let k = from; k <= to; k++) {
-        C[row[k]] = at + SIZE[row[k]] / 2;
-        if (k < to) at += SIZE[row[k]] + gap(row[k], row[k + 1]);
-      }
-      return;
+    let at = (laneStart[lane] + pad[lane] + (laneStart[lane + 1] - pad[lane]) - runSize(row, from, to)) / 2;
+    for (let k = from; k <= to; k++) {
+      C[row[k]] = at + SIZE[row[k]] / 2;
+      if (k < to) at += SIZE[row[k]] + gap(row[k], row[k + 1]);
     }
-    let floor = lo;
+  };
+  const align = (row: number[], from: number, to: number): void => {
+    const lane = LANE[row[from]];
+    let floor = laneStart[lane] + pad[lane];
     for (let k = from; k <= to; k++) {
       const i = row[k];
       C[i] = Math.max(want[i], floor + SIZE[i] / 2);
       if (k < to) floor = C[i] + SIZE[i] / 2 + gap(i, row[k + 1]);
     }
-    let ceil = hi;
+    let ceil = laneStart[lane + 1] - pad[lane];
     for (let k = to; k >= from; k--) {
       const i = row[k];
       C[i] = Math.min(C[i], ceil - SIZE[i] / 2);
       if (k > from) ceil = C[i] - SIZE[i] / 2 - gap(row[k - 1], i);
     }
   };
-  const eachLaneRun = (row: number[], want: Float64Array | undefined): void => {
-    let from = 0;
-    while (from < row.length) {
-      let to = from;
-      while (to + 1 < row.length && LANE[row[to + 1]] === LANE[row[from]]) to++;
-      place(row, from, to, want);
-      from = to + 1;
-    }
-  };
-  for (const row of rows) eachLaneRun(row, undefined);
-  const want = new Float64Array(total);
+  for (const row of rows) eachRun(row, center);
   for (let pass = 0; pass < 4 && maxRank > 0; pass++) {
     const downward = (pass & 1) === 0;
     for (let s = 1; s <= maxRank; s++) {
@@ -271,7 +267,7 @@ export function laneLayout(nodes: CNode[], edges: CEdge[], dir: Dir, opt: Layere
         }
         want[i] = count > 0 ? sum / count : C[i];
       }
-      eachLaneRun(row, want);
+      eachRun(row, align);
     }
   }
 
