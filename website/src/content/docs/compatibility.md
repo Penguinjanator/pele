@@ -22,9 +22,10 @@ Pele targets the syntax of Mermaid 12.1.0. Newer Mermaid syntax is adopted when 
 | Kanban | `kanban` | Implemented |
 | Timeline | `timeline` | Implemented |
 | User journey | `journey` | Implemented |
+| Gantt | `gantt` | Implemented |
 | Quadrant chart | `quadrantChart` | Implemented |
 | XY chart | `xychart`, `xychart-beta` | Implemented |
-| Other Mermaid diagram types | `sequenceDiagram`, `gantt`, `gitGraph`, and the rest | Planned |
+| Other Mermaid diagram types | `sequenceDiagram`, `gitGraph`, `sankey`, and the rest | Planned |
 
 For a type that is not implemented, [`supports()`](/api#supports) returns `false` and [`render()`](/api#render) throws a `PeleError` with the code `unsupported-diagram`. An app can use this to fall back to Mermaid for those diagrams.
 
