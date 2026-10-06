@@ -36,6 +36,7 @@ const DIAGRAMS = [
   ['usecase', 'usecase', 'UsecaseModel', 'types'],
   ['venn', 'venn', 'VennModel', 'types'],
   ['ishikawa', 'ishikawa', 'IshikawaModel', 'types'],
+  ['swimlane', 'swimlane', 'SwimlaneModel', 'index'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();

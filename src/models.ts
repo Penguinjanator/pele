@@ -24,6 +24,7 @@ import type { RequirementModel } from './diagrams/requirement/types.js';
 import type { SankeyModel } from './diagrams/sankey/db.js';
 import type { SequenceModel } from './diagrams/sequence/types.js';
 import type { StateModel } from './diagrams/state/types.js';
+import type { SwimlaneModel } from './diagrams/swimlane/index.js';
 import type { TimelineModel } from './diagrams/timeline/db.js';
 import type { TreeViewModel } from './diagrams/treeview/model.js';
 import type { TreemapModel } from './diagrams/treemap/model.js';
@@ -65,6 +66,7 @@ export type {
   UsecaseModel,
   VennModel,
   IshikawaModel,
+  SwimlaneModel,
 };
 
 // The union of every implemented diagram's model; narrow it with its `type` field.
@@ -100,4 +102,5 @@ export type DiagramModel =
   | EventModelingModel
   | UsecaseModel
   | VennModel
-  | IshikawaModel;
+  | IshikawaModel
+  | SwimlaneModel;

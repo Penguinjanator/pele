@@ -1,4 +1,5 @@
-import { cnode, compoundLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
+import { cnode, compoundLayout, type CEdge, type CNode, type CompoundResult, type Dir } from '../../layout/compound.js';
+import type { LayeredOptions } from '../../layout/layered.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
 import { marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
@@ -10,7 +11,7 @@ import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { sanitizeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { FlowDb } from './db.js';
-import { buildFlowGraph, type GraphEdge, type GraphNode } from './graph.js';
+import { buildFlowGraph, type FlowGraph, type GraphEdge, type GraphNode } from './graph.js';
 import { canonicalShape } from './shapes.js';
 
 const NODE_SEP = 40;
@@ -25,9 +26,16 @@ function direction(dir: string | undefined): Dir {
   return dir === 'BT' || dir === 'LR' || dir === 'RL' ? dir : 'TB';
 }
 
-function numberOption(config: Config, key: string, fallback: number): number {
-  const value = (config.flowchart as Config | undefined)?.[key];
+function numberOption(section: Config, key: string, fallback: number): number {
+  const value = section[key];
   return typeof value === 'number' && value > 0 ? Math.min(value, 2000) : fallback;
+}
+
+// A diagram type that is a flowchart with a different layout. Its top-level groups are lanes.
+export interface FlowVariant {
+  type: string;
+  prepare(graph: FlowGraph): void;
+  layout(nodes: CNode[], edges: CEdge[], dir: Dir, opt: LayeredOptions): CompoundResult;
 }
 
 function assetSize(value: number | undefined, fallback: number): number {
@@ -45,13 +53,15 @@ interface NodeView {
   loops: number;
 }
 
-export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptions): Rendered {
-  const flow = (config.flowchart ?? {}) as Config;
+export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptions, variant?: FlowVariant): Rendered {
+  const own = variant ? config[variant.type] : undefined;
+  const flow = (typeof own === 'object' && own !== null && !Array.isArray(own) ? own : (config.flowchart ?? {})) as Config;
   const graph = buildFlowGraph(db, typeof flow.curve === 'string' ? flow.curve : undefined);
+  variant?.prepare(graph);
   const size = options.fontSize ?? 16;
   const edgeSize = Math.round(size * 0.875);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
-  const wrapWidth = numberOption(config, 'wrappingWidth', 200);
+  const wrapWidth = numberOption(flow, 'wrappingWidth', 200);
   const pad = options.padding ?? 8;
   const icons = options.icons;
 
@@ -149,10 +159,10 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     });
   }
 
-  const layout = compoundLayout(cnodes, cedges, rootDir, {
-    nodeSep: numberOption(config, 'nodeSpacing', NODE_SEP),
+  const layout = (variant?.layout ?? compoundLayout)(cnodes, cedges, rootDir, {
+    nodeSep: numberOption(flow, 'nodeSpacing', NODE_SEP),
     edgeSep: EDGE_SEP,
-    rankSep: numberOption(config, 'rankSpacing', RANK_SEP),
+    rankSep: numberOption(flow, 'rankSpacing', RANK_SEP),
     portSep: 20,
   });
 
@@ -204,6 +214,24 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     const y = c.y;
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
     const id = esc(node.id);
+    if (c.isGroup && variant && c.parent < 0) {
+      // A lane: an outline the length of the diagram, with its title in a band at the start.
+      const left = x - c.w / 2;
+      const top = y - c.h / 2;
+      const sideways = rootDir === 'LR' || rootDir === 'RL';
+      const cx = sideways ? left + c.padTop / 2 : x;
+      const cy = sideways ? y : top + c.padTop / 2;
+      const text = labelSvg(view.label, cx, cy, ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`, icons);
+      clusters +=
+        `<g class="pele-cluster pele-lane${classes}" data-id="${id}">` +
+        `<rect x="${num(left)}" y="${num(top)}" width="${num(c.w)}" height="${num(c.h)}" fill="none" stroke="var(--_b)"/>` +
+        `<rect x="${num(left)}" y="${num(top)}" width="${num(sideways ? c.padTop : c.w)}" height="${num(
+          sideways ? c.h : c.padTop
+        )}" fill="var(--_a)" stroke="var(--_b)"${view.style.shape}/>` +
+        (sideways && text ? `<g transform="rotate(-90 ${num(cx)} ${num(cy)})">${text}</g>` : text) +
+        '</g>';
+      continue;
+    }
     if (c.isGroup) {
       const titleX = clusterTitleX(c, view.label.width, crossings);
       clusters +=
@@ -352,7 +380,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
   }
 
   const svg = svgDocument(
-    'flowchart',
+    variant?.type ?? 'flowchart',
     width,
     height,
     size,

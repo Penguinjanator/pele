@@ -25,6 +25,7 @@ import { requirement } from './requirement/index.js';
 import { sankey } from './sankey/index.js';
 import { sequence } from './sequence/index.js';
 import { state } from './state/index.js';
+import { swimlane } from './swimlane/index.js';
 import { timeline } from './timeline/index.js';
 import { treeView } from './treeview/index.js';
 import { treemap } from './treemap/index.js';
@@ -68,6 +69,7 @@ const all = [
   usecase,
   venn,
   ishikawa,
+  swimlane,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));
