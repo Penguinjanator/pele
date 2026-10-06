@@ -81,7 +81,7 @@ function context(): Context2D | null {
 
 const MAX_CACHED = 20000;
 
-export function canvasMeasurer(fontFamily: string): TextMeasurer | null {
+export function canvasMeasurer(fontFamily: string, monoFamily = 'monospace'): TextMeasurer | null {
   const ctx = context();
   if (!ctx) return null;
   const caches = new Map<string, Map<string, number>>();
@@ -93,7 +93,7 @@ export function canvasMeasurer(fontFamily: string): TextMeasurer | null {
         (style & Style.Bold ? 'bold ' : '') +
         size +
         'px ' +
-        (style & Style.Mono ? 'monospace' : fontFamily);
+        (style & Style.Mono ? monoFamily : fontFamily);
       let cache = caches.get(font);
       if (!cache) caches.set(font, (cache = new Map()));
       let w = cache.get(text);
@@ -110,11 +110,17 @@ export function canvasMeasurer(fontFamily: string): TextMeasurer | null {
 
 const shared = new Map<string, TextMeasurer>();
 
-export function defaultMeasurer(fontFamily = 'sans-serif'): TextMeasurer {
-  let m = shared.get(fontFamily);
+export function defaultMeasurer(fontFamily = 'sans-serif', monoFamily = 'monospace'): TextMeasurer {
+  const key = fontFamily + '\n' + monoFamily;
+  let m = shared.get(key);
   if (!m) {
-    m = canvasMeasurer(fontFamily) ?? metricsMeasurer;
-    shared.set(fontFamily, m);
+    m = canvasMeasurer(fontFamily, monoFamily) ?? metricsMeasurer;
+    shared.set(key, m);
   }
   return m;
+}
+
+// Widths measured before a font finished loading are those of its fallback.
+export function forgetWidths(): void {
+  shared.clear();
 }

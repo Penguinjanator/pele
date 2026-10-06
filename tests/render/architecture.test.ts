@@ -249,7 +249,7 @@ describe('architecture rendering', () => {
     expect(big.width).toBeGreaterThan(plain.width);
     expect(big.svg).toContain('width="96" height="96"');
     expect(render(config('padding: 60'), options).width).toBe(plain.width + 80);
-    expect(render(config('fontSize: 24'), options).svg).toContain('font-size="24"');
+    expect(render(config('fontSize: 24'), options).svg).toContain('font:24px sans-serif;');
     expect(render(config('iconSize: -5'), options).svg).not.toContain('NaN');
   });
 

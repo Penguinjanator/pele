@@ -6,7 +6,10 @@ export type IconResolver = (name: string) => string | null | undefined;
 
 export interface RenderOptions {
   measurer?: TextMeasurer;
+  // The fonts labels are measured in, and drawn in where the page sets no --pele-font or
+  // --pele-font-mono.
   fontFamily?: string;
+  fontFamilyMono?: string;
   fontSize?: number;
   idPrefix?: string;
   responsive?: boolean;

@@ -1,6 +1,6 @@
 import type { RenderOptions } from '../types.js';
 import { esc, escText } from './builder.js';
-import { FONT, ROOT_STYLE } from './theme.js';
+import { ROOT_STYLE, fontStyle } from './theme.js';
 
 export interface Accessible {
   accTitle?: string;
@@ -30,7 +30,7 @@ export function svgDocument(
   }
   const fit = options.responsive === false ? '' : 'max-width:100%;height:auto;';
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-${type}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="${fit}${ROOT_STYLE}" font-family="${FONT}" font-size="${fontSize}" fill="var(--_fg)" role="graphics-document document" aria-roledescription="${type}"${aria}>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-${type}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="${fit}${ROOT_STYLE}${esc(fontStyle(fontSize, options.fontFamily, options.fontFamilyMono))}" fill="var(--_fg)" role="graphics-document document" aria-roledescription="${type}"${aria}>` +
     head +
     content +
     '</svg>'

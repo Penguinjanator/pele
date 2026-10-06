@@ -8,9 +8,26 @@ export const ROOT_STYLE =
   '--_l:var(--pele-line,#1f1f1f);--_s:var(--pele-surface,#f3f3f3);--_a:var(--pele-surface-alt,#e6e6e6);' +
   '--_b:var(--pele-border,#8a8a8a);--_c:var(--pele-accent,#5b7bd5);color:var(--_fg)';
 
-export const FONT = 'var(--pele-font,sans-serif)';
-export const FONT_MONO = 'var(--pele-font-mono,monospace)';
+export const FONT_MONO = 'var(--_fm)';
 export const RADIUS = 'var(--pele-radius,4px)';
+
+// A list of font names, quoted or not, and nothing that could end the declaration it is put in.
+const FAMILY = String.raw`(?:"[^"'\\\n<>{}();:@]*"|'[^"'\\\n<>{}();:@]*'|[\p{L}\p{N}_-][\p{L}\p{N}_ .-]*)`;
+const RE_FAMILIES = new RegExp(String.raw`^\s*${FAMILY}(?:\s*,\s*${FAMILY})*\s*$`, 'u');
+
+function families(list: string | undefined, generic: string): string {
+  return list && RE_FAMILIES.test(list) ? list : generic;
+}
+
+// The fonts the labels were measured in are the ones they are drawn in, unless the page names
+// others. The rest of what text inherits is pinned, as none of it was measured.
+export function fontStyle(size: number, family: string | undefined, mono: string | undefined): string {
+  return (
+    `;--_fm:var(--pele-font-mono,${families(mono, 'monospace')});font:${size}px sans-serif;` +
+    'letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;' +
+    `font-family:var(--pele-font,${families(family, 'sans-serif')})`
+  );
+}
 
 const SHAPE_PROPS = new Set([
   'fill',

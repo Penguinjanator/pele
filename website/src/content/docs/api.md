@@ -89,7 +89,8 @@ All options are optional.
 | Option | Type | Description |
 | --- | --- | --- |
 | `measurer` | `TextMeasurer` | Measures label text. Defaults to a canvas measurer in browsers and a built-in width table elsewhere. See [Text measurement](#text-measurement). |
-| `fontFamily` | `string` | Font used to measure labels. Set it to the font that `--pele-font` resolves to. The SVG still refers to `var(--pele-font)`. |
+| `fontFamily` | `string` | Font used to measure labels, and to draw them unless `--pele-font` is set. Defaults to `sans-serif`. [`mount()`](#mount) reads it from CSS. See [Fonts](/theming#fonts). |
+| `fontFamilyMono` | `string` | The same for monospace labels and `--pele-font-mono`. Defaults to `monospace`. |
 | `fontSize` | `number` | Base font size in pixels. Defaults to `16`. |
 | `idPrefix` | `string` | Prefix for accessibility title and description IDs. Use a unique prefix for each diagram on a page. |
 | `responsive` | `boolean` | Shrinks the SVG to fit a container narrower than the diagram. It never grows past its natural size. Defaults to `true`. Set `false` for a fixed pixel size. A diagram that sets Mermaid's `useMaxWidth: false` is also fixed. |
@@ -162,9 +163,11 @@ const diagram = mount(container, source);
 
 `mount()` automatically:
 
-- Measures labels using the container font, unless `fontFamily` is set.
+- Measures labels using `--pele-font` and `--pele-font-mono`, or the container font if they are not set. The `fontFamily` and `fontFamilyMono` options override this.
 - Uses the container width as [`maxWidth`](#narrow-screens), unless a value is supplied.
-- Re-renders when a width change affects the layout.
+- Re-renders when a width change affects the layout, and when a web font finishes loading.
+
+Call `update()` after a CSS change that affects fonts, such as a theme or font setting.
 
 Use a container with a width independent of its content, such as a block element. `mount()` throws a [`PeleError`](#peleerror) as `render()` does.
 
@@ -174,7 +177,7 @@ Use a container with a width independent of its content, such as a block element
 | --- | --- |
 | `result` | Current `RenderResult`. |
 | `update(text, options?)` | Updates the source or options and returns the new result. |
-| `destroy()` | Stops observing the container. Leaves the diagram in place. |
+| `destroy()` | Stops observing the container and font loading. Leaves the diagram in place. |
 
 With [`pele/lazy`](#imports), `mountAsync()` takes the same arguments, fetches the diagram type first, and returns a promise.
 
@@ -261,7 +264,7 @@ try {
 
 ## Text measurement
 
-Pele sizes nodes from the measured width of their labels. In a browser it measures with a canvas, using the `fontFamily` option. Without a canvas, such as in Node.js, it estimates widths from a built-in table of sans-serif metrics.
+Pele sizes nodes from the measured width of their labels. In a browser it measures with a canvas, using the `fontFamily` and `fontFamilyMono` options. Without a canvas, such as in Node.js, it estimates widths from a built-in table of sans-serif metrics.
 
 Pass a `measurer` to supply your own measurements.
 

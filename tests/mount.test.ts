@@ -9,7 +9,7 @@ const globals = globalThis as Record<string, unknown>;
 
 beforeEach(() => {
   observers = [];
-  globals.getComputedStyle = () => ({ fontFamily: 'sans-serif', paddingLeft: '10px', paddingRight: '10px' });
+  globals.getComputedStyle = () => ({ fontFamily: 'sans-serif', paddingLeft: '10px', paddingRight: '10px', getPropertyValue: () => '' });
   globals.ResizeObserver = class {
     private entry = { fire: () => this.callback(), element: undefined as unknown as FakeElement, connected: false };
     constructor(private callback: () => void) {}
@@ -107,7 +107,7 @@ describe('mount', () => {
 
   it('measures with the font of the element unless one is given', () => {
     const seen: string[] = [];
-    globals.getComputedStyle = () => ({ fontFamily: 'Inter', paddingLeft: '0px', paddingRight: '0px' });
+    globals.getComputedStyle = () => ({ fontFamily: 'Inter', paddingLeft: '0px', paddingRight: '0px', getPropertyValue: () => '' });
     const spy = (text: string, o: { fontFamily?: string }) => {
       seen.push(o.fontFamily ?? '');
       return render(text, { ...o, measurer: metricsMeasurer });
@@ -118,6 +118,81 @@ describe('mount', () => {
       // Each mount draws twice here: once to learn the natural size, once for the room.
       expect([...new Set(seen)]).toEqual(['Inter', 'Georgia']);
     });
+  });
+
+  // An element whose drawing, once it has one, can be given variables of its own.
+  interface Styled { fontFamily: string; vars?: Record<string, string> }
+  const styled = (container: Styled, drawing?: Styled) => {
+    const child = {};
+    const listeners = new Set<(event: unknown) => void>();
+    const el = {
+      clientWidth: 500,
+      html: '',
+      firstElementChild: null as object | null,
+      get innerHTML() {
+        return this.html;
+      },
+      set innerHTML(value: string) {
+        this.html = value;
+        this.firstElementChild = drawing ? child : null;
+      },
+      ownerDocument: {
+        fonts: {
+          addEventListener: (_: string, listener: (event: unknown) => void) => listeners.add(listener),
+          removeEventListener: (_: string, listener: (event: unknown) => void) => listeners.delete(listener),
+        },
+      },
+    };
+    globals.getComputedStyle = (target: unknown) => {
+      const style = target === child && drawing ? drawing : container;
+      return { fontFamily: style.fontFamily, paddingLeft: '0px', paddingRight: '0px', getPropertyValue: (name: string) => style.vars?.[name] ?? '' };
+    };
+    const seen: string[] = [];
+    const spy = (text: string, o: { fontFamily?: string; fontFamilyMono?: string }) => {
+      seen.push(`${o.fontFamily}|${o.fontFamilyMono}`);
+      return render(text, { ...o, measurer: metricsMeasurer });
+    };
+    const loaded = () => {
+      const event = {};
+      for (const listener of [...listeners]) listener(event);
+    };
+    return { el: el as unknown as HTMLElement, seen, spy, loaded, listeners };
+  };
+
+  it('takes its fonts from the variables where they are set', async () => {
+    const { mountWith } = await import('../src/mount.js');
+    const { el, seen, spy } = styled({ fontFamily: 'Georgia', vars: { '--pele-font': ' Inter, sans-serif ', '--pele-font-mono': 'Menlo' } });
+    mountWith(spy, el, FLOW);
+    expect([...new Set(seen)]).toEqual(['Inter, sans-serif|Menlo']);
+    expect(el.innerHTML).toContain('font-family:var(--pele-font,Inter, sans-serif)');
+    expect(el.innerHTML).toContain('--_fm:var(--pele-font-mono,Menlo)');
+  });
+
+  it('finds a variable that is set on the drawing and not on the element', async () => {
+    const { mountWith } = await import('../src/mount.js');
+    const { el, seen, spy } = styled({ fontFamily: 'Georgia' }, { fontFamily: 'Inter', vars: { '--pele-font': 'Inter' } });
+    let renders = 0;
+    const handle = mountWith(spy, el, FLOW, { onRender: () => renders++ });
+    // Drawn for the element's font first, as nothing better is known, then for the one found.
+    expect([...new Set(seen)]).toEqual(['Georgia|undefined', 'Inter|undefined']);
+    expect(el.innerHTML).toContain('font-family:var(--pele-font,Inter)');
+    expect(renders).toBe(1);
+    seen.length = 0;
+    handle.update(FLOW);
+    expect([...new Set(seen)]).toEqual(['Inter|undefined']);
+  });
+
+  it('measures again when a font has loaded, and leaves the element alone if nothing moved', async () => {
+    const { mountWith } = await import('../src/mount.js');
+    const { el, seen, spy, loaded, listeners } = styled({ fontFamily: 'Georgia' });
+    let renders = 0;
+    const handle = mountWith(spy, el, FLOW, { onRender: () => renders++ });
+    const drawn = seen.length;
+    loaded();
+    expect(seen.length).toBeGreaterThan(drawn);
+    expect(renders).toBe(1);
+    handle.destroy();
+    expect(listeners.size).toBe(0);
   });
 
   it('keeps to a width the host sets', () => {

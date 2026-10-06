@@ -177,7 +177,7 @@ export function renderRailroad(model: RailroadModel, config: Config, options: Re
   const padding = option(config, 'padding', -1, 200);
   const lineHeight = Math.round(size * 1.5);
   const m: Metrics = {
-    measurer: options.measurer ?? defaultMeasurer(options.fontFamily),
+    measurer: options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono),
     size,
     padding: padding < 0 ? 12 : padding,
     height: even(lineHeight + (padding < 0 ? 9 : 2 * padding)),

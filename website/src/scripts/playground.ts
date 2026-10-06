@@ -129,7 +129,14 @@ function renderPele() {
     // The room the preview has, so a chart that can be drawn narrower keeps its text at full size.
     drawnWidth = peleOutput.clientWidth;
     const maxWidth = drawnWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-    const options = { fontFamily: style.fontFamily, idPrefix: 'pele-', maxWidth, icons: siteIcon };
+    const font = (name: string): string | undefined => style.getPropertyValue(name).trim() || undefined;
+    const options = {
+      fontFamily: font('--pele-font') ?? style.fontFamily,
+      fontFamilyMono: font('--pele-font-mono'),
+      idPrefix: 'pele-',
+      maxWidth,
+      icons: siteIcon,
+    };
     const times: number[] = [];
     const started = performance.now();
     let result = render(source, options);

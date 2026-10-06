@@ -21,8 +21,8 @@ CSS variables and default values.
 | `--pele-surface-alt` | `#e6e6e6` | Subgraph fill |
 | `--pele-border` | `#8a8a8a` | Node and subgraph borders |
 | `--pele-accent` | `#5b7bd5` | Highlights |
-| `--pele-font` | `sans-serif` | Label font |
-| `--pele-font-mono` | `monospace` | Monospace labels |
+| `--pele-font` | Measured font | Label font. See [Fonts](#fonts) |
+| `--pele-font-mono` | Measured font | Monospace labels |
 | `--pele-radius` | `4px` | Corner radius of rounded shapes |
 
 ### Series colors
@@ -93,12 +93,27 @@ Set the variables on the root `<svg>` or on any element that contains it. The ro
 
 ### Fonts
 
-Set `--pele-font` and [`fontFamily`](/api#renderoptions) to the same font. Pele uses `fontFamily` to measure labels and size nodes. If the fonts differ, labels can overflow or leave extra space.
+Pele measures labels to size nodes, so it needs the font before rendering.
+
+[`mount()`](/api#mount) reads the font from CSS. It uses `--pele-font` and `--pele-font-mono` if they are set, on the container or on `.pele`, and the container font otherwise.
+
+```css
+.diagram {
+  --pele-font: var(--font-text);
+  --pele-font-mono: var(--font-monospace);
+}
+```
+
+A font change takes effect at the next render. `mount()` re-renders when a web font finishes loading. Call `update()` after any other change, such as a theme or font setting.
+
+[`render()`](/api#render) has no container to read. Pass the font with [`fontFamily`](/api#renderoptions). The SVG is drawn in that font unless `--pele-font` is set.
 
 ```ts
 const fontFamily = getComputedStyle(container).fontFamily;
 container.innerHTML = render(source, { fontFamily }).svg;
 ```
+
+The SVG resets inherited text styles such as `letter-spacing`, `font-weight`, and `text-transform`, because they change label widths after measurement.
 
 ## Classes
 

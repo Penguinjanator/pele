@@ -18,6 +18,8 @@ const STYLE_PROPERTIES = new Set([
   'stroke-linejoin', 'stroke-opacity', 'opacity', 'rx', 'ry', 'font-size', 'font-family', 'font-weight', 'font-style',
   'text-decoration', 'letter-spacing', 'word-spacing', 'max-width',
 ]);
+const ROOT_STYLES = new Set(['height:auto', 'color:var(--_fg)', 'text-transform:none', 'direction:ltr']);
+const RE_ROOT_FONT = /^font:\d+(?:\.\d+)?(?:e[-+]?\d+)?px sans-serif$/;
 const NUMERIC = new Set(['x', 'y', 'width', 'height', 'r', 'cx', 'cy', 'rx', 'ry']);
 
 const RE_NUMBER = /^(?:-?\d+(?:\.\d+)?(?:e[-+]?\d+)?|100%|var\(--pele-radius,4px\))$/;
@@ -53,8 +55,8 @@ export function inertProblem(svg: string): string | undefined {
           const trimmed = decl.trim();
           if (trimmed === '') continue;
           const prop = decl.slice(0, decl.indexOf(':')).trim();
-          const sizing = el.name === 'svg' && (trimmed === 'height:auto' || trimmed === 'color:var(--_fg)');
-          if (!sizing && !STYLE_PROPERTIES.has(prop) && !prop.startsWith('--_')) return `style property ${prop}`;
+          const root = el.name === 'svg' && (ROOT_STYLES.has(trimmed) || RE_ROOT_FONT.test(trimmed));
+          if (!root && !STYLE_PROPERTIES.has(prop) && !prop.startsWith('--_')) return `style property ${prop}`;
         }
       } else if (name === 'fill' || name === 'stroke' || name === 'font-family' || name === 'rx') {
         if (RE_UNSAFE_PAINT.test(value)) return `${name}="${value}"`;

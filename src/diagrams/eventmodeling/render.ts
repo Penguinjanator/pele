@@ -74,7 +74,7 @@ export function renderEventModel(model: EventModelingModel, _config: Config, opt
   const mono = Math.round(size * 0.75);
   const monoStep = Math.round(mono * 1.4);
   const smallStep = Math.round(small * 1.5);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const widest = (rows: string[], fontSize: number, style: number): number => {
     let width = 0;

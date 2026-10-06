@@ -104,7 +104,7 @@ describe('railroad rendering', () => {
     const [terminal, nonterminal] = rects(svg);
     expect(svg).toMatch(/<g class="pele-node pele-terminal"><rect[^>]* rx="15" fill="var\(--_s\)"/);
     expect(svg).toMatch(/<g class="pele-node pele-nonterminal" data-id="name"><rect[^>]* rx="var\(--pele-radius,4px\)" fill="var\(--_bg\)"/);
-    expect(svg).toContain('font-family="var(--pele-font-mono,monospace)">lit</text>');
+    expect(svg).toContain('font-family="var(--_fm)">lit</text>');
     expect(terminal.h).toBe(30);
     // Left to right on one baseline.
     expect(nonterminal.x).toBeGreaterThan(terminal.x + terminal.w);
@@ -188,7 +188,7 @@ describe('railroad rendering', () => {
     expect(svg).toContain('>#</text>');
     expect(svg).toContain('>&amp;lt;</text>');
     expect(svg).toContain('>␣</text>');
-    expect(svg).toContain(' xml:space="preserve" font-family="var(--pele-font-mono,monospace)">a  b</text>');
+    expect(svg).toContain(' xml:space="preserve" font-family="var(--_fm)">a  b</text>');
     expect(svg).toContain('>\\n\\t</text>');
     expect(svg).toContain('>fa:fa-user</text>');
   });
