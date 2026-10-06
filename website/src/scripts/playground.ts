@@ -2,6 +2,7 @@ import { PeleError, render } from 'pele';
 import { editorHighlighting } from '../lib/editor-highlighting';
 import { formatSvg } from '../lib/format-svg';
 import { readPlaygroundSource } from '../lib/playground-link';
+import { mermaidAutocomplete } from './playground-autocomplete';
 import { createPlaygroundEditor } from './playground-editor';
 import { setupPlaygroundColumns } from './playground-columns';
 import { setupPlaygroundCopy } from './playground-copy';
@@ -46,7 +47,7 @@ const initialWrap = savedWrap === 'true' || savedWrap === 'false' ? savedWrap ==
 const linkedSource = readPlaygroundSource(window.location.hash);
 if (linkedSource !== null) document.querySelector<HTMLTextAreaElement>('#playground-input')!.value = linkedSource;
 
-const input = createPlaygroundEditor('input', 'Mermaid source', editorHighlighting('mermaid'), initialWrap);
+const input = createPlaygroundEditor('input', 'Mermaid source', [...editorHighlighting('mermaid'), mermaidAutocomplete()], initialWrap);
 const output = createPlaygroundEditor('output', 'SVG source', editorHighlighting('xml'), initialWrap);
 const inputCopy = setupPlaygroundCopy('input', 'Copy source', () => input.value);
 const outputCopy = setupPlaygroundCopy('output', 'Copy SVG', () => output.value);

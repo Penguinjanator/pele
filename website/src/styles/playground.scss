@@ -259,6 +259,26 @@
   &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
     background: var(--selection-background);
   }
+  .cm-tooltip {
+    border: 0;
+    border-radius: var(--radius-panel);
+    padding: 4px;
+    background: var(--line);
+    color: var(--paper);
+    box-shadow: 0 4px 16px #0003;
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-menu);
+  }
+  .cm-tooltip-autocomplete { padding: 0; }
+  .cm-tooltip-autocomplete > ul { padding: 4px; scroll-padding-block: 4px; }
+  .cm-tooltip-autocomplete > ul > li { display: flex; align-items: baseline; gap: 16px; padding: 4px 8px; }
+  .cm-tooltip-autocomplete > ul > li[aria-selected] { border-radius: var(--radius-small); background: var(--line-hover); color: var(--paper); }
+  .playground-completion-variable .cm-completionLabel { color: var(--syntax-blue); }
+  .playground-completion-keyword .cm-completionLabel { color: var(--syntax-green); }
+  .playground-completion-property .cm-completionLabel { color: var(--syntax-orange); }
+  .playground-completion-enum .cm-completionLabel { color: var(--syntax-cyan); }
+  .cm-completionDetail { margin-left: auto; text-align: right; color: var(--muted); font-style: normal; }
 }
 .playground-columns.is-resizing .cm-editor { pointer-events: none; }
 .playground-status {
