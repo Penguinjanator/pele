@@ -1,6 +1,7 @@
 import type { DiagramType } from '../detect.js';
 import type { Diagram } from '../types.js';
 import { architecture } from './architecture/index.js';
+import { block } from './block/index.js';
 import { c4 } from './c4/index.js';
 import { classDiagram } from './class/index.js';
 import { er } from './er/index.js';
@@ -48,6 +49,7 @@ const all = [
   sequence,
   gitGraph,
   c4,
+  block,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));

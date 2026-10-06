@@ -26,6 +26,7 @@ const DIAGRAMS = [
   ['sequence', 'sequence', 'SequenceModel', 'types'],
   ['gitGraph', 'git', 'GitModel', 'db'],
   ['c4', 'c4', 'C4Model', 'types'],
+  ['block', 'block', 'BlockModel', 'types'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();
