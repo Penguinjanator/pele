@@ -59,7 +59,7 @@ The SVG has no colors of its own. Set these properties on the diagram or any ele
 }
 ```
 
-A diagram follows a change of theme without being rendered again.
+Charts take the colors of their series from `--pele-series-1` to `--pele-series-8`. A diagram follows a change of theme without being rendered again.
 
 ## Security
 

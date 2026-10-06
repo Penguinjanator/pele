@@ -25,6 +25,42 @@ Each token has a neutral default that is used when the property is not set.
 | `--pele-font-mono` | `monospace` | Monospace labels |
 | `--pele-radius` | `4px` | Corner radius of rounded shapes |
 
+### Series colors
+
+Charts, and diagrams that tell categories apart by color, use eight more tokens. The first category takes `--pele-series-1`, the second `--pele-series-2`, and so on. A ninth category starts again at `--pele-series-1`.
+
+| Token | Default |
+| --- | --- |
+| `--pele-series-1` | `#4c78a8` |
+| `--pele-series-2` | `#f58518` |
+| `--pele-series-3` | `#54a24b` |
+| `--pele-series-4` | `#e45756` |
+| `--pele-series-5` | `#72b7b2` |
+| `--pele-series-6` | `#eeca3b` |
+| `--pele-series-7` | `#b279a2` |
+| `--pele-series-8` | `#9d755d` |
+
+What counts as a category depends on the diagram:
+
+| Diagram | One color for each |
+| --- | --- |
+| Pie | Slice |
+| Sankey | Node |
+| Treemap | Top-level section |
+| Venn | Set |
+| XY chart, radar | Data series |
+| Quadrant chart | The points, which all use the first color |
+| Git graph | Branch |
+| Mindmap | Branch from the root |
+| Timeline | Section, or time period when there are no sections |
+| User journey | Actor |
+| Kanban | Priority |
+| Cynefin | Domain |
+| Event modeling | Kind of step |
+| Agentflow | Kind of node |
+
+Text that sits on a series color is drawn in `--pele-bg`, so choose series colors that contrast with the background. Mermaid's own color settings, such as `themeVariables`, are not used.
+
 ## Setting tokens
 
 Set the tokens on the root `<svg>` or on any element that contains it. The root of every diagram has the class `pele`.
