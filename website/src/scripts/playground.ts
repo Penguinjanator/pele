@@ -1,6 +1,7 @@
 import { PeleError, render } from 'pele';
 import { editorHighlighting } from '../lib/editor-highlighting';
 import { formatSvg } from '../lib/format-svg';
+import { siteIcon } from '../lib/icons';
 import { readPlaygroundSource } from '../lib/playground-link';
 import { mermaidAutocomplete } from './playground-autocomplete';
 import { createPlaygroundEditor } from './playground-editor';
@@ -128,7 +129,7 @@ function renderPele() {
     // The room the preview has, so a chart that can be drawn narrower keeps its text at full size.
     drawnWidth = peleOutput.clientWidth;
     const maxWidth = drawnWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-    const options = { fontFamily: style.fontFamily, idPrefix: 'pele-', maxWidth };
+    const options = { fontFamily: style.fontFamily, idPrefix: 'pele-', maxWidth, icons: siteIcon };
     const times: number[] = [];
     const started = performance.now();
     let result = render(source, options);

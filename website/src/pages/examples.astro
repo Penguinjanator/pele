@@ -2,6 +2,7 @@
 import { render } from 'pele';
 import DocsLayout from '../layouts/DocsLayout.astro';
 import { groups } from '../lib/example-groups';
+import { siteIcon } from '../lib/icons';
 import { examplesDescription, examplesTitle } from '../lib/examples';
 import { playgroundHref } from '../lib/playground-link';
 
@@ -20,8 +21,8 @@ const PHONE_WIDTH = 320;
 // About the width a figure has in the docs column on a desktop screen.
 const COLUMN_WIDTH = 640;
 const drawings = (source: string, prefix: string) => {
-  const wide = render(source, { idPrefix: prefix, maxWidth: COLUMN_WIDTH });
-  const narrow = render(source, { idPrefix: `${prefix}narrow-`, maxWidth: PHONE_WIDTH });
+  const wide = render(source, { idPrefix: prefix, maxWidth: COLUMN_WIDTH, icons: siteIcon });
+  const narrow = render(source, { idPrefix: `${prefix}narrow-`, maxWidth: PHONE_WIDTH, icons: siteIcon });
   return { wide: wide.svg, narrow: narrow.width < wide.width ? narrow.svg : undefined };
 };
 // The first line that is not front matter, a directive, or a comment: the diagram's own opening line.
