@@ -9,6 +9,8 @@ const DIAGRAMS = [
   ['er', 'er', 'ErModel', 'types'],
   ['mindmap', 'mindmap', 'MindmapModel', 'db'],
   ['kanban', 'kanban', 'KanbanModel', 'db'],
+  ['timeline', 'timeline', 'TimelineModel', 'db'],
+  ['journey', 'journey', 'JourneyModel', 'db'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();

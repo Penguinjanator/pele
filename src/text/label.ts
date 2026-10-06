@@ -20,7 +20,7 @@ export interface Label {
 export const LINE_HEIGHT = 1.5;
 
 const RE_BREAK = /<br\s*\/?>|\\n|\n/gi;
-const RE_TAG = /<\/?([a-zA-Z][\w-]*)(?:\s[^<>]*)?\/?>/g;
+const RE_TAG = /<\/?([a-zA-Z][\w-]*)(?:\s[^<>]*)?\/?>/y;
 const RE_ICON = /(fa[bklrs]?):fa-([\w-]+)/g;
 const RE_MARKUP = /[<\\\n*_]|fa[bklrs]?:fa-/;
 
