@@ -11,6 +11,8 @@ Pele targets the syntax of Mermaid 12.1.0. Newer Mermaid syntax is adopted when 
 
 ## Diagram types
 
+See [Examples](/examples) for a drawing of each implemented type.
+
 | Type | Keywords | Status |
 | --- | --- | --- |
 | Flowchart | `graph`, `flowchart` | Implemented |

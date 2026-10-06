@@ -1,0 +1,49 @@
+---
+import { render } from 'pele';
+import DocsLayout from '../layouts/DocsLayout.astro';
+import { groups } from '../lib/example-groups';
+import { examplesDescription, examplesTitle } from '../lib/examples';
+import { playgroundHref } from '../lib/playground-link';
+
+const headings = groups.map((group) => ({ depth: 2, slug: group.slug, text: group.title }));
+
+const hrefFor = (source: string): string | undefined => {
+  try {
+    return playgroundHref(source);
+  } catch {
+    return undefined;
+  }
+};
+// The first line that is not front matter, a directive, or a comment: the diagram's own opening line.
+const opening = (source: string): string =>
+  source.replace(/^---\n[\s\S]*?\n---\n/, '').split('\n').map((line) => line.trim())
+    .find((line) => line !== '' && !line.startsWith('%%')) ?? '';
+---
+
+<DocsLayout current="examples" title={examplesTitle} description={examplesDescription} headings={headings} markdownPath="/examples.md">
+  {groups.map((group) => (
+    <>
+      <h2 id={group.slug}>{group.title}</h2>
+      {group.sources.map((source, index) => {
+        const prefix = `${group.type}-${index}-`;
+        const href = hrefFor(source);
+        return (
+          <figure class="example-card">
+            <figcaption class="example-label">
+              <span class="example-opening">{opening(source)}</span>
+              {href && <a class="playground-link text-action" href={href}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3" /></svg>
+                <span><span class="playground-link-prefix">Open in </span>Playground</span>
+              </a>}
+            </figcaption>
+            <div class="example-figure" data-pele-theme="dark" data-pele-example={source} data-pele-prefix={prefix} role="img" aria-label={`${group.title} diagram rendered by Pele`} set:html={render(source, { idPrefix: prefix }).svg} />
+          </figure>
+        );
+      })}
+    </>
+  ))}
+</DocsLayout>
+
+<script>
+  import '../scripts/home';
+</script>

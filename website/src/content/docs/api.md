@@ -39,7 +39,7 @@ function draw(source: string, element: HTMLElement) {
 }
 ```
 
-Pele is in early development and has not had a stable release. Flowcharts (`graph` and `flowchart`) are implemented. See [Compatibility](/compatibility) for the other diagram types.
+Pele is in early development and has not had a stable release. Most Mermaid diagram types are implemented. See [Examples](/examples) for what they look like and [Compatibility](/compatibility) for the full list.
 
 ## render
 

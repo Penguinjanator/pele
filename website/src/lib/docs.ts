@@ -9,7 +9,7 @@ interface DocFrontmatter {
 const modules = import.meta.glob<MarkdownInstance<DocFrontmatter>>('../content/docs/*.md', { eager: true });
 const sources = import.meta.glob<string>('../content/docs/*.md', { eager: true, query: '?raw', import: 'default' });
 
-export const docs = docsPages.filter((page) => page.id !== 'introduction').map((page) => {
+export const docs = docsPages.filter((page) => `../content/docs/${page.id}.md` in modules).map((page) => {
   const key = `../content/docs/${page.id}.md`;
   return { ...page, module: modules[key], source: sources[key] };
 });

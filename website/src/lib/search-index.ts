@@ -1,4 +1,6 @@
 import { docs } from './docs';
+import { groups } from './example-groups';
+import { examplesDescription, examplesTitle } from './examples';
 import type { SearchItem } from './search';
 
 const plainText = (value: string) => value
@@ -63,6 +65,17 @@ export function buildSearchIndex(): SearchItem[] {
     });
   }
   pages.unshift({ title: 'Introduction', kind: 'page', category: 'Docs', summary: 'What Pele is, how it works, and how to add it to your app.', href: '/' });
+  pages.splice(1, 0, { title: examplesTitle, kind: 'page', category: 'Docs', summary: examplesDescription, href: '/examples' });
+  for (const group of groups) {
+    entries.push({
+      title: group.title,
+      kind: 'section',
+      category: examplesTitle,
+      summary: `Examples of ${group.title} diagrams drawn by Pele.`,
+      href: `/examples#${group.slug}`,
+      searchTerms: [group.type],
+    });
+  }
   return [
     ...pages,
     { title: 'Playground', kind: 'page', category: 'Tool', summary: 'Render Mermaid source with Pele and compare it with Mermaid.', href: '/playground' },

@@ -2,7 +2,7 @@
 
 Pele renders [Mermaid](https://mermaid.js.org) diagrams to SVG. It is small, synchronous, has no dependencies, and takes its colors and fonts from CSS variables. It is designed for [Obsidian](https://obsidian.md).
 
-Pele is at an early stage. Flowcharts are implemented. Other Mermaid diagram types are planned.
+Pele is at an early stage. Most Mermaid diagram types are implemented, and the rest are planned.
 
 ## Install
 

@@ -57,6 +57,10 @@ document.querySelector('#diagram').innerHTML = svg;
 
 ## Explore
 
+### [Examples](/examples)
+
+Every diagram type that Pele draws.
+
 ### [API](/api)
 
 Render diagrams, inspect them, and handle errors.

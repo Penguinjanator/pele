@@ -4,6 +4,7 @@ export const packageName = '@kepano/pele';
 
 export const docsPages = [
   { id: 'introduction', title: 'Introduction' },
+  { id: 'examples', title: 'Examples' },
   { id: 'api', title: 'API' },
   { id: 'theming', title: 'Theming' },
   { id: 'compatibility', title: 'Compatibility' },
@@ -11,7 +12,7 @@ export const docsPages = [
 
 export type DocsPageId = typeof docsPages[number]['id'];
 
-// The introduction is the home page; every other page has a Markdown source.
+// The introduction is the home page and the examples are generated; the other pages have a Markdown source.
 export const pageHref = (id: DocsPageId): string => (id === 'introduction' ? '/' : `/${id}`);
 
 export interface Heading {
