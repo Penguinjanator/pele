@@ -3,6 +3,7 @@ import { PeleError } from './errors.js';
 import { decodeEntities } from './text/entities.js';
 import { encodeEntities, preprocess, type Config } from './preprocess.js';
 import type { DiagramModel } from './models.js';
+import { mountWith, type MountOptions, type Mounted } from './mount.js';
 import type { Diagram, RenderOptions, RenderResult } from './types.js';
 
 export { PeleError } from './errors.js';
@@ -11,6 +12,7 @@ export type { DiagramType } from './detect.js';
 export type { TextMeasurer } from './text/measurer.js';
 export type { IconResolver, LinkInfo, RenderOptions, RenderResult } from './types.js';
 export type { Diagram } from './types.js';
+export type { MountOptions, Mounted } from './mount.js';
 
 const diagrams = new Map<DiagramType, Diagram<unknown>>();
 
@@ -101,4 +103,10 @@ export function render(text: string, options: RenderOptions = {}): RenderResult 
     for (const link of rendered.links) link.id = decodeEntities(link.id);
     return { type, ...rendered };
   });
+}
+
+// Renders into an element and draws again when the element's width calls for it. Throws as
+// render() does when the text cannot be drawn.
+export function mount(element: HTMLElement, text: string, options: MountOptions = {}): Mounted {
+  return mountWith(render, element, text, options);
 }

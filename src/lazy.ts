@@ -1,4 +1,4 @@
-import { detectType, register, registered, render, type DiagramType, type RenderOptions, type RenderResult } from './core.js';
+import { detectType, mount, register, registered, render, type DiagramType, type MountOptions, type Mounted, type RenderOptions, type RenderResult } from './core.js';
 import type { Diagram } from './types.js';
 
 export * from './core.js';
@@ -76,4 +76,17 @@ export async function renderAsync(text: string, options: RenderOptions = {}): Pr
   }
   await load(type);
   return render(text, options);
+}
+
+// Loads the diagram type that the text needs, then mounts it. A later update() to another
+// type needs that type loaded first.
+export async function mountAsync(element: HTMLElement, text: string, options: MountOptions = {}): Promise<Mounted> {
+  let type: DiagramType | null = null;
+  try {
+    type = detectType(text);
+  } catch {
+    // mount() reports what is wrong with the text.
+  }
+  await load(type);
+  return mount(element, text, options);
 }
