@@ -1,0 +1,216 @@
+import { decodeEntities } from './entities.js';
+import { Style, type TextMeasurer } from './measurer.js';
+
+export interface Span {
+  text: string;
+  style: number;
+  icon?: string;
+  width: number;
+}
+
+export interface Label {
+  lines: Span[][];
+  widths: number[];
+  width: number;
+  height: number;
+  size: number;
+  lineHeight: number;
+}
+
+export const LINE_HEIGHT = 1.5;
+
+const RE_BREAK = /<br\s*\/?>|\\n|\n/gi;
+const RE_TAG = /<\/?([a-zA-Z][\w-]*)(?:\s[^<>]*)?\/?>/g;
+const RE_ICON = /(fa[bklrs]?):fa-([\w-]+)/g;
+const RE_MARKUP = /[<\\\n*_]|fa[bklrs]?:fa-/;
+
+const EMPTY: Label = { lines: [], widths: [], width: 0, height: 0, size: 0, lineHeight: 0 };
+
+function dedent(text: string): string {
+  const lines = text.split('\n');
+  let min = Infinity;
+  for (const line of lines) {
+    if (line.trim() === '') continue;
+    const indent = line.length - line.trimStart().length;
+    if (indent < min) min = indent;
+  }
+  if (min === Infinity || min === 0) return text;
+  return lines.map((line) => line.slice(Math.min(min, line.length - line.trimStart().length))).join('\n');
+}
+
+function pushText(line: Span[], text: string, style: number): void {
+  if (text === '') return;
+  const decoded = decodeEntities(text);
+  const last = line[line.length - 1];
+  if (last && last.style === style && last.icon === undefined) last.text += decoded;
+  else line.push({ text: decoded, style, width: 0 });
+}
+
+function pushIcons(line: Span[], text: string, style: number): void {
+  if (!text.includes(':fa-')) {
+    pushText(line, text, style);
+    return;
+  }
+  let last = 0;
+  RE_ICON.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = RE_ICON.exec(text)) !== null) {
+    pushText(line, text.slice(last, m.index), style);
+    line.push({ text: '', style, icon: `${m[1]}:fa-${m[2]}`, width: 0 });
+    last = m.index + m[0].length;
+  }
+  pushText(line, text.slice(last), style);
+}
+
+// Splits inline HTML and, for markdown labels, emphasis markers into styled spans.
+function inline(line: Span[], source: string, markdown: boolean, base: number): void {
+  let style = base;
+  let text = '';
+  let i = 0;
+  const n = source.length;
+  const flush = (): void => {
+    pushIcons(line, text, style);
+    text = '';
+  };
+  while (i < n) {
+    const ch = source[i];
+    if (ch === '<') {
+      RE_TAG.lastIndex = i;
+      const m = RE_TAG.exec(source);
+      if (m && m.index === i) {
+        const tag = m[1].toLowerCase();
+        const closing = source[i + 1] === '/';
+        const bit = tag === 'b' || tag === 'strong' ? Style.Bold : tag === 'i' || tag === 'em' ? Style.Italic : 0;
+        if (bit) {
+          flush();
+          style = closing ? (style & ~bit) | (base & bit) : style | bit;
+        }
+        i += m[0].length;
+        continue;
+      }
+    } else if (markdown && (ch === '*' || ch === '_')) {
+      const double = source[i + 1] === ch;
+      const bit = double ? Style.Bold : Style.Italic;
+      const len = double ? 2 : 1;
+      const open = (style & bit) === 0 || (base & bit) !== 0;
+      const prev = i > 0 ? source[i - 1] : ' ';
+      const next = i + len < n ? source[i + len] : ' ';
+      const canOpen = open && next.trim() !== '' && source.indexOf(double ? ch + ch : ch, i + len) !== -1;
+      const canClose = !open && prev.trim() !== '';
+      const wordy = ch === '_' && /\w/.test(prev) && /\w/.test(next);
+      if ((canOpen || canClose) && !wordy) {
+        flush();
+        style = canOpen ? style | bit : style & ~bit;
+        i += len;
+        continue;
+      }
+    }
+    text += ch;
+    i++;
+  }
+  flush();
+}
+
+function measureSpans(line: Span[], measurer: TextMeasurer, size: number): number {
+  let total = 0;
+  for (const span of line) {
+    span.width = span.icon !== undefined ? size * 1.25 : measurer.width(span.text, size, span.style);
+    total += span.width;
+  }
+  return total;
+}
+
+function wrap(line: Span[], measurer: TextMeasurer, size: number, max: number, out: Span[][], widths: number[]): void {
+  let current: Span[] = [];
+  let width = 0;
+  const commit = (): void => {
+    const last = current[current.length - 1];
+    if (last && last.icon === undefined) {
+      const trimmed = last.text.trimEnd();
+      if (trimmed !== last.text) {
+        last.text = trimmed;
+        const w = measurer.width(trimmed, size, last.style);
+        width += w - last.width;
+        last.width = w;
+      }
+    }
+    out.push(current);
+    widths.push(width);
+    current = [];
+    width = 0;
+  };
+  for (const span of line) {
+    if (span.icon !== undefined) {
+      const w = size * 1.25;
+      if (width > 0 && width + w > max) commit();
+      current.push({ ...span, width: w });
+      width += w;
+      continue;
+    }
+    for (const piece of span.text.match(/\s*\S+\s*|\s+/g) ?? []) {
+      let part = piece;
+      let w = measurer.width(part, size, span.style);
+      if (width > 0 && width + measurer.width(part.trimEnd(), size, span.style) > max) {
+        commit();
+        part = part.trimStart();
+        w = measurer.width(part, size, span.style);
+      }
+      const last = current[current.length - 1];
+      if (last && last.style === span.style && last.icon === undefined) {
+        last.text += part;
+        last.width = measurer.width(last.text, size, last.style);
+        width = 0;
+        for (const s of current) width += s.width;
+      } else {
+        current.push({ text: part, style: span.style, width: w });
+        width += w;
+      }
+    }
+  }
+  if (current.length > 0 || out.length === 0) commit();
+}
+
+export function layoutLabel(
+  raw: string | undefined,
+  markdown: boolean,
+  measurer: TextMeasurer,
+  size: number,
+  maxWidth: number,
+  base = 0
+): Label {
+  if (raw === undefined || raw === '') return EMPTY;
+  const lineHeight = Math.round(size * LINE_HEIGHT);
+
+  if (!RE_MARKUP.test(raw) && !raw.includes('&') && !raw.includes('ﬂ')) {
+    const text = raw.trim();
+    const width = measurer.width(text, size, base);
+    if (width <= maxWidth || !text.includes(' ')) {
+      return {
+        lines: [[{ text, style: base, width }]],
+        widths: [width],
+        width,
+        height: lineHeight,
+        size,
+        lineHeight,
+      };
+    }
+  }
+
+  const source = markdown ? dedent(raw.replace(/\r\n?/g, '\n')).trim() : raw.trim();
+  const lines: Span[][] = [];
+  const widths: number[] = [];
+  let width = 0;
+  for (const part of source.split(RE_BREAK)) {
+    const line: Span[] = [];
+    inline(line, markdown ? part : part.trim(), markdown, base);
+    const w = measureSpans(line, measurer, size);
+    if (w > maxWidth) {
+      wrap(line, measurer, size, maxWidth, lines, widths);
+    } else {
+      lines.push(line);
+      widths.push(w);
+    }
+  }
+  for (const w of widths) if (w > width) width = w;
+  return { lines, widths, width, height: lines.length * lineHeight, size, lineHeight };
+}

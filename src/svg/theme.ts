@@ -1,0 +1,108 @@
+import { esc } from './builder.js';
+
+// Private aliases set once on the root element, so each use is short and the public
+// --pele-* tokens keep their fallbacks.
+export const ROOT_STYLE =
+  '--_bg:var(--pele-bg,#fff);--_fg:var(--pele-fg,#1f1f1f);--_m:var(--pele-muted,#6e6e6e);' +
+  '--_l:var(--pele-line,#1f1f1f);--_s:var(--pele-surface,#f3f3f3);--_a:var(--pele-surface-alt,#e6e6e6);' +
+  '--_b:var(--pele-border,#8a8a8a);--_c:var(--pele-accent,#5b7bd5)';
+
+export const FONT = 'var(--pele-font,sans-serif)';
+export const FONT_MONO = 'var(--pele-font-mono,monospace)';
+export const RADIUS = 'var(--pele-radius,4px)';
+
+const SHAPE_PROPS = new Set([
+  'fill',
+  'fill-opacity',
+  'stroke',
+  'stroke-width',
+  'stroke-dasharray',
+  'stroke-dashoffset',
+  'stroke-linecap',
+  'stroke-linejoin',
+  'stroke-opacity',
+  'opacity',
+  'rx',
+  'ry',
+]);
+
+const TEXT_PROPS = new Set([
+  'color',
+  'font-size',
+  'font-family',
+  'font-weight',
+  'font-style',
+  'text-decoration',
+  'letter-spacing',
+  'word-spacing',
+  'opacity',
+]);
+
+const RE_UNSAFE = /url\s*\(|expression\s*\(|javascript:|[<>{};\\]|@import|image-set|\/\*/i;
+
+export interface ResolvedStyle {
+  shape: string;
+  line: string;
+  text: string;
+  stroke: string | undefined;
+  bold: boolean;
+  italic: boolean;
+  fontSize: number | undefined;
+}
+
+const NONE: ResolvedStyle = {
+  shape: '',
+  line: '',
+  text: '',
+  stroke: undefined,
+  bold: false,
+  italic: false,
+  fontSize: undefined,
+};
+
+// Splits Mermaid style declarations into what applies to a shape and what applies to its text.
+export function resolveStyle(declarations: string[]): ResolvedStyle {
+  if (declarations.length === 0) return NONE;
+  const shape = new Map<string, string>();
+  const text = new Map<string, string>();
+  for (const decl of declarations) {
+    const at = decl.indexOf(':');
+    if (at <= 0) continue;
+    const prop = decl.slice(0, at).trim().toLowerCase();
+    const value = decl
+      .slice(at + 1)
+      .replace(/!important/gi, '')
+      .trim();
+    if (value === '' || RE_UNSAFE.test(value)) continue;
+    if (SHAPE_PROPS.has(prop)) shape.set(prop, value);
+    if (TEXT_PROPS.has(prop)) text.set(prop === 'color' ? 'fill' : prop, value);
+  }
+  if (shape.size === 0 && text.size === 0) return NONE;
+  let shapeCss = '';
+  let lineCss = '';
+  for (const [prop, value] of shape) {
+    shapeCss += `${prop}:${value};`;
+    if (prop !== 'fill' && prop !== 'fill-opacity') lineCss += `${prop}:${value};`;
+  }
+  let textCss = '';
+  for (const [prop, value] of text) textCss += `${prop}:${value};`;
+  const weight = text.get('font-weight');
+  const size = text.get('font-size');
+  const px = size && /^[\d.]+(px)?$/.test(size) ? parseFloat(size) : undefined;
+  return {
+    shape: shapeCss ? ` style="${esc(shapeCss)}"` : '',
+    line: lineCss ? ` style="${esc(lineCss)}"` : '',
+    text: textCss ? ` style="${esc(textCss)}"` : '',
+    stroke: shape.get('stroke'),
+    bold: weight === 'bold' || weight === 'bolder' || Number(weight) >= 600,
+    italic: text.get('font-style') === 'italic',
+    fontSize: px !== undefined && px > 0 && px <= 200 ? px : undefined,
+  };
+}
+
+const RE_CLASS = /[^\w-]+/g;
+
+export function classNames(raw: string): string {
+  const cleaned = raw.replace(RE_CLASS, ' ').trim();
+  return cleaned === '' ? '' : ' ' + cleaned;
+}
