@@ -3,15 +3,15 @@ title: Theming
 description: Use CSS to apply colors, fonts, and other styles.
 ---
 
-Pele returns SVG without a `<style>` block or inline styles. All fills, strokes, and fonts refer to custom properties such as `--pele-surface` and elements have semantic class names.
+Pele uses CSS variables for colors and fonts, with semantic class names for styling individual elements. The SVG has no `<style>` block. Styles set in the diagram source are applied inline.
 
 Because the SVG refers to CSS variables, diagrams automatically adapt to theme changes, such as switching between light and dark mode, without being re-rendered.
 
-## Tokens
+## Variables
 
-Each token has a neutral default that is used when the property is not set.
+CSS variables and default values.
 
-| Token | Default | Used for |
+| Variable | Default | Used for |
 | --- | --- | --- |
 | `--pele-bg` | `#ffffff` | Background of edge labels and of the diagram when it is not transparent |
 | `--pele-fg` | `#1f1f1f` | Text |
@@ -27,9 +27,9 @@ Each token has a neutral default that is used when the property is not set.
 
 ### Series colors
 
-Charts, and diagrams that tell categories apart by color, use eight more tokens. The first category takes `--pele-series-1`, the second `--pele-series-2`, and so on. A ninth category starts again at `--pele-series-1`.
+Charts and color-coded categories use `--pele-series-1` through `--pele-series-8`. Colors repeat after the eighth category.
 
-| Token | Default |
+| Variable | Default |
 | --- | --- |
 | `--pele-series-1` | `#4c78a8` |
 | `--pele-series-2` | `#f58518` |
@@ -40,16 +40,16 @@ Charts, and diagrams that tell categories apart by color, use eight more tokens.
 | `--pele-series-7` | `#b279a2` |
 | `--pele-series-8` | `#9d755d` |
 
-What counts as a category depends on the diagram:
+Categories depend on the diagram type:
 
-| Diagram | One color for each |
+| Diagram | Categorized by |
 | --- | --- |
 | Pie | Slice |
 | Sankey | Node |
 | Treemap | Top-level section |
 | Venn | Set |
 | XY chart, radar | Data series |
-| Quadrant chart | The points, which all use the first color |
+| Quadrant chart | Points, which all use the first color |
 | Git graph | Branch |
 | Mindmap | Branch from the root |
 | Timeline | Section, or time period when there are no sections |
@@ -59,11 +59,11 @@ What counts as a category depends on the diagram:
 | Event modeling | Kind of step |
 | Agentflow | Kind of node |
 
-Text that sits on a series color is drawn in `--pele-bg`, so choose series colors that contrast with the background. Mermaid's own color settings, such as `themeVariables`, are not used.
+Text on series colors uses `--pele-bg`, so choose series colors that contrast with the background. Mermaid's own color settings, such as `themeVariables`, are not used.
 
-## Setting tokens
+## Setting variables
 
-Set the tokens on the root `<svg>` or on any element that contains it. The root of every diagram has the class `pele`.
+Set the variables on the root `<svg>` or on any element that contains it. The root of every diagram has the class `pele`.
 
 ```css
 .pele {
@@ -93,7 +93,7 @@ Set the tokens on the root `<svg>` or on any element that contains it. The root 
 
 ### Fonts
 
-Set `--pele-font` to the font you want labels to use, and pass the same font to `render()` as the [`fontFamily`](/api#renderoptions) option. Pele measures labels with `fontFamily` to size the nodes around them. If the two differ, text can overflow its node or leave extra space.
+Set `--pele-font` and [`fontFamily`](/api#renderoptions) to the same font. Pele uses `fontFamily` to measure labels and size nodes. If the fonts differ, labels can overflow or leave extra space.
 
 ```ts
 const fontFamily = getComputedStyle(container).fontFamily;
@@ -102,7 +102,7 @@ container.innerHTML = render(source, { fontFamily }).svg;
 
 ## Classes
 
-Elements in the SVG have class names. Use them to style one kind of element without changing a token.
+Elements in the SVG have class names. Use them to style one kind of element without changing a variable.
 
 | Class | Element |
 | --- | --- |
@@ -131,11 +131,9 @@ The SVG sets its defaults with presentation attributes, which have lower priorit
 }
 ```
 
-The class names and the structure of the SVG are subject to change.
-
 ## Styles in the diagram
 
-Mermaid's styling statements are part of the diagram source, so Pele honors them. `style`, `classDef`, `class`, the `:::` shorthand, and `linkStyle` set styles directly on the elements they name, and those styles take precedence over the tokens.
+Pele supports `style`, `classDef`, `class`, `:::`, and `linkStyle`. These apply inline styles that override CSS variables.
 
 ```mermaid
 flowchart LR

@@ -22,7 +22,7 @@ flowchart TD
   D --> E
 ```
 
-The SVG has no colors of its own. Set a few CSS variables and every diagram follows your theme, without being rendered again.
+Use CSS variables to set colors and fonts. Diagrams automatically adapt to theme changes without being re-rendered.
 
 ### CSS
 
@@ -46,7 +46,7 @@ Add Pele to your app using the [API](/api).
 npm install pele
 ```
 
-Pass Mermaid text to `render()`, then insert the SVG it returns into your page.
+Pass Mermaid syntax to `render()` and insert the returned SVG into your page.
 
 ```ts
 import { render } from 'pele';
@@ -61,11 +61,11 @@ document.querySelector('#diagram').innerHTML = svg;
 
 ### [Examples](/examples)
 
-Every diagram type that available.
+Browse supported diagram types.
 
 ### [API](/api)
 
-Render diagrams, inspect them, and handle errors.
+Render diagrams in your app.
 
 ### [Theming](/theming)
 
@@ -73,10 +73,8 @@ Set colors and fonts with CSS variables.
 
 ### [Compatibility](/compatibility)
 
-What Pele shares with Mermaid, and where it differs.
+Compare syntax, layout, and features with Mermaid.
 
 ## Pele in use
 
-Pele is [open source](https://github.com/kepano/pele). It is being built for [Obsidian](https://obsidian.md), to draw the Mermaid diagrams in your notes quickly and in the colors of your theme. Pele is named after [Pele](https://en.wikipedia.org/wiki/Pele_(deity)), the goddess of volcanoes and fire.
-
-- [Obsidian](https://obsidian.md): Pele is in development as the renderer for Mermaid diagrams in notes.
+Pele is [open source](https://github.com/kepano/pele), developed for [Obsidian](https://obsidian.md) to render diagrams quickly and match your theme. It is named after [Pele](https://en.wikipedia.org/wiki/Pele_(deity)), the goddess of volcanoes and fire.

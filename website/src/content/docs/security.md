@@ -1,13 +1,13 @@
 ---
 title: Security
-description: What Pele guarantees about the SVG it returns, and what the app that displays it has to take care of.
+description: Render and display untrusted diagrams.
 ---
 
-Pele is made to draw diagrams written by someone other than the reader, such as a diagram in a shared note. This page describes what the SVG can contain, the limits Pele applies, and the parts that are left to your app.
+Pele accepts untrusted diagram source, such as diagrams in shared notes. It filters SVG output and limits source and output size. Your app controls icon markup, navigation, and how errors are displayed.
 
 ## What the SVG contains
 
-The SVG is made only of drawing elements: shapes, paths, text, groups, links, and images. It has no scripts, no event handlers, no `<style>` element, no `<foreignObject>`, and no HTML. Text from the diagram is written as text, and is never read as markup.
+The SVG is made only of drawing elements: shapes, paths, text, groups, links, and images. It has no scripts, no event handlers, no `<style>` element, no `<foreignObject>`, and no HTML. Diagram text is escaped before insertion into the SVG.
 
 Styles from `style` and `classDef` statements are kept only for a fixed list of properties such as `fill`, `stroke`, and `font-weight`. A value that contains `url(`, a semicolon, or anything else that could reach outside the declaration is dropped.
 
@@ -15,7 +15,7 @@ Styles from `style` and `classDef` statements are kept only for a fixed list of 
 
 ## Links and images
 
-A diagram can link a node to an address, and a flowchart node can show an image. Pele keeps an address only when it is relative or uses one of these schemes:
+Nodes can contain links, and flowchart nodes can display images. Pele allows relative URLs and these schemes:
 
 | Used for | Schemes |
 | --- | --- |
@@ -30,9 +30,9 @@ Use the [`linkSchemes`](/api#renderoptions) and [`imageSchemes`](/api#renderopti
 render(source, { linkSchemes: ['http', 'https', 'mailto', 'obsidian'] });
 ```
 
-`javascript:`, `data:`, and `vbscript:` are refused whatever the options say.
+`javascript:`, `data:`, and `vbscript:` are always blocked.
 
-An image is fetched as soon as the diagram is displayed, without a click, so its server learns that the diagram was opened and from which address. If that matters to your app, pass `imageSchemes: []` to keep only relative addresses, or block the requests with a content security policy.
+Images load when the diagram is displayed, exposing the request to the image server. Pass `imageSchemes: []` to allow only relative image URLs, or block image requests with a content security policy.
 
 Links have `rel="noopener"`. A `target` is written only when it is `_self`, `_blank`, `_parent`, or `_top`.
 
@@ -43,11 +43,11 @@ Links have `rel="noopener"`. A `target` is written only when it is `_self`, `_bl
 | Length of the source | 50,000 characters | [`limit`](/api#renderoptions) |
 | Length of the SVG | 4,000,000 characters | [`outputLimit`](/api#renderoptions) |
 
-A diagram over either limit, or one nested too deeply to process, throws a [`PeleError`](/api#peleerror) with the code `limit`. Mermaid has the first limit and not the second. A short source can describe a very large drawing, and a multi-megabyte SVG can stall the page it is inserted into.
+A diagram over either limit, or one nested too deeply to process, throws a [`PeleError`](/api#peleerror) with the code `limit`. Mermaid limits source size but not output size. Short source can produce a large SVG that stalls the page.
 
-`render()` is synchronous and has no time limit. An ordinary diagram takes a few milliseconds, and Pele's tests check that hostile input at the default source limit finishes within three seconds. If you raise the limits for text you do not trust, render in a worker that you can stop.
+`render()` is synchronous and has no time limit. If you raise the limits for untrusted source, render in a worker that can be terminated.
 
-## What your app is responsible for
+## App responsibilities
 
 **Error messages are text.** A `PeleError` message and its `snippet` quote the diagram source. Show them with `textContent`, never with `innerHTML`.
 
@@ -59,15 +59,15 @@ try {
 }
 ```
 
-**Icon markup is trusted.** Whatever your [`icons`](/api#renderoptions) function returns is written into the SVG as it is. The name it receives comes from the diagram, so look the name up in a set of icons you control and return nothing for a name you do not know. Do not build markup from the name.
+**Icon markup is trusted.** The [`icons`](/api#renderoptions) resolver returns SVG markup that is inserted without filtering. Look up names in an icon set you control. Return nothing for unknown names, and do not interpolate names into markup.
 
-**Internal links are names, not addresses.** A node with the class `internal-link` is reported in [`links`](/api#renderresult) with `internal: true`, and its label is in the `data-href` attribute. That label is whatever the diagram author wrote. Treat it as the name of a note to look up, and do not pass it to anything that opens a URL.
+**Internal links contain note names.** Nodes with the class `internal-link` appear in [`links`](/api#renderresult) with `internal: true`. The node label becomes the `href` and `data-href` value. Resolve it as a note name rather than opening it as a URL.
 
-**Addresses in `links` have been filtered** in the same way as the ones in the SVG. If your app opens them itself, with its own handler instead of the browser's, it still decides what a click does.
+**Link URLs are filtered** in both the SVG and the `links` result. Apply your app's navigation policy when handling clicks.
 
 **Options are trusted.** Values you pass in `options`, including `config`, come from your app. Do not fill them from the diagram or from anything else the author controls. Frontmatter and directives in the diagram are read as untrusted input.
 
-**The SVG is safe as returned.** If your app changes it, or passes it through another tool, these guarantees depend on what that step does.
+**SVG changes need review.** These guarantees apply to the returned SVG. Check any transformations your app applies before displaying it.
 
 ## Reporting a vulnerability
 

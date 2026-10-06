@@ -23,9 +23,9 @@ const { svg } = render(`flowchart TD
 document.querySelector('#diagram').innerHTML = svg;
 ```
 
-`render()` throws a `PeleError` for a syntax error or for text it cannot draw. `supports(text)` tells you in advance whether Pele can render a diagram, so an app can fall back to Mermaid.
+`supports(text)` checks whether a diagram type is available. `render()` throws a `PeleError` for unsupported types, syntax errors, and other rendering failures.
 
-The main entry point includes every diagram type. To load less, register the types you need on the core, or let Pele fetch each type when it is first used:
+The main entry point includes every diagram type. Reduce the initial bundle size by registering individual types or loading them on demand:
 
 ```ts
 import { register, render } from 'pele/core';
@@ -42,7 +42,7 @@ const { svg } = await renderAsync(text);
 
 ## Theme
 
-The SVG has no colors of its own. Set these properties on the diagram or any element around it:
+Set CSS variables on the diagram or a parent element to customize colors and fonts:
 
 ```css
 .pele {
@@ -59,11 +59,11 @@ The SVG has no colors of its own. Set these properties on the diagram or any ele
 }
 ```
 
-Charts take the colors of their series from `--pele-series-1` to `--pele-series-8`. A diagram follows a change of theme without being rendered again.
+Charts use `--pele-series-1` through `--pele-series-8`. Diagrams automatically adapt to theme changes without being re-rendered.
 
 ## Security
 
-The SVG contains no scripts, event handlers, or HTML, and Pele never runs code from a diagram. Links and images are limited to web addresses by default, and both the source and the output have a size limit. An error message quotes the diagram source, so show it as text. See [SECURITY.md](SECURITY.md) for what an app that displays untrusted diagrams should take care of.
+The SVG contains no scripts, event handlers, or HTML, and Pele never runs code from a diagram. Links and images are limited to web addresses by default, and both the source and the output have a size limit. An error message quotes the diagram source, so show it as text. See [SECURITY.md](SECURITY.md) for handling untrusted diagrams.
 
 ## Compatibility
 
@@ -88,18 +88,7 @@ pnpm dev
 
 After installing the website dependencies, run `npm run test:website` from the repository root to check the playground.
 
-## Deploy the website
-
-GitHub Actions checks the library and builds the website on pull requests and pushes to `main`. After the checks pass, pushes to `main` deploy the site to [pele.run](https://pele.run).
-
-CI reuses a successful full library test run when the library source, tests, tooling, locked dependencies, and Node version are unchanged. Website tests, typechecks, and both builds still run on every push. `npm test` always runs the complete library suite locally; website tests run separately with `npm run test:website`.
-
-Add these repository secrets under **Settings → Secrets and variables → Actions**:
-
-- `CLOUDFLARE_ACCOUNT_ID` — the account that owns the `pele` Worker.
-- `CLOUDFLARE_API_TOKEN` — an API token with permission to deploy Workers in that account. Cloudflare's **Edit Cloudflare Workers** token template provides the required permissions.
-
-For a manual deployment of the website and redirect Worker, run `pnpm run deploy` from `website/`.
+See [Contributing](CONTRIBUTING.md) for parser testing and website deployment.
 
 ## License
 

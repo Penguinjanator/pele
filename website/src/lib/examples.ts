@@ -6,7 +6,7 @@ export const homeExample = `flowchart TD
   D --> E`;
 
 export const themeExample = `flowchart LR
-  A[Tokens] --> B(Light)
+  A[Variables] --> B(Light)
   A --> C(Dark)
   subgraph Themes
     B
@@ -133,7 +133,7 @@ function overlap(a: string, b: string): number {
   return shared / Math.max(1, Math.min(first.size, second.size));
 }
 
-// Pele paints with theme tokens only, so any other fill or stroke in the SVG is a color the example chose.
+// Pele uses CSS variables for colors, so any other fill or stroke in the SVG is a color the example chose.
 // The source is checked too, for theme variables, which Pele does not draw, and for styles nothing uses.
 const RE_OWN_PAINT = /(?:fill|stroke)(?:="|:)(?!none|currentColor|var\()/;
 const RE_OWN_STYLE = /themeVariables|\b(?:fill|stroke)\s*:/;
@@ -163,4 +163,4 @@ export function exampleGroups(corpora: Record<string, unknown>, draw: (source: s
 }
 
 export const examplesTitle = 'Examples';
-export const examplesDescription = 'Every diagram type that Pele draws, with examples from Mermaid\'s documentation.';
+export const examplesDescription = 'Browse supported diagram types.';

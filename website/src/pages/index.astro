@@ -66,7 +66,7 @@ document.querySelector('#diagram').innerHTML = svg;`;
               <figure class="home-example-figure" data-pele-theme="dark" aria-label="Flowchart rendered by Pele" set:html={draw(homeExample, 'home-')} />
             </div>
           </div>
-          <p class="home-example-description">The SVG has no colors of its own. Set a few CSS variables and every diagram follows your theme, without being rendered again.</p>
+          <p class="home-example-description">Use CSS variables to set colors and fonts. Diagrams automatically adapt to theme changes without being re-rendered.</p>
           <div class="home-example-panel">
             <div class="home-example-block home-example-source" data-code-block>
               <div class="home-example-label"><span>CSS</span><span class="doc-code-actions"><CopyButton /></span></div>
@@ -81,7 +81,7 @@ document.querySelector('#diagram').innerHTML = svg;`;
 
         <Install title="Pele in your app">
           <p slot="description" class="get-started-link">Add Pele to your app using the <a href="/api">API</a>.</p>
-          <p class="install-note">Pass Mermaid text to the render function, then insert the SVG it returns into your page.</p>
+          <p class="install-note">Pass Mermaid syntax to <code>render()</code> and insert the returned SVG into your page.</p>
           <CodeBlock language="ts" code={usage} />
         </Install>
 
@@ -90,11 +90,11 @@ document.querySelector('#diagram').innerHTML = svg;`;
           <nav class="guide-links" aria-label="Documentation">
             <a class="guide-link-card" href="/examples">
               <h3>Examples</h3>
-              <p>Every diagram type that available.</p>
+              <p>Browse supported diagram types.</p>
             </a>
             <a class="guide-link-card" href="/api">
               <h3>API</h3>
-              <p>Render diagrams, inspect them, and handle errors.</p>
+              <p>Render diagrams in your app.</p>
             </a>
             <a class="guide-link-card" href="/theming">
               <h3>Theming</h3>
@@ -102,16 +102,13 @@ document.querySelector('#diagram').innerHTML = svg;`;
             </a>
             <a class="guide-link-card" href="/compatibility">
               <h3>Compatibility</h3>
-              <p>What Pele shares with Mermaid, and where it differs.</p>
+              <p>Compare syntax, layout, and features with Mermaid.</p>
             </a>
           </nav>
         </section>
 
         <section class="used-by" aria-labelledby="pele-in-use">
-          <header class="used-by-heading"><div><h2 id="pele-in-use">Pele in use</h2></div><p>Pele is <a href={repositoryUrl} target="_blank" rel="noopener noreferrer">open source</a>. It is being built for <a href="https://obsidian.md" target="_blank" rel="noopener noreferrer">Obsidian</a>, to draw the Mermaid diagrams in your notes quickly and in the colors of your theme. Pele is named after <a href="https://en.wikipedia.org/wiki/Pele_(deity)" target="_blank" rel="noopener noreferrer">Pele</a>, the goddess of volcanoes and fire.</p></header>
-          <div class="used-by-list">
-            <a href="https://obsidian.md" class="used-by-card" target="_blank" rel="noopener noreferrer"><div class="used-by-copy"><h3>Obsidian</h3><span>Pele is in development as the renderer for Mermaid diagrams in notes.</span></div><strong aria-hidden="true">↗</strong></a>
-          </div>
+          <header class="used-by-heading"><div><h2 id="pele-in-use">Pele in use</h2></div><p>Pele is <a href={repositoryUrl} target="_blank" rel="noopener noreferrer">open source</a>, developed for <a href="https://obsidian.md" target="_blank" rel="noopener noreferrer">Obsidian</a> to render diagrams quickly and match your theme. It is named after <a href="https://en.wikipedia.org/wiki/Pele_(deity)" target="_blank" rel="noopener noreferrer">Pele</a>, the goddess of volcanoes and fire.</p></header>
         </section>
 
         <SiteFooter />

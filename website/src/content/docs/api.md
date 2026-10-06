@@ -1,17 +1,13 @@
 ---
 title: API
-description: Render Mermaid text to SVG, inspect the parsed diagram, and handle errors.
+description: Render Mermaid diagrams in your app.
 ---
 
-Pele exports five functions and one error class. Every function is synchronous, except the optional ones that [load diagram types on demand](#loading-only-what-you-need). The API is not final and is subject to change before a stable release.
-
-```ts
-import { render, mount, parse, detectType, supports, PeleError } from 'pele';
-```
+Use `render()` to generate SVG or `mount()` to display a diagram that adapts to its container. Both are synchronous. The [lazy entry point](#imports) loads diagram types asynchronously.
 
 ## Usage
 
-Pass Mermaid text to `render()` and insert the SVG it returns.
+Pass Mermaid syntax to `render()` and insert the returned SVG into your page.
 
 ```ts
 import { render } from 'pele';
@@ -22,7 +18,7 @@ const { svg } = render(`flowchart LR
 document.querySelector('#diagram').innerHTML = svg;
 ```
 
-`render()` throws when the text cannot be rendered. Check `supports()` first to decide whether Pele can handle a diagram, and catch `PeleError` to report syntax errors.
+`supports()` checks whether a diagram type is available. Catch `PeleError` to handle syntax errors and other rendering failures.
 
 ```ts
 import { PeleError, render, supports } from 'pele';
@@ -39,22 +35,20 @@ function draw(source: string, element: HTMLElement) {
 }
 ```
 
-An error message quotes the diagram source, so show it as text. [Security](/security) lists what else an app that displays untrusted diagrams should take care of.
+Error messages include diagram source. Display them with `textContent`. See [Security](/security) for handling untrusted diagrams.
 
-Pele is in early development and has not had a stable release. Every diagram type built into Mermaid is implemented. See [Examples](/examples) for what they look like and [Compatibility](/compatibility) for the full list.
+## Imports
 
-## Loading only what you need
-
-The main entry point includes every diagram type. An app that draws only a few types, or wants to fetch each type when it is first used, can import smaller pieces.
+The main entry point includes every diagram type. Import individual types or load them on demand to reduce the initial bundle size.
 
 | Import | Contents |
 | --- | --- |
-| `pele` | Everything, in one file. |
-| `pele/core` | The API with no diagram types. Add types with `register()`. |
+| `pele` | API and all diagram types. |
+| `pele/core` | API without diagram types. Add types with `register()`. |
 | `pele/diagrams/<type>` | One diagram type, as the default export. `<type>` is a name that [`detectType()`](#detecttype) returns, such as `flowchart` or `sequence`. |
-| `pele/lazy` | The API, plus functions that fetch a type on demand. |
+| `pele/lazy` | API with asynchronous loading. |
 
-Choose the types up front:
+Register the types you need:
 
 ```ts
 import { register, render } from 'pele/core';
@@ -66,7 +60,7 @@ register(flowchart, sequence);
 const { svg } = render(source);
 ```
 
-Or let Pele fetch each type the first time a diagram needs it. `renderAsync()` takes the same arguments as `render()` and returns a promise.
+Use `pele/lazy` to load each type on first use. `renderAsync()` takes the same arguments as `render()` and returns a promise.
 
 ```ts
 import { renderAsync } from 'pele/lazy';
@@ -74,16 +68,9 @@ import { renderAsync } from 'pele/lazy';
 const { svg } = await renderAsync(source);
 ```
 
-`load(type)` fetches one type without rendering, and resolves to `false` for a type Pele does not draw. Once a type is loaded, `render()` from the same module draws it synchronously.
+`load(type)` loads a type without rendering and resolves to `false` for unsupported types. After loading, `render()` from the same module renders synchronously.
 
-```ts
-import { detectType, load, render } from 'pele/lazy';
-
-await load(detectType(source));
-const { svg } = render(source);
-```
-
-With `core` and `lazy`, [`supports()`](#supports) is `true` only for types that are registered or loaded. Use one of these entry points throughout an app. The main entry point keeps its own separate list of types.
+With `core` and `lazy`, [`supports()`](#supports) is `true` only for types that are registered or loaded. Use one of these entry points throughout an app. The main entry point has a separate registry.
 
 ## render
 
@@ -92,12 +79,6 @@ function render(text: string, options?: RenderOptions): RenderResult
 ```
 
 Parses Mermaid text, lays out the diagram, and returns it as an SVG string. Throws a [`PeleError`](#peleerror) if the text cannot be rendered.
-
-```ts
-const result = render('flowchart TD\n  A --> B', { idPrefix: 'note-1-' });
-
-container.innerHTML = result.svg;
-```
 
 The same text, options, and font measurements always produce the same SVG.
 
@@ -110,12 +91,12 @@ All options are optional.
 | `measurer` | `TextMeasurer` | Measures label text. Defaults to a canvas measurer in browsers and a built-in width table elsewhere. See [Text measurement](#text-measurement). |
 | `fontFamily` | `string` | Font used to measure labels. Set it to the font that `--pele-font` resolves to. The SVG still refers to `var(--pele-font)`. |
 | `fontSize` | `number` | Base font size in pixels. Defaults to `16`. |
-| `idPrefix` | `string` | Prefix for the ids of the accessible title and description. Use a different prefix for each diagram on a page that has them. |
+| `idPrefix` | `string` | Prefix for accessibility title and description IDs. Use a unique prefix for each diagram on a page. |
 | `responsive` | `boolean` | Shrinks the SVG to fit a container narrower than the diagram. It never grows past its natural size. Defaults to `true`. Set `false` for a fixed pixel size. A diagram that sets Mermaid's `useMaxWidth: false` is also fixed. |
-| `maxWidth` | `number` | The width your app has for the diagram, in pixels. A chart that can draw itself narrower does, so its text keeps its size instead of shrinking with the diagram. See [Narrow screens](#narrow-screens). |
-| `autoDirection` | `boolean` | Lets a diagram that runs across be drawn running down when it does not fit `maxWidth`. Defaults to `true`. |
-| `directionBreakpoint` | `number` | The `maxWidth` under which `autoDirection` applies. Defaults to `640`. |
-| `now` | `number \| Date` | The time a Gantt chart treats as now, for the today marker and for tasks with no start date. Defaults to the current time. |
+| `maxWidth` | `number` | Available width in pixels. Supported layouts adapt to this width without scaling down labels. See [Narrow screens](#narrow-screens). |
+| `autoDirection` | `boolean` | Switches supported horizontal diagrams to a vertical layout when they exceed `maxWidth`. Defaults to `true`. |
+| `directionBreakpoint` | `number` | Width threshold in pixels for `autoDirection`. Defaults to `640`. |
+| `now` | `number \| Date` | Reference time for Gantt today markers and tasks without a start date. Defaults to the current time. |
 | `padding` | `number` | Space around the diagram in pixels. |
 | `limit` | `number` | Maximum length of `text` in characters. The default is 50,000, as in Mermaid. Longer input throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
 | `outputLimit` | `number` | Maximum length of the SVG in characters. The default is 4,000,000. A larger diagram throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
@@ -132,39 +113,37 @@ All options are optional.
 | `width` | `number` | Natural width of the diagram in pixels. |
 | `height` | `number` | Height of the diagram in pixels. |
 | `type` | `DiagramType` | The detected diagram type, such as `'flowchart'`. |
-| `links` | `LinkInfo[]` | Links found in the diagram, so an app can attach its own navigation without querying the SVG. |
+| `links` | `LinkInfo[]` | Diagram links for attaching navigation handlers. |
 
 Each `LinkInfo` has the `id` of the node that carries the link, its `href`, and `internal`. A node with a `click` link is reported with `internal: false`. A node with the class `internal-link` is reported with `internal: true` and its label text as the `href`. An address that is [not allowed](/security#links-and-images) is reported as `about:blank`.
 
 ### Narrow screens
 
-A diagram wider than its container is scaled down to fit, and its text is scaled with it. On a phone that can make labels too small to read.
-
-Many charts do not need their full width. Pass the width you have as `maxWidth` and they are drawn to fit it, with text at its normal size:
+Scaling a diagram to fit a narrow container can make labels too small to read. Pass `maxWidth` to adapt supported layouts while preserving the font size:
 
 ```ts
 const { svg } = render(source, { maxWidth: container.clientWidth });
 ```
 
-What a diagram does with `maxWidth` depends on its type:
+Layout changes depend on the diagram type:
 
 | Diagram | When it does not fit |
 | --- | --- |
-| Sankey, XY chart, treemap, Gantt | Drawn at the width there is |
-| Pie, radar | Drawn at the width there is, with the legend below the chart |
+| Sankey, XY chart, treemap, Gantt | Fits the available width |
+| Pie, radar | Fits the available width, with the legend below the chart |
 | Kanban | Columns fold into rows |
-| Quadrant chart, Wardley map | Drawn narrower, down to the size where the labels still have room |
-| Flowchart, class, state, entity relationship, requirement, use case, agentflow, timeline, git graph | Runs down the page instead of across. See [Direction](#direction). |
-| Flowchart, class | Also drawn with less space between nodes and around groups |
-| Other types | Sized by their text, and not affected |
+| Quadrant chart, Wardley map | Reduces width while preserving space for labels |
+| Flowchart, class, state, entity relationship, requirement, use case, agentflow, timeline, git graph | Switches to a vertical layout. See [Direction](#direction). |
+| Flowchart, class | Reduces spacing between nodes and around groups |
+| Other types | Keeps the original layout |
 
 #### Direction
 
-A diagram that runs from left to right is often too wide for a phone, where the same diagram running from top to bottom fits. When `maxWidth` is under 640 pixels and the diagram does not fit it, Pele draws the diagram running down, if that makes it narrower. A `flowchart LR` is then drawn as `flowchart TB` would be.
+When a diagram exceeds `maxWidth` and the available width is below 640 pixels, supported horizontal layouts switch to a vertical layout if that reduces their width. For example, `flowchart LR` renders as `flowchart TB`.
 
-Set `autoDirection: false` to always keep the direction the diagram asks for. Change the width under which diagrams turn with `directionBreakpoint`. A direction set inside a subgraph is kept, and so is a diagram that already runs down or up. Swimlanes are not turned.
+Set `autoDirection: false` to preserve the source direction. Use `directionBreakpoint` to change the width threshold. Subgraph directions, vertical diagrams, and swimlanes retain their direction.
 
-[`mount()`](#mount) passes the width for you and draws again when it changes. If you call `render()` yourself, render again when the width changes. A page built ahead of time can render a diagram at two widths and show one of them with a media query.
+[`mount()`](#mount) measures the container and re-renders when its width changes. With `render()`, handle width changes yourself.
 
 ## mount
 
@@ -172,7 +151,7 @@ Set `autoDirection: false` to always keep the direction the diagram asks for. Ch
 function mount(element: HTMLElement, text: string, options?: MountOptions): Mounted
 ```
 
-Renders a diagram into an element and keeps it fitted to the element. Use it instead of `render()` when the diagram is shown in a page.
+Renders a diagram into an element and adapts the layout when the container is resized.
 
 ```ts
 import { mount } from 'pele';
@@ -180,23 +159,23 @@ import { mount } from 'pele';
 const diagram = mount(container, source);
 ```
 
-`mount()` does what an app otherwise has to do by hand:
+`mount()` automatically:
 
-- It measures labels with the font of the element, unless you pass `fontFamily`.
-- It passes the width of the element as [`maxWidth`](#narrow-screens), unless you pass one.
-- It draws the diagram again when the element's width changes and the diagram would come out differently. A diagram that the width cannot change is drawn once.
+- Measures labels using the container font, unless `fontFamily` is set.
+- Uses the container width as [`maxWidth`](#narrow-screens), unless a value is supplied.
+- Re-renders when a width change affects the layout.
 
-The element should be one whose width does not depend on its content, such as a block. `mount()` throws a [`PeleError`](#peleerror) as `render()` does.
+Use a container with a width independent of its content, such as a block element. `mount()` throws a [`PeleError`](#peleerror) as `render()` does.
 
-`MountOptions` are the [`RenderOptions`](#renderoptions), plus `onRender`, a function called with the [`RenderResult`](#renderresult) each time the diagram is put in the element. Use it for anything you attach to the SVG, such as link handlers.
+`MountOptions` extends [`RenderOptions`](#renderoptions) with an `onRender` callback. It receives the [`RenderResult`](#renderresult) after each render. Use it to attach link handlers or other SVG interactions.
 
 | Member | Description |
 | --- | --- |
-| `result` | The `RenderResult` for what the element shows now. |
-| `update(text, options?)` | Draws other text, or the same text with other options, in the same element. Returns the new result. |
-| `destroy()` | Stops watching the element. What it shows stays. |
+| `result` | Current `RenderResult`. |
+| `update(text, options?)` | Updates the source or options and returns the new result. |
+| `destroy()` | Stops observing the container. Leaves the diagram in place. |
 
-With [`pele/lazy`](#loading-only-what-you-need), `mountAsync()` takes the same arguments, fetches the diagram type first, and returns a promise.
+With [`pele/lazy`](#imports), `mountAsync()` takes the same arguments, fetches the diagram type first, and returns a promise.
 
 ## parse
 
@@ -206,7 +185,7 @@ function parse(text: string, options?: { limit?: number }): DiagramModel
 
 Parses Mermaid text and returns the diagram model without laying it out or rendering it. Throws a `PeleError` for unsupported diagram types and syntax errors.
 
-For a flowchart, the model has `direction`, `nodes`, `edges`, `subgraphs`, `classes`, and `tooltips`, along with `title`, `accTitle`, and `accDescr` when the source sets them. The exact shape of the model is subject to change.
+For a flowchart, the model has `direction`, `nodes`, `edges`, `subgraphs`, `classes`, and `tooltips`, along with `title`, `accTitle`, and `accDescr` when the source sets them.
 
 ```ts
 const model = parse('flowchart LR\n  A[Start] --> B[End]');
@@ -224,7 +203,7 @@ function detectType(text: string): DiagramType | null
 
 Returns the diagram type that the text declares, or `null` if it is not a Mermaid diagram. Frontmatter, directives, and comments before the declaration are skipped.
 
-`detectType()` recognizes every Mermaid diagram keyword, including types Pele cannot render yet. `'flowchart'`, `'sequence'`, `'class'`, `'state'`, `'er'`, `'pie'`, and `'gantt'` are some of the values it returns.
+`detectType()` identifies diagram types independently of which types are registered. `'flowchart'`, `'sequence'`, `'class'`, `'state'`, `'er'`, `'pie'`, and `'gantt'` are some of the values it returns.
 
 ```ts
 detectType('graph TD\n  A --> B');           // 'flowchart'
@@ -242,7 +221,8 @@ Returns `true` if the text declares a diagram type that Pele can render. It does
 
 ```ts
 supports('flowchart LR\n  A --> B');         // true
-supports('sequenceDiagram\n  A->>B: Hi');    // false
+supports('sequenceDiagram\n  A->>B: Hi');    // true
+supports('Hello');                         // false
 ```
 
 ## PeleError
@@ -262,7 +242,7 @@ supports('sequenceDiagram\n  A->>B: Hi');    // false
 
 | Code | Meaning |
 | --- | --- |
-| `unsupported-diagram` | The text is not a Mermaid diagram, or its type is one Pele does not draw. |
+| `unsupported-diagram` | No diagram type detected, or the type is not registered. |
 | `syntax` | The diagram could not be parsed. `line`, `column`, and `snippet` locate the problem. |
 | `semantic` | The diagram parsed but describes something invalid. |
 | `limit` | The text is longer than the `limit` option, the SVG is longer than the `outputLimit` option, or the diagram is nested too deeply to process. |
@@ -282,7 +262,7 @@ try {
 
 Pele sizes nodes from the measured width of their labels. In a browser it measures with a canvas, using the `fontFamily` option. Without a canvas, such as in Node.js, it estimates widths from a built-in table of sans-serif metrics.
 
-Pass a `measurer` to supply your own measurements. This interface is subject to change.
+Pass a `measurer` to supply your own measurements.
 
 ```ts
 interface TextMeasurer {
