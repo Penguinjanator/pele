@@ -1,44 +1,23 @@
 import { cnode, compoundLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num, type IconResolver } from '../../svg/builder.js';
+import { esc, labelSvg, num } from '../../svg/builder.js';
+import { marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
+import { svgDocument } from '../../svg/root.js';
 import { drawShape, shapeHasLabel, shapeInset, shapeSize } from '../../svg/shapes.js';
-import { FONT, RADIUS, ROOT_STYLE, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
+import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
-import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
+import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { sanitizeUrl } from '../../util/url.js';
+import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { FlowDb } from './db.js';
 import { buildFlowGraph, type GraphEdge, type GraphNode } from './graph.js';
 import { canonicalShape } from './shapes.js';
-
-export interface FlowRenderOptions {
-  measurer?: TextMeasurer;
-  fontFamily?: string;
-  fontSize?: number;
-  idPrefix?: string;
-  maxWidth?: boolean;
-  padding?: number;
-  icons?: IconResolver;
-}
-
-export interface FlowLink {
-  id: string;
-  href: string;
-  internal: boolean;
-}
-
-export interface FlowRenderResult {
-  svg: string;
-  width: number;
-  height: number;
-  links: FlowLink[];
-}
 
 const NODE_SEP = 40;
 const EDGE_SEP = 16;
 const RANK_SEP = 48;
 const GROUP_PAD = 20;
 const LOOP = 26;
-const ARROW = 8;
 const SHAPE_ATTRS = ' fill="var(--_s)" stroke="var(--_b)"';
 const LINE_ATTRS = ' stroke="var(--_b)"';
 
@@ -55,113 +34,6 @@ function assetSize(value: number | undefined, fallback: number): number {
   return value !== undefined && value > 0 && value <= 4000 ? value : fallback;
 }
 
-interface Path {
-  d: string;
-  sx: number;
-  sy: number;
-  sdx: number;
-  sdy: number;
-  ex: number;
-  ey: number;
-  edx: number;
-  edy: number;
-}
-
-// Builds the path for a route of x, y, axis triples, trimming both ends to leave room for markers.
-function routePath(route: number[], curve: string | undefined, startTrim: number, endTrim: number): Path {
-  const count = route.length / 3;
-  const xs = new Array<number>(count);
-  const ys = new Array<number>(count);
-  for (let i = 0; i < count; i++) {
-    xs[i] = route[i * 3];
-    ys[i] = route[i * 3 + 1];
-  }
-  const linear = curve === 'linear';
-  const stepped = curve === 'step' || curve === 'stepBefore' || curve === 'stepAfter';
-  const straight = (i: number): boolean =>
-    linear || Math.abs(xs[i] - xs[i - 1]) < 0.01 || Math.abs(ys[i] - ys[i - 1]) < 0.01;
-
-  const unit = (i: number, j: number, axis: number, bent: boolean): [number, number] => {
-    if (bent) return axis === 0 ? [0, Math.sign(ys[j] - ys[i]) || 1] : [Math.sign(xs[j] - xs[i]) || 1, 0];
-    const dx = xs[j] - xs[i];
-    const dy = ys[j] - ys[i];
-    const len = Math.hypot(dx, dy) || 1;
-    return [dx / len, dy / len];
-  };
-  const last = count - 1;
-  const [sdx, sdy] = unit(0, 1, route[5], !straight(1) && !stepped);
-  const [edx, edy] = unit(last - 1, last, route[last * 3 + 2], !straight(last) && !stepped);
-  const sx = xs[0];
-  const sy = ys[0];
-  const ex = xs[last];
-  const ey = ys[last];
-  xs[0] += sdx * startTrim;
-  ys[0] += sdy * startTrim;
-  xs[last] -= edx * endTrim;
-  ys[last] -= edy * endTrim;
-
-  let d = `M${num(xs[0])},${num(ys[0])}`;
-  for (let i = 1; i < count; i++) {
-    const x = xs[i];
-    const y = ys[i];
-    const px = xs[i - 1];
-    const py = ys[i - 1];
-    const axis = route[i * 3 + 2];
-    if (straight(i)) {
-      d += `L${num(x)},${num(y)}`;
-    } else if (stepped) {
-      if (axis === 0) {
-        const my = curve === 'stepBefore' ? py : curve === 'stepAfter' ? y : (py + y) / 2;
-        d += `V${num(my)}H${num(x)}V${num(y)}`;
-      } else {
-        const mx = curve === 'stepBefore' ? px : curve === 'stepAfter' ? x : (px + x) / 2;
-        d += `H${num(mx)}V${num(y)}H${num(x)}`;
-      }
-    } else if (axis === 0) {
-      const my = (py + y) / 2;
-      d += `C${num(px)},${num(my)} ${num(x)},${num(my)} ${num(x)},${num(y)}`;
-    } else {
-      const mx = (px + x) / 2;
-      d += `C${num(mx)},${num(py)} ${num(mx)},${num(y)} ${num(x)},${num(y)}`;
-    }
-  }
-  return { d, sx, sy, sdx: -sdx, sdy: -sdy, ex, ey, edx, edy };
-}
-
-function markerTrim(type: string): number {
-  return type === 'arrow_point' ? ARROW - 1 : type === 'arrow_circle' ? ARROW : type === 'arrow_cross' ? 4 : 0;
-}
-
-// Draws a marker whose tip is at (x, y), pointing along (dx, dy).
-function marker(type: string, x: number, y: number, dx: number, dy: number, color: string): string {
-  const nx = -dy;
-  const ny = dx;
-  if (type === 'arrow_point') {
-    const bx = x - dx * ARROW;
-    const by = y - dy * ARROW;
-    const half = ARROW * 0.42;
-    return `<path class="pele-marker" d="M${num(x)},${num(y)}L${num(bx + nx * half)},${num(by + ny * half)}L${num(
-      bx - nx * half
-    )},${num(by - ny * half)}Z" fill="${color}" stroke="none"/>`;
-  }
-  if (type === 'arrow_circle') {
-    return `<circle class="pele-marker" cx="${num(x - dx * 4)}" cy="${num(y - dy * 4)}" r="3.5" fill="${color}" stroke="none"/>`;
-  }
-  if (type === 'arrow_cross') {
-    const cx = x - dx * 4;
-    const cy = y - dy * 4;
-    const a = 3.5;
-    const ux = (dx + nx) * a;
-    const uy = (dy + ny) * a;
-    const vx = (dx - nx) * a;
-    const vy = (dy - ny) * a;
-    return `<path class="pele-marker" d="M${num(cx - ux)},${num(cy - uy)}L${num(cx + ux)},${num(cy + uy)}M${num(
-      cx - vx
-    )},${num(cy - vy)}L${num(cx + vx)},${num(cy + vy)}"/>`;
-  }
-  return '';
-}
-
 interface NodeView {
   node: GraphNode;
   style: ResolvedStyle;
@@ -173,7 +45,7 @@ interface NodeView {
   loops: number;
 }
 
-export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderOptions): FlowRenderResult {
+export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptions): Rendered {
   const flow = (config.flowchart ?? {}) as Config;
   const graph = buildFlowGraph(db, typeof flow.curve === 'string' ? flow.curve : undefined);
   const size = options.fontSize ?? 16;
@@ -274,8 +146,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
 
   const width = Math.ceil(layout.width + 2 * pad);
   const height = Math.ceil(layout.height + 2 * pad);
-  const links: FlowLink[] = [];
-  const prefix = options.idPrefix ?? 'pele';
+  const links: LinkInfo[] = [];
 
   // Route points by rounded y, to find the edges that cross a cluster's top border.
   const crossings = new Map<number, number[]>();
@@ -380,7 +251,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
     if (edge.thickness !== 'invisible') {
       const startType = edge.arrowTypeStart;
       const endType = edge.arrowTypeEnd;
-      let path: Path;
+      let path: EdgePath;
       if (ce.src === ce.dst) {
         const c = cnodes[ce.src];
         const view = views[ce.src];
@@ -444,28 +315,18 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
     }
   }
 
-  let head = '';
-  let aria = '';
-  if (db.accTitle) {
-    head += `<title id="${esc(prefix)}-title">${esc(db.accTitle)}</title>`;
-    aria += ` aria-labelledby="${esc(prefix)}-title"`;
-  }
-  if (db.accDescr) {
-    head += `<desc id="${esc(prefix)}-desc">${esc(db.accDescr)}</desc>`;
-    aria += ` aria-describedby="${esc(prefix)}-desc"`;
-  }
-  const sizeAttrs = options.maxWidth
-    ? ` width="100%" style="max-width:${width}px;${ROOT_STYLE}"`
-    : ` width="${width}" height="${height}" style="${ROOT_STYLE}"`;
-
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-flowchart" viewBox="0 0 ${width} ${height}"${sizeAttrs} font-family="${FONT}" font-size="${size}" fill="var(--_fg)" role="graphics-document document" aria-roledescription="flowchart"${aria}>` +
-    head +
+  const svg = svgDocument(
+    'flowchart',
+    width,
+    height,
+    size,
+    options,
+    db,
     (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
-    (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
-    (labelsOut ? `<g class="pele-edge-labels" font-size="${edgeSize}">${labelsOut}</g>` : '') +
-    `<g class="pele-nodes">${nodesOut}</g>` +
-    '</svg>';
+      (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
+      (labelsOut ? `<g class="pele-edge-labels" font-size="${edgeSize}">${labelsOut}</g>` : '') +
+      `<g class="pele-nodes">${nodesOut}</g>`
+  );
 
   return { svg, width, height, links };
 }

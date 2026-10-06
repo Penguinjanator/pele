@@ -1,5 +1,5 @@
 // Copies Mermaid's parser specs into tests/compat and points their imports at Pele's adapters.
-// Usage: node scripts/sync-specs.mjs <path to a mermaid checkout at the pinned tag>
+// Usage: node scripts/sync-specs.mjs <path to a mermaid checkout at the pinned tag> [suite]
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,50 +11,24 @@ const tag = tags.find((t) => t.startsWith('mermaid@')) ?? tags[0];
 const commit = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const diagrams = join(root, 'packages/mermaid/src/diagrams');
 
-const SUITES = {
-  flowchart: {
-    files: [['flowchart/parser', /\.spec\.js$/], ['flowchart', /^flowDb\.spec\.ts$/]],
-    grammars: ['flowchart/parser/flow.jison'],
-    docs: 'flowchart.md',
-    skip: [
-      {
-        file: 'flow.spec.js',
-        test: "should be able to parse a '<'",
-        reason:
-          "Expects the label `<` to be stored as `&lt;`, which is DOMPurify's serialization. Pele stores label text as written and escapes it when writing SVG.",
-      },
-      {
-        file: 'flowDb.spec.ts',
-        test: 'should have functions used in flow JISON as own property',
-        reason:
-          'Checks that FlowDB methods are own properties, a requirement of the Jison runtime. Pele has no Jison runtime.',
-      },
-    ],
-    notPorted: [
-      ['flowChartShapes.spec.js', "Tests Mermaid's legacy dagre-d3 shape renderer."],
-      ['flowDiagram.spec.ts', "Tests Mermaid's diagram registration and config plumbing."],
-      ['flowRenderer-elk-default.spec.ts', "Tests Mermaid's choice between its dagre and ELK layout engines."],
-      ['flowRenderer-v3-unified.spec.ts', "Tests Mermaid's DOM renderer wiring."],
-      [
-        'flowDb-elk-duplicate-subgraph.spec.ts',
-        'Runs ELK layout. Its parsing half, a repeated subgraph id merging into one subgraph, is covered in tests/flowchart/parser.test.ts.',
-      ],
-    ],
-    rewrite: [
-      [/from '(?:\.\.\/|\.\/)flowDb\.js'/g, "from './adapter.js'"],
-      [/from '(?:\.\/parser\/|\.\/)flowParser\.(?:ts|js)'/g, "from './adapter.js'"],
-      [/from '\.\.\/\.\.\/\.\.\/config\.js'/g, "from './adapter.js'"],
-      [/from '\.\.\/\.\.\/\.\.\/diagram-api\/comments\.js'/g, "from './adapter.js'"],
-      [/from '\.\/types\.js'/g, "from './adapter.js'"],
-      [/from '\.\.\/\.\.\/\.\.\/logger\.js'/g, "from './adapter.js'"],
-    ],
-  },
-};
+// Each file in scripts/suites describes one diagram type:
+//   files      [directory under packages/mermaid/src/diagrams, filename pattern] pairs to copy
+//   grammars   grammar files to vendor next to the specs, for the reference parser used in tests
+//   docs       file under packages/mermaid/src/docs/syntax whose examples become a test corpus
+//   rewrite    [pattern, replacement] pairs applied to each spec, to point imports at the adapter
+//   skip       tests to skip, each with a reason
+//   notPorted  spec files left out, each with a reason
+const SUITES = {};
+for (const file of readdirSync(new URL('./suites/', import.meta.url)).filter((f) => f.endsWith('.mjs')).sort()) {
+  SUITES[file.replace(/\.mjs$/, '')] = (await import(new URL(`./suites/${file}`, import.meta.url).href)).default;
+}
+const only = process.argv[3];
 
 for (const [name, suite] of Object.entries(SUITES)) {
+  if (only && only !== name) continue;
   const out = join('tests/compat', name);
   mkdirSync(join(out, 'upstream'), { recursive: true });
-  for (const grammar of suite.grammars) {
+  for (const grammar of suite.grammars ?? []) {
     writeFileSync(join(out, 'upstream', grammar.split('/').pop()), readFileSync(join(diagrams, grammar)));
   }
   let count = 0;
@@ -62,7 +36,7 @@ for (const [name, suite] of Object.entries(SUITES)) {
     for (const file of readdirSync(join(diagrams, dir)).filter((f) => pattern.test(f))) {
       let src = readFileSync(join(diagrams, dir, file), 'utf8');
       for (const [from, to] of suite.rewrite) src = src.replace(from, to);
-      for (const skip of suite.skip.filter((entry) => entry.file === file)) {
+      for (const skip of (suite.skip ?? []).filter((entry) => entry.file === file)) {
         const quoted = [`'${skip.test.replace(/'/g, "\\'")}'`, JSON.stringify(skip.test)];
         const at = quoted.map((q) => src.indexOf(`it(${q}`)).find((index) => index !== -1);
         if (at === undefined) throw new Error(`Skipped test not found in ${file}: ${skip.test}`);
@@ -88,11 +62,11 @@ for (const [name, suite] of Object.entries(SUITES)) {
     '',
     '## Skipped tests',
     '',
-    ...suite.skip.map((entry) => `- \`${entry.file}\`: "${entry.test}". ${entry.reason}`),
+    ...(suite.skip ?? []).map((entry) => `- \`${entry.file}\`: "${entry.test}". ${entry.reason}`),
     '',
     '## Spec files not ported',
     '',
-    ...suite.notPorted.map(([file, reason]) => `- \`${file}\`: ${reason}`),
+    ...(suite.notPorted ?? []).map(([file, reason]) => `- \`${file}\`: ${reason}`),
     '',
   ];
   writeFileSync(join(out, 'SKIPPED.md'), lines.join('\n'));

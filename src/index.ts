@@ -1,55 +1,19 @@
 import { detect, type DiagramType } from './detect.js';
+import { diagrams } from './diagrams/registry.js';
 import { PeleError } from './errors.js';
 import { encodeEntities, preprocess, type Config } from './preprocess.js';
-import { FlowDb } from './diagrams/flowchart/db.js';
-import { parseFlowchart } from './diagrams/flowchart/parser.js';
-import { renderFlowchart } from './diagrams/flowchart/render.js';
 import type { FlowchartModel } from './diagrams/flowchart/types.js';
-import type { TextMeasurer } from './text/measurer.js';
+import type { Diagram, RenderOptions, RenderResult } from './types.js';
 
 export { PeleError } from './errors.js';
 export type { PeleErrorCode } from './errors.js';
 export type { DiagramType } from './detect.js';
 export type { TextMeasurer } from './text/measurer.js';
+export type { IconResolver, LinkInfo, RenderOptions, RenderResult } from './types.js';
 export type { FlowchartModel } from './diagrams/flowchart/types.js';
 
+// The union of every implemented diagram's model; narrow it with its `type` field.
 export type DiagramModel = FlowchartModel;
-
-export type IconResolver = (name: string) => string | null | undefined;
-
-export interface RenderOptions {
-  measurer?: TextMeasurer;
-  fontFamily?: string;
-  fontSize?: number;
-  idPrefix?: string;
-  maxWidth?: boolean;
-  padding?: number;
-  limit?: number;
-  icons?: IconResolver;
-  config?: Config;
-}
-
-export interface LinkInfo {
-  id: string;
-  href: string;
-  internal: boolean;
-}
-
-export interface RenderResult {
-  svg: string;
-  width: number;
-  height: number;
-  type: DiagramType;
-  links: LinkInfo[];
-}
-
-const IMPLEMENTED = new Set<DiagramType>(['flowchart']);
-
-interface Parsed {
-  type: DiagramType;
-  model: DiagramModel;
-  config: Config;
-}
 
 // Mermaid's default maxTextSize.
 const DEFAULT_LIMIT = 50000;
@@ -64,6 +28,13 @@ function guarded<T>(run: () => T): T {
   }
 }
 
+interface Parsed {
+  type: DiagramType;
+  diagram: Diagram<unknown>;
+  model: unknown;
+  config: Config;
+}
+
 function parseSource(text: string, limit: number = DEFAULT_LIMIT, extra: Config | undefined): Parsed {
   if (text.length > limit) {
     throw new PeleError(`Diagram source is longer than the limit of ${limit} characters.`, 'limit');
@@ -73,15 +44,13 @@ function parseSource(text: string, limit: number = DEFAULT_LIMIT, extra: Config 
   if (type === null) {
     throw new PeleError('No diagram type detected for the given text.', 'unsupported-diagram');
   }
-  if (!IMPLEMENTED.has(type)) {
+  const diagram = diagrams.get(type);
+  if (diagram === undefined) {
     throw new PeleError(`Diagram type "${type}" is not supported yet.`, 'unsupported-diagram', { type });
   }
   const config = extra ? { ...extra, ...pre.config } : pre.config;
-  const flow = (config.flowchart ?? {}) as Config;
-  const db = new FlowDb({ inheritDir: flow.inheritDir === true });
-  if (pre.title) db.title = pre.title;
-  parseFlowchart(encodeEntities(pre.text) + '\n', db);
-  return { type, model: db, config };
+  const model = diagram.parse(encodeEntities(pre.text) + '\n', config, pre.title);
+  return { type, diagram, model, config };
 }
 
 export function detectType(text: string): DiagramType | null {
@@ -91,19 +60,19 @@ export function detectType(text: string): DiagramType | null {
 export function supports(text: string): boolean {
   try {
     const type = detectType(text);
-    return type !== null && IMPLEMENTED.has(type);
+    return type !== null && diagrams.has(type);
   } catch {
     return false;
   }
 }
 
 export function parse(text: string, options: { limit?: number } = {}): DiagramModel {
-  return guarded(() => parseSource(text, options.limit, undefined).model);
+  return guarded(() => parseSource(text, options.limit, undefined).model as DiagramModel);
 }
 
 export function render(text: string, options: RenderOptions = {}): RenderResult {
   return guarded(() => {
-    const { type, model, config } = parseSource(text, options.limit, options.config);
-    return { type, ...renderFlowchart(model as FlowDb, config, options) };
+    const { type, diagram, model, config } = parseSource(text, options.limit, options.config);
+    return { type, ...diagram.render(model, config, options) };
   });
 }

@@ -3,120 +3,58 @@ import { tokenize } from '../../src/diagrams/flowchart/lexer.js';
 import { parseFlowchart } from '../../src/diagrams/flowchart/parser.js';
 import { TOKEN_NAMES } from '../../src/diagrams/flowchart/tokens.js';
 import type { FlowDb } from '../../src/diagrams/flowchart/db.js';
-import { buildParser } from './jison.js';
+import { createOracle, mergeTokens, recordingYy, type Outcome, type Pair } from './oracle.js';
 
-const oracle = buildParser(resolve('tests/compat/flowchart/upstream/flow.jison'));
+const oracle = createOracle(resolve('tests/compat/flowchart/upstream/flow.jison'));
+const MERGED = ['TEXT', 'EDGE_TEXT'];
 
-const METHODS = [
-  'setDirection',
-  'addVertex',
-  'addLink',
-  'addSubGraph',
-  'setClass',
-  'addClass',
-  'setClickEvent',
-  'setTooltip',
-  'setLink',
-  'updateLink',
-  'updateLinkInterpolate',
-  'setAccTitle',
-  'setAccDescription',
-];
-
-type Call = unknown[];
-
-function recorder(): { yy: Record<string, unknown>; calls: Call[] } {
-  const calls: Call[] = [];
+function recorder() {
   let first = true;
-  const yy: Record<string, unknown> = {
-    lex: {
-      firstGraph: () => {
-        if (first) {
-          first = false;
-          return true;
-        }
-        return false;
-      },
-    },
+  let subgraphs = 0;
+  const rec = recordingYy(oracle.methods, {
     destructLink: (end: string, start?: string) => ({ type: `${start ?? ''}|${end}`, stroke: 's', length: 1 }),
+    addSubGraph: () => 'SG' + ++subgraphs,
+  });
+  rec.yy.lex = {
+    firstGraph: () => {
+      if (first) {
+        first = false;
+        return true;
+      }
+      return false;
+    },
   };
-  for (const name of METHODS) {
-    yy[name] = (...args: unknown[]) => {
-      while (args.length > 0 && args[args.length - 1] === undefined) args.pop();
-      calls.push([name, ...args]);
-      return name === 'addSubGraph' ? 'SG' + calls.length : undefined;
-    };
-  }
-  return { yy, calls };
+  return rec;
 }
 
+// Mermaid's flowParser.ts applies this before handing text to the generated parser.
 export function prepare(src: string): string {
   return src.replace(/}\s*\n/g, '}\n');
 }
 
-export type Pair = [string, string];
-
-function merge(tokens: Pair[]): Pair[] {
-  const out: Pair[] = [];
-  for (const t of tokens) {
-    const last = out[out.length - 1];
-    if (last && last[0] === t[0] && (t[0] === 'TEXT' || t[0] === 'EDGE_TEXT')) last[1] += t[1];
-    else out.push([t[0], t[1]]);
-  }
-  return out;
-}
-
 export function oracleTokens(src: string): Pair[] {
-  const lexer = Object.create(oracle.lexer) as JisonParser['lexer'];
-  lexer.setInput(prepare(src), recorder().yy);
-  const out: Pair[] = [];
-  for (let i = 0; i < 1e6; i++) {
-    let t: number;
-    try {
-      t = lexer.lex();
-    } catch {
-      out.push(['INVALID', '']);
-      break;
-    }
-    if (t === 1) {
-      out.push(['$end', '']);
-      break;
-    }
-    out.push([oracle.terminals_[t] ?? String(t), lexer.yytext]);
-  }
-  return merge(out);
+  return mergeTokens(oracle.tokens(prepare(src), recorder().yy), MERGED);
 }
-
-type JisonParser = ReturnType<typeof buildParser>;
 
 export function peleTokens(src: string): Pair[] {
   const { types, texts } = tokenize(prepare(src));
-  return merge(types.map((t, i) => [TOKEN_NAMES[t], texts[i]] as Pair));
+  return mergeTokens(types.map((t, i) => [TOKEN_NAMES[t], texts[i]] as Pair), MERGED);
 }
 
-export interface Outcome {
-  ok: boolean;
-  calls: Call[];
-  error?: string;
-}
+const semantic = (calls: unknown[][]): unknown[][] => calls.filter((call) => call[0] !== 'destructLink');
 
 export function oracleParse(src: string): Outcome {
   const { yy, calls } = recorder();
-  oracle.yy = yy;
-  try {
-    oracle.parse(prepare(src));
-    return { ok: true, calls };
-  } catch (e) {
-    return { ok: false, calls, error: String((e as Error).message) };
-  }
+  const result = oracle.parse(prepare(src), yy);
+  return { ok: result.ok, calls: semantic(calls), error: result.error };
 }
 
 export function peleParse(src: string): Outcome {
   const { yy, calls } = recorder();
   try {
     parseFlowchart(src, yy as unknown as FlowDb);
-    return { ok: true, calls };
+    return { ok: true, calls: semantic(calls) };
   } catch (e) {
-    return { ok: false, calls, error: String((e as Error).message) };
+    return { ok: false, calls: semantic(calls), error: String((e as Error).message) };
   }
 }

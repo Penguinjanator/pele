@@ -1,0 +1,40 @@
+import type { RenderOptions } from '../types.js';
+import { esc } from './builder.js';
+import { FONT, ROOT_STYLE } from './theme.js';
+
+export interface Accessible {
+  accTitle?: string;
+  accDescr?: string;
+}
+
+// Wraps a diagram's content in the root <svg>, with theme aliases, size, and accessible names.
+export function svgDocument(
+  type: string,
+  width: number,
+  height: number,
+  fontSize: number,
+  options: RenderOptions,
+  acc: Accessible,
+  content: string
+): string {
+  const prefix = esc(options.idPrefix ?? 'pele');
+  let head = '';
+  let aria = '';
+  if (acc.accTitle) {
+    head += `<title id="${prefix}-title">${esc(acc.accTitle)}</title>`;
+    aria += ` aria-labelledby="${prefix}-title"`;
+  }
+  if (acc.accDescr) {
+    head += `<desc id="${prefix}-desc">${esc(acc.accDescr)}</desc>`;
+    aria += ` aria-describedby="${prefix}-desc"`;
+  }
+  const size = options.maxWidth
+    ? ` width="100%" style="max-width:${width}px;${ROOT_STYLE}"`
+    : ` width="${width}" height="${height}" style="${ROOT_STYLE}"`;
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-${type}" viewBox="0 0 ${width} ${height}"${size} font-family="${FONT}" font-size="${fontSize}" fill="var(--_fg)" role="graphics-document document" aria-roledescription="${type}"${aria}>` +
+    head +
+    content +
+    '</svg>'
+  );
+}
