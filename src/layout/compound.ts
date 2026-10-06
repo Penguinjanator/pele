@@ -12,6 +12,8 @@ export interface CNode {
   padTop: number;
   padBottom: number;
   minW: number;
+  // Declaration order; a group takes the smallest value among its members.
+  seq: number;
   x: number;
   y: number;
 }
@@ -69,7 +71,7 @@ interface Level {
 }
 
 export function cnode(w: number, h: number, parent = -1): CNode {
-  return { w, h, parent, isGroup: false, dir: undefined, padX: 0, padTop: 0, padBottom: 0, minW: 0, x: 0, y: 0 };
+  return { w, h, parent, isGroup: false, dir: undefined, padX: 0, padTop: 0, padBottom: 0, minW: 0, seq: 0, x: 0, y: 0 };
 }
 
 function startSide(dir: Dir): Side {
@@ -141,6 +143,14 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       descend(from);
     }
   }
+
+  for (let q = order.length - 1; q > 0; q--) {
+    const level = order[q];
+    let seq = Infinity;
+    for (const item of level.items) if (nodes[item].seq < seq) seq = nodes[item].seq;
+    if (seq !== Infinity) nodes[level.id].seq = seq;
+  }
+  for (const level of order) level.items.sort((a, b) => nodes[a].seq - nodes[b].seq || a - b);
 
   const loops: number[] = [];
   const stray: number[] = [];

@@ -1,7 +1,7 @@
 import { cnode, compoundLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num, type IconResolver } from '../../svg/builder.js';
-import { drawShape, shapeInset, shapeSize } from '../../svg/shapes.js';
+import { drawShape, shapeHasLabel, shapeInset, shapeSize } from '../../svg/shapes.js';
 import { FONT, RADIUS, ROOT_STYLE, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
@@ -205,7 +205,8 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
       c.minW = label.width + 2 * GROUP_PAD;
     } else {
       const shape = canonicalShape(node.shape);
-      const label = layoutLabel(node.label, markdown, measurer, fontSize, wrapWidth, textStyle);
+      const text = node.img || node.icon || shapeHasLabel(shape) ? node.label : undefined;
+      const label = layoutLabel(text, markdown, measurer, fontSize, wrapWidth, textStyle);
       let w: number;
       let h: number;
       let dy = 0;
@@ -226,6 +227,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
       view = { node, style, label, shape, w, h, dy, loops: 0 };
       c = cnode(w, h);
     }
+    c.seq = views.length;
     views.push(view);
     cnodes.push(c);
   }

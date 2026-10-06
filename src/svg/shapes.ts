@@ -21,6 +21,20 @@ interface ShapeDef {
   size: Sizer;
   draw: Drawer;
   inset?: Inset;
+  noLabel?: boolean;
+}
+
+const fixed = (w: number, h: number): Sizer => () => ({ w, h, dy: 0 });
+
+function triSize(tw: number, th: number, flip: boolean): ShapeSize {
+  const w = Math.max(1.6 * tw + 40, 80);
+  const h = (th + 10) / (1 - (tw + 8) / w);
+  const dy = h / 2 - 10 - th / 2;
+  return { w, h, dy: flip ? -dy : dy };
+}
+
+function path(d: string, a: string): string {
+  return `<path d="${d}"${a}/>`;
 }
 
 const leanInset: Inset = (_w, h, side) => (side & 1 ? h / 8 : 0);
@@ -176,17 +190,23 @@ const SHAPES: Record<string, ShapeDef> = {
     size: (tw, th) => ({ w: tw + 8, h: th + 8, dy: 0 }),
     draw: (w, h) => rect(w, h, ' fill="none" stroke="none"'),
   },
-  'sm-circ': { size: () => ({ w: 14, h: 14, dy: 0 }), draw: (w, _h, a) => `<circle r="${num(w / 2)}"${a}/>` },
+  'sm-circ': {
+    noLabel: true,
+    size: fixed(14, 14),
+    draw: (w, _h, a) => `<circle r="${num(w / 2)}"${a}/>` },
   'f-circ': {
-    size: () => ({ w: 14, h: 14, dy: 0 }),
+    noLabel: true,
+    size: fixed(14, 14),
     draw: (w, _h, _a, line) => `<circle r="${num(w / 2)}" fill="var(--_l)"${line}/>`,
   },
   'fr-circ': {
-    size: () => ({ w: 18, h: 18, dy: 0 }),
+    noLabel: true,
+    size: fixed(18, 18),
     draw: (w, _h, a, line) => `<circle r="${num(w / 2)}"${a}/><circle r="${num(w / 2 - 4)}" fill="var(--_l)"${line}/>`,
   },
   fork: {
-    size: () => ({ w: 72, h: 8, dy: 0 }),
+    noLabel: true,
+    size: fixed(72, 8),
     draw: (w, h, _a, line) => rect(w, h, ` fill="var(--_l)"${line}`, ' rx="2"'),
   },
   'notch-rect': {
@@ -218,18 +238,12 @@ const SHAPES: Record<string, ShapeDef> = {
   },
   tri: {
     inset: (w, _h, side) => (side & 1 ? w / 4 : 0),
-    size: (tw, th) => {
-      const h = th + 2 * PAD_Y + tw * 0.4;
-      return { w: tw + 2 * PAD_X + th * 1.4, h, dy: h / 6 };
-    },
+    size: (tw, th) => triSize(tw, th, false),
     draw: (w, h, a) => poly([0, -h / 2, w / 2, h / 2, -w / 2, h / 2], a),
   },
   'flip-tri': {
     inset: (w, _h, side) => (side & 1 ? w / 4 : 0),
-    size: (tw, th) => {
-      const h = th + 2 * PAD_Y + tw * 0.4;
-      return { w: tw + 2 * PAD_X + th * 1.4, h, dy: -h / 6 };
-    },
+    size: (tw, th) => triSize(tw, th, true),
     draw: (w, h, a) => poly([-w / 2, -h / 2, w / 2, -h / 2, 0, h / 2], a),
   },
   'sl-rect': {
@@ -245,8 +259,9 @@ const SHAPES: Record<string, ShapeDef> = {
     },
   },
   hourglass: {
+    noLabel: true,
     inset: (w, _h, side) => (side & 1 ? w / 2 : 0),
-    size: () => ({ w: 32, h: 40, dy: 0 }),
+    size: fixed(32, 40),
     draw: (w, h, a) => poly([-w / 2, -h / 2, w / 2, -h / 2, -w / 2, h / 2, w / 2, h / 2], a),
   },
   delay: {
@@ -281,7 +296,8 @@ const SHAPES: Record<string, ShapeDef> = {
     },
   },
   'cross-circ': {
-    size: () => ({ w: 44, h: 44, dy: 0 }),
+    noLabel: true,
+    size: fixed(44, 44),
     draw: (w, _h, a, line) => {
       const r = w / 2;
       const k = r * Math.SQRT1_2;
@@ -322,7 +338,219 @@ const SHAPES: Record<string, ShapeDef> = {
       )},0t${num(-2 * q)},0Z"${a}/>`;
     },
   },
+  datastore: {
+    size: box,
+    draw: (w, h, a, line) =>
+      rect(w, h, a.replace('stroke="var(--_b)"', 'stroke="none"')) +
+      `<path d="M${num(-w / 2)},${num(-h / 2)}H${num(w / 2)}M${num(-w / 2)},${num(h / 2)}H${num(w / 2)}" fill="none"${line}/>`,
+  },
+  folder: {
+    size: (tw, th) => ({ w: Math.max(tw + 2 * PAD_X, 64), h: th + 2 * PAD_Y + 8, dy: 4 }),
+    draw: (w, h, a) => {
+      const x = w / 2;
+      const y = h / 2;
+      const tab = Math.min(w * 0.4, 48);
+      return path(
+        `M${num(-x)},${num(-y)}H${num(-x + tab)}L${num(-x + tab + 8)},${num(-y + 8)}H${num(x)}V${num(y)}H${num(-x)}Z`,
+        a
+      );
+    },
+  },
+  bucket: {
+    size: (tw, th) => ({ w: tw + 2 * PAD_X + 20, h: th + 2 * PAD_Y + 10, dy: 3 }),
+    inset: (_w, h, side) => (side & 1 ? h / 12 : 0),
+    draw: (w, h, a, line) => {
+      const x = w / 2;
+      const y = h / 2;
+      const ry = 5;
+      const taper = h / 6;
+      return (
+        path(
+          `M${num(-x)},${num(-y + ry)}A${num(x)},${num(ry)} 0 0 1 ${num(x)},${num(-y + ry)}L${num(x - taper)},${num(
+            y - ry
+          )}A${num(x - taper)},${num(ry)} 0 0 1 ${num(-x + taper)},${num(y - ry)}Z`,
+          a
+        ) + `<path d="M${num(-x)},${num(-y + ry)}A${num(x)},${num(ry)} 0 0 0 ${num(x)},${num(-y + ry)}" fill="none"${line}/>`
+      );
+    },
+  },
+  console: {
+    size: (tw, th) => ({ w: Math.max(tw + 2 * PAD_X, 72), h: th + 2 * PAD_Y + 12, dy: 6 }),
+    draw: (w, h, a, line) =>
+      rect(w, h, a, ROUNDED) +
+      `<path d="M${num(-w / 2)},${num(-h / 2 + 12)}H${num(w / 2)}M${num(-w / 2 + 7)},${num(-h / 2 + 4)}l3,2.5l-3,2.5M${num(
+        -w / 2 + 13
+      )},${num(-h / 2 + 9)}h4" fill="none"${line}/>`,
+  },
+  browser: {
+    size: (tw, th) => ({ w: Math.max(tw + 2 * PAD_X, 72), h: th + 2 * PAD_Y + 12, dy: 6 }),
+    draw: (w, h, a, line) => {
+      let dots = '';
+      for (let i = 0; i < 3; i++) dots += `<circle cx="${num(-w / 2 + 8 + i * 7)}" cy="${num(-h / 2 + 6)}" r="1.5" fill="none"${line}/>`;
+      return rect(w, h, a, ROUNDED) + `<path d="M${num(-w / 2)},${num(-h / 2 + 12)}H${num(w / 2)}" fill="none"${line}/>` + dots;
+    },
+  },
+  person: {
+    size: (tw, th) => ({ w: Math.max(tw + 2 * PAD_X, 56), h: th + 2 * PAD_Y + 26, dy: 13 }),
+    draw: (w, h, a) => {
+      const top = -h / 2;
+      return (
+        `<rect x="${num(-w / 2)}" y="${num(top + 26)}" width="${num(w)}" height="${num(h - 26)}" rx="12"${a}/>` +
+        `<circle cy="${num(top + 14)}" r="13"${a}/>`
+      );
+    },
+  },
+  bang: {
+    size: (tw, th) => ({ w: tw + 2 * PAD_X + 28, h: th + 2 * PAD_Y + 24, dy: 0 }),
+    inset: () => 3,
+    draw: (w, h, a) => {
+      const spikes = 14;
+      const pts: number[] = [];
+      for (let i = 0; i < spikes * 2; i++) {
+        const angle = (Math.PI * i) / spikes - Math.PI / 2;
+        const k = i % 2 === 0 ? 1 : 0.82;
+        pts.push(Math.cos(angle) * (w / 2) * k, Math.sin(angle) * (h / 2) * k);
+      }
+      return poly(pts, a);
+    },
+  },
+  cloud: {
+    size: (tw, th) => ({ w: tw + 2 * PAD_X + 32, h: th + 2 * PAD_Y + 24, dy: 0 }),
+    inset: (_w, _h, side) => (side & 1 ? 2 : 1),
+    draw: (w, h, a) => {
+      const x = w / 2;
+      const y = h / 2;
+      const r = y * 0.55;
+      return path(
+        `M${num(-x + r)},${num(y)}A${num(r)},${num(r)} 0 0 1 ${num(-x + r * 0.6)},${num(-y * 0.1)}A${num(x * 0.42)},${num(
+          y * 0.7
+        )} 0 0 1 ${num(-x * 0.1)},${num(-y * 0.72)}A${num(x * 0.4)},${num(y * 0.62)} 0 0 1 ${num(x * 0.62)},${num(
+          -y * 0.42
+        )}A${num(r * 1.05)},${num(r * 1.05)} 0 0 1 ${num(x - r)},${num(y)}Z`,
+        a
+      );
+    },
+  },
+  brace: {
+    size: (tw, th) => ({ w: tw + 2 * PAD_X + 12, h: th + 2 * PAD_Y, dy: 0 }),
+    draw: (w, h, _a, line) => rect(w, h, ' fill="none" stroke="none"') + brace(-w / 2 + 12, h, -1, line),
+  },
+  'brace-r': {
+    size: (tw, th) => ({ w: tw + 2 * PAD_X + 12, h: th + 2 * PAD_Y, dy: 0 }),
+    draw: (w, h, _a, line) => rect(w, h, ' fill="none" stroke="none"') + brace(w / 2 - 12, h, 1, line),
+  },
+  braces: {
+    size: (tw, th) => ({ w: tw + 2 * PAD_X + 24, h: th + 2 * PAD_Y, dy: 0 }),
+    draw: (w, h, _a, line) =>
+      rect(w, h, ' fill="none" stroke="none"') + brace(-w / 2 + 12, h, -1, line) + brace(w / 2 - 12, h, 1, line),
+  },
+  bolt: {
+    noLabel: true,
+    size: fixed(36, 56),
+    inset: (w, _h, side) => (side & 1 ? w / 4 : 0),
+    draw: (w, h, a) => poly([w * 0.15, -h / 2, -w / 2, h * 0.08, -w * 0.05, h * 0.08, -w * 0.15, h / 2, w / 2, -h * 0.08, w * 0.05, -h * 0.08], a),
+  },
+  'lin-cyl': {
+    size: (tw, th) => {
+      const w = Math.max(tw + 2 * PAD_X, 56);
+      const ry = Math.min(12, Math.max(6, w / 14));
+      return { w, h: th + 2 * PAD_Y + 2 * ry + 8, dy: ry / 2 + 4 };
+    },
+    draw: (w, h, a, line) => {
+      const rx = w / 2;
+      const ry = Math.min(12, Math.max(6, w / 14));
+      const top = -h / 2 + ry;
+      const bottom = h / 2 - ry;
+      const arc = (y: number): string => `M${num(-rx)},${num(y)}A${num(rx)},${num(ry)} 0 0 0 ${num(rx)},${num(y)}`;
+      return (
+        path(
+          `M${num(-rx)},${num(top)}A${num(rx)},${num(ry)} 0 0 1 ${num(rx)},${num(top)}V${num(bottom)}A${num(rx)},${num(
+            ry
+          )} 0 0 1 ${num(-rx)},${num(bottom)}Z`,
+          a
+        ) + `<path d="${arc(top)}${arc(top + 8)}" fill="none"${line}/>`
+      );
+    },
+  },
+  'curv-trap': {
+    size: (tw, th) => {
+      const h = th + 2 * PAD_Y;
+      return { w: tw + 2 * PAD_X + h * 0.6, h, dy: 0 };
+    },
+    draw: (w, h, a) => {
+      const x = w / 2;
+      const y = h / 2;
+      const k = h * 0.3;
+      return path(
+        `M${num(-x + k)},${num(-y)}H${num(x - k)}A${num(k)},${num(y)} 0 0 1 ${num(x - k)},${num(y)}H${num(-x + k)}L${num(
+          -x
+        )},0Z`,
+        a
+      );
+    },
+  },
+  docs: {
+    size: (tw, th) => ({ w: tw + 2 * PAD_X + 8, h: th + 2 * PAD_Y + 18, dy: -1 }),
+    inset: (_w, _h, side) => (side === 2 ? 10 : 0),
+    draw: (w, h, a) => {
+      let out = '';
+      for (let i = 0; i < 3; i++) {
+        out += `<g transform="translate(${(1 - i) * 4},${(i - 1) * 4})">${wave(w - 8, h - 8, a)}</g>`;
+      }
+      return out;
+    },
+  },
+  'bow-rect': {
+    size: (tw, th) => {
+      const h = th + 2 * PAD_Y;
+      return { w: tw + 2 * PAD_X + h * 0.4, h, dy: 0 };
+    },
+    inset: (_w, h, side) => (side === 1 ? h * 0.2 : 0),
+    draw: (w, h, a) => {
+      const x = w / 2;
+      const y = h / 2;
+      const k = h * 0.2;
+      return path(
+        `M${num(-x + k)},${num(-y)}H${num(x)}A${num(k)},${num(y)} 0 0 0 ${num(x)},${num(y)}H${num(-x + k)}A${num(k)},${num(
+          y
+        )} 0 0 1 ${num(-x + k)},${num(-y)}Z`,
+        a
+      );
+    },
+  },
+  'tag-rect': {
+    size: box,
+    draw: (w, h, a, line) =>
+      rect(w, h, a, ROUNDED) +
+      `<path d="M${num(w / 2 - 12)},${num(h / 2)}L${num(w / 2)},${num(h / 2 - 12)}" fill="none"${line}/>`,
+  },
+  'tag-doc': {
+    size: (tw, th) => ({ w: tw + 2 * PAD_X, h: th + 2 * PAD_Y + 10, dy: -5 }),
+    inset: (_w, _h, side) => (side === 2 ? 10 : 0),
+    draw: (w, h, a, line) =>
+      wave(w, h, a) + `<path d="M${num(w / 2 - 12)},${num(h / 2 - 14)}L${num(w / 2)},${num(h / 2 - 26)}" fill="none"${line}/>`,
+  },
+  'lin-doc': {
+    size: (tw, th) => ({ w: tw + 2 * PAD_X + 8, h: th + 2 * PAD_Y + 10, dy: -5 }),
+    inset: (_w, _h, side) => (side === 2 ? 10 : 0),
+    draw: (w, h, a, line) =>
+      wave(w, h, a) + `<path d="M${num(-w / 2 + 8)},${num(-h / 2)}V${num(h / 2 - 6)}" fill="none"${line}/>`,
+  },
+  collapsedGroup: {
+    size: (tw, th) => ({ w: tw + 2 * PAD_X + 8, h: th + 2 * PAD_Y + 8, dy: -2 }),
+    draw: (w, h, a) =>
+      `<rect x="${num(-w / 2 + 6)}" y="${num(-h / 2 + 8)}" width="${num(w - 12)}" height="${num(h - 8)}"${ROUNDED}${a}/>` +
+      `<rect x="${num(-w / 2)}" y="${num(-h / 2)}" width="${num(w)}" height="${num(h - 4)}"${ROUNDED}${a}/>`,
+  },
 };
+
+function brace(x: number, h: number, dir: number, line: string): string {
+  const y = h / 2;
+  const k = 6 * dir;
+  return `<path d="M${num(x)},${num(-y)}q${num(k)},0 ${num(k)},6V-6q0,6 ${num(k)},6q${num(-k)},0 ${num(-k)},6V${num(
+    y - 6
+  )}q0,6 ${num(-k)},6" fill="none"${line}/>`;
+}
 
 function wave(w: number, h: number, a: string): string {
   const x = w / 2;
@@ -346,6 +574,10 @@ export function drawShape(shape: string, w: number, h: number, a: string, line: 
 
 export function shapeInset(shape: string, w: number, h: number, side: number): number {
   return SHAPES[shape]?.inset?.(w, h, side) ?? 0;
+}
+
+export function shapeHasLabel(shape: string): boolean {
+  return SHAPES[shape]?.noLabel !== true;
 }
 
 export function hasShape(shape: string): boolean {

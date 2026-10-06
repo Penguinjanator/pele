@@ -211,9 +211,8 @@ function blockScalar(r: Reader, header: string, parentIndent: number): string {
       const cur = out[i];
       if (i > 0) {
         const prev = out[i - 1];
-        const keep = prev === '' || cur === '' || /^[ \t]/.test(prev) || /^[ \t]/.test(cur);
-        text += keep || prev === '' ? '\n' : ' ';
-        if (cur === '' && prev !== '') continue;
+        if (cur === '') text += '\n';
+        else if (prev !== '') text += /^[ \t]/.test(prev) || /^[ \t]/.test(cur) ? '\n' : ' ';
       }
       text += cur;
     }

@@ -202,7 +202,7 @@ export function layoutLabel(
   let width = 0;
   for (const part of source.split(RE_BREAK)) {
     const line: Span[] = [];
-    inline(line, markdown ? part : part.trim(), markdown, base);
+    inline(line, part.trim(), markdown, base);
     const w = measureSpans(line, measurer, size);
     if (w > maxWidth) {
       wrap(line, measurer, size, maxWidth, lines, widths);
