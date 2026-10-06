@@ -106,3 +106,11 @@ export function classNames(raw: string): string {
   const cleaned = raw.replace(RE_CLASS, ' ').trim();
   return cleaned === '' ? '' : ' ' + cleaned;
 }
+
+const SERIES = ['#4c78a8', '#f58518', '#54a24b', '#e45756', '#72b7b2', '#eeca3b', '#b279a2', '#9d755d'];
+
+// Color for the nth data series in a chart, cycling through eight tokens.
+export function seriesColor(index: number): string {
+  const k = ((index % 8) + 8) % 8;
+  return `var(--pele-series-${k + 1},${SERIES[k]})`;
+}
