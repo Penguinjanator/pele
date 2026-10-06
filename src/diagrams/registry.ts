@@ -1,5 +1,6 @@
 import type { DiagramType } from '../detect.js';
 import type { Diagram } from '../types.js';
+import { classDiagram } from './class/index.js';
 import { er } from './er/index.js';
 import { flowchart } from './flowchart/index.js';
 import { journey } from './journey/index.js';
@@ -18,6 +19,7 @@ const all = [
   kanban,
   timeline,
   journey,
+  classDiagram,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));

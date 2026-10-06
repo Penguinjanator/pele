@@ -11,6 +11,7 @@ const DIAGRAMS = [
   ['kanban', 'kanban', 'KanbanModel', 'db'],
   ['timeline', 'timeline', 'TimelineModel', 'db'],
   ['journey', 'journey', 'JourneyModel', 'db'],
+  ['classDiagram', 'class', 'ClassModel', 'types'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();

@@ -1,0 +1,638 @@
+import { cnode, compoundLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
+import type { Config } from '../../preprocess.js';
+import { esc, labelSvg, num } from '../../svg/builder.js';
+import { routePath, type EdgePath } from '../../svg/edges.js';
+import { svgDocument } from '../../svg/root.js';
+import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
+import { decodeEntities } from '../../text/entities.js';
+import { layoutLabel, type Label } from '../../text/label.js';
+import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
+import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
+import type { ClassDb } from './db.js';
+import { buildClassGraph, type GraphEdge, type GraphNode } from './graph.js';
+import { classMarker, classMarkerTrim } from './markers.js';
+import { parseGenericTypes, type ClassMember } from './members.js';
+import type { ClassNode } from './types.js';
+
+const NODE_SEP = 40;
+const EDGE_SEP = 16;
+const RANK_SEP = 56;
+const GROUP_PAD = 20;
+const LOOP = 26;
+const PAD_X = 12;
+const TITLE_PAD = 8;
+const SECTION_PAD = 6;
+const EMPTY_SECTION = 10;
+const MIN_WIDTH = 64;
+const FOLD = 8;
+const LINE = 'var(--_l)';
+const TARGETS = new Set(['_self', '_blank', '_parent', '_top']);
+
+function direction(dir: string | undefined): Dir {
+  return dir === 'BT' || dir === 'LR' || dir === 'RL' ? dir : 'TB';
+}
+
+function numberOption(config: Config, key: string, fallback: number): number {
+  const value = config[key];
+  return typeof value === 'number' && value > 0 ? Math.min(value, 2000) : fallback;
+}
+
+interface Line {
+  text: string;
+  width: number;
+  classifier: string;
+}
+
+interface View {
+  node: GraphNode;
+  style: ResolvedStyle;
+  label: Label;
+  w: number;
+  h: number;
+  loops: number;
+  annotations: string[];
+  attributes: Line[];
+  methods: Line[];
+  titleH: number;
+  attributesH: number;
+  fontSize: number;
+}
+
+interface End {
+  route: number[];
+  at: number;
+  toward: number;
+  order: number;
+  room: number;
+  side: number;
+  // Whether the text of this end goes on the right of, or below, its line.
+  after: boolean;
+}
+
+const NO_LINES: Line[] = [];
+const NO_TEXT: string[] = [];
+
+function memberLine(member: ClassMember, measurer: TextMeasurer, size: number): Line {
+  const text = decodeEntities(member.getDisplayDetails().displayText).trim();
+  return { text, width: measurer.width(text, size, member.classifier === '*' ? Style.Italic : 0), classifier: member.classifier };
+}
+
+// 0 top, 1 right, 2 bottom, 3 left: the side of a node's layout box that a route end lies on.
+function sideOf(x: number, y: number, c: CNode): number {
+  if (Math.abs(y - (c.y - c.h / 2)) < 0.5) return 0;
+  if (Math.abs(y - (c.y + c.h / 2)) < 0.5) return 2;
+  if (Math.abs(x - (c.x - c.w / 2)) < 0.5) return 3;
+  if (Math.abs(x - (c.x + c.w / 2)) < 0.5) return 1;
+  return -1;
+}
+
+export function renderClass(db: ClassDb, config: Config, options: RenderOptions): Rendered {
+  const conf = (config.class ?? {}) as Config;
+  const graph = buildClassGraph(db, conf.hierarchicalNamespaces !== false);
+  const hideEmpty = conf.hideEmptyMembersBox === true;
+  const size = options.fontSize ?? 16;
+  const small = Math.round(size * 0.875);
+  const tiny = Math.round(size * 0.8);
+  const tinyHeight = Math.round(tiny * 1.4);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const pad = options.padding ?? 8;
+  const rootDir = direction(db.direction);
+
+  // A class may carry the declarations of many classDefs many times over. Each distinct declaration
+  // is checked once, and only the last value of each property that has an effect is resolved.
+  const effect = new Map<string, string>();
+  const fromDefs = new Map<string, [string, string][]>();
+  const kept = new Map<string, string>();
+  const keep = (decl: string): void => {
+    let prop = effect.get(decl);
+    if (prop === undefined) {
+      const one = resolveStyle([decl]);
+      prop = one.shape === '' && one.text === '' ? '' : decl.slice(0, decl.indexOf(':')).trim().toLowerCase();
+      effect.set(decl, prop);
+    }
+    if (prop !== '') kept.set(prop, decl);
+  };
+  const classStyle = (cls: ClassNode): ResolvedStyle => {
+    kept.clear();
+    let base = fromDefs.get(cls.cssClasses);
+    if (base === undefined) {
+      for (const name of cls.cssClasses.split(' ')) {
+        const def = db.styleClasses.get(name);
+        if (def) for (const s of def.styles) for (const part of s.split(',')) keep(part);
+      }
+      base = [...kept];
+      fromDefs.set(cls.cssClasses, base);
+    } else {
+      for (const [prop, decl] of base) kept.set(prop, decl);
+    }
+    for (const s of cls.styles) keep(s);
+    return resolveStyle(kept.size === 0 ? NO_TEXT : [...kept.values()]);
+  };
+
+  const children = new Int32Array(graph.nodes.length);
+  for (const node of graph.nodes) if (node.parent >= 0) children[node.parent]++;
+
+  // Namespaces that an edge may cross into are made wide enough for the title to sit beside it.
+  const crossed = new Uint8Array(graph.nodes.length);
+  for (const edge of graph.edges) {
+    if (edge.source < 0 || edge.target < 0) continue;
+    const a = graph.nodes[edge.source].parent;
+    const b = graph.nodes[edge.target].parent;
+    if (a === b) continue;
+    for (let g = a; g >= 0 && crossed[g] === 0; g = graph.nodes[g].parent) crossed[g] = 1;
+    for (let g = b; g >= 0 && crossed[g] === 0; g = graph.nodes[g].parent) crossed[g] = 1;
+  }
+
+  const views: View[] = [];
+  const cnodes: CNode[] = [];
+  graph.nodes.forEach((node, i) => {
+    let view: View;
+    let c: CNode;
+    if (node.isGroup) {
+      const label = layoutLabel(node.label, false, measurer, size, 4000);
+      view = base(node, label, 0, 0, size);
+      if (children[i] > 0) {
+        c = cnode(0, 0);
+        c.isGroup = true;
+        c.padX = GROUP_PAD;
+        c.padTop = label.height > 0 ? label.height + 16 : GROUP_PAD;
+        c.padBottom = GROUP_PAD;
+        c.minW = label.width + 2 * GROUP_PAD - 12 + (crossed[i] === 1 ? Math.min(label.width + 24, 240) : 0);
+      } else {
+        view.w = Math.max(label.width + 2 * GROUP_PAD, 80);
+        view.h = label.height + 2 * GROUP_PAD;
+        c = cnode(view.w, view.h);
+      }
+    } else if (node.classNode) {
+      view = classView(node, node.classNode);
+      c = cnode(view.w, view.h);
+    } else if (node.shape === 'note') {
+      const label = layoutLabel(node.label, true, measurer, small, 260);
+      view = base(node, label, Math.max(label.width + 2 * PAD_X, 40), label.height + 2 * TITLE_PAD, small);
+      c = cnode(view.w, view.h);
+    } else {
+      const label = layoutLabel(node.label, false, measurer, small, 200);
+      view = base(node, label, Math.max(label.width, 12) + 4, Math.max(label.height, 12), small);
+      c = cnode(view.w, view.h);
+    }
+    c.parent = node.parent;
+    c.seq = i;
+    views.push(view);
+    cnodes.push(c);
+  });
+
+  function base(node: GraphNode, label: Label, w: number, h: number, fontSize: number): View {
+    return {
+      node,
+      style: resolveStyle(NO_TEXT),
+      label,
+      w,
+      h,
+      loops: 0,
+      annotations: NO_TEXT,
+      attributes: NO_LINES,
+      methods: NO_LINES,
+      titleH: 0,
+      attributesH: 0,
+      fontSize,
+    };
+  }
+
+  function classView(node: GraphNode, cls: ClassNode): View {
+    const style = classStyle(cls);
+    const fontSize = style.fontSize ?? size;
+    const memberSize = Math.round(fontSize * 0.875);
+    const lineHeight = Math.round(memberSize * 1.5);
+    // The generic type is escaped so that `<T>` is not read as a tag.
+    const generic = cls.type ? '&lt;' + parseGenericTypes(cls.type).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '&gt;' : '';
+    const label = layoutLabel(cls.label + generic, false, measurer, fontSize, 4000, Style.Bold | (style.italic ? Style.Italic : 0));
+    const annotations = cls.annotations.length > 0 ? cls.annotations.map((a) => `«${decodeEntities(a).trim()}»`) : NO_TEXT;
+    const attributes = cls.members.length > 0 ? cls.members.map((m) => memberLine(m, measurer, memberSize)) : NO_LINES;
+    const methods = cls.methods.length > 0 ? cls.methods.map((m) => memberLine(m, measurer, memberSize)) : NO_LINES;
+    let inner = label.width;
+    for (const a of annotations) inner = Math.max(inner, measurer.width(a, tiny, 0));
+    for (const line of attributes) inner = Math.max(inner, line.width);
+    for (const line of methods) inner = Math.max(inner, line.width);
+    const sections = !(hideEmpty && attributes.length === 0 && methods.length === 0);
+    const section = (count: number): number => (!sections ? 0 : count > 0 ? 2 * SECTION_PAD + count * lineHeight : EMPTY_SECTION);
+    const titleH = 2 * TITLE_PAD + annotations.length * tinyHeight + Math.max(label.height, Math.round(fontSize * 1.5));
+    const attributesH = section(attributes.length);
+    return {
+      node,
+      style,
+      label,
+      w: Math.max(inner + 2 * PAD_X, MIN_WIDTH),
+      h: titleH + attributesH + section(methods.length),
+      loops: 0,
+      annotations,
+      attributes,
+      methods,
+      titleH,
+      attributesH,
+      fontSize,
+    };
+  }
+
+  const cedges: CEdge[] = [];
+  const drawn: GraphEdge[] = [];
+  const edgeLabels: Label[] = [];
+  const startRoom: number[] = [];
+  const endRoom: number[] = [];
+  // Edges leave one side of a class and arrive at the other, so a class with many of them
+  // is widened until they, and the text at their ends, fit side by side.
+  const crowd = new Float64Array(views.length * 4);
+  const meet = (item: number, slot: number, room: number): void => {
+    crowd[item * 4 + slot]++;
+    if (room > crowd[item * 4 + slot + 1]) crowd[item * 4 + slot + 1] = room;
+  };
+  for (const edge of graph.edges) {
+    if (edge.source < 0 || edge.target < 0) continue;
+    const label = layoutLabel(edge.label, true, measurer, small, 200);
+    const startW = edge.startLabelRight ? measurer.width(decodeEntities(edge.startLabelRight), tiny, 0) : 0;
+    const endW = edge.endLabelLeft ? measurer.width(decodeEntities(edge.endLabelLeft), tiny, 0) : 0;
+    if (edge.source === edge.target) {
+      views[edge.source].loops++;
+      cnodes[edge.source].w += 2 * (LOOP + (label.width > 0 ? label.width + 12 : 0));
+    } else {
+      meet(edge.source, 0, startW);
+      meet(edge.target, 2, endW);
+    }
+    startRoom.push(startW);
+    endRoom.push(endW);
+    drawn.push(edge);
+    edgeLabels.push(label);
+    cedges.push({
+      src: edge.source,
+      dst: edge.target,
+      minlen: 1,
+      labelW: label.width > 0 ? label.width + 12 : 0,
+      labelH: label.height > 0 ? label.height + 4 : 0,
+      route: [],
+      labelX: 0,
+      labelY: 0,
+    });
+  }
+
+  if (rootDir === 'TB' || rootDir === 'BT') {
+    for (let i = 0; i < views.length; i++) {
+      if (!views[i].node.classNode) continue;
+      let need = 0;
+      for (let slot = 0; slot < 4; slot += 2) {
+        const count = crowd[i * 4 + slot];
+        const room = crowd[i * 4 + slot + 1];
+        if (count > 1) need = Math.max(need, (count - 1) * (room > 0 ? room + 24 : 14) + 24);
+      }
+      need = Math.min(need, 480);
+      if (need > views[i].w) {
+        cnodes[i].w += need - views[i].w;
+        views[i].w = need;
+      }
+    }
+  }
+
+  let lettered = false;
+  for (let i = 0; i < drawn.length && !lettered; i++) lettered = startRoom[i] > 0 || endRoom[i] > 0;
+  const layout = compoundLayout(cnodes, cedges, rootDir, {
+    nodeSep: numberOption(conf, 'nodeSpacing', NODE_SEP),
+    edgeSep: EDGE_SEP,
+    rankSep: numberOption(conf, 'rankSpacing', lettered ? RANK_SEP + 16 : RANK_SEP),
+    portSep: 20,
+  });
+
+  // Every edge reaches the middle of a side. Where several share a side they are spread along it,
+  // in the order of where they come from. An end with text runs straight for the length of the text,
+  // which sits beside it on the side the line then bends toward, away from the neighbors that bend
+  // the other way. Neighbors are set apart far enough for the text between them.
+  const sides = new Map<number, End[]>();
+  const cards: { text: string; x: number; y: number }[] = [];
+  const attach = (ce: CEdge, at: number, item: number, room: number, order: number): End | undefined => {
+    const route = ce.route;
+    const c = cnodes[item];
+    const side = sideOf(route[at], route[at + 1], c);
+    if (side < 0) return undefined;
+    const slack = (c.w - views[item].w) / 2;
+    if (side === 1) route[at] -= slack;
+    else if (side === 3) route[at] += slack;
+    const across = side & 1;
+    const toward = route[(at === 0 ? 3 : at - 3) + across];
+    const bend = toward - route[at + across];
+    const end: End = { route, at, toward, order, room, side, after: across ? bend > 0 : bend >= 0 };
+    const key = item * 4 + side;
+    const list = sides.get(key);
+    if (list) list.push(end);
+    else sides.set(key, [end]);
+    return end;
+  };
+  const starts: (End | undefined)[] = [];
+  const ends: (End | undefined)[] = [];
+  for (let i = 0; i < cedges.length; i++) {
+    const ce = cedges[i];
+    const routed = ce.src !== ce.dst && ce.route.length >= 6;
+    starts.push(routed ? attach(ce, 0, ce.src, startRoom[i], i) : undefined);
+    ends.push(routed ? attach(ce, ce.route.length - 3, ce.dst, endRoom[i], i) : undefined);
+  }
+  const gaps: number[] = [];
+  for (const [key, list] of sides) {
+    if (list.length < 2) continue;
+    const item = key >> 2;
+    const across = key & 1;
+    const length = across ? views[item].h : views[item].w;
+    list.sort((a, b) => a.toward - b.toward || a.order - b.order);
+    let total = 0;
+    for (let j = 0; j + 1 < list.length; j++) {
+      const a = list[j];
+      const b = list[j + 1];
+      let gap = across ? 20 : 24;
+      if (a.room > 0 && a.after) gap += across ? tinyHeight + 6 : a.room;
+      if (b.room > 0 && !b.after) gap += across ? tinyHeight + 6 : b.room;
+      gaps[j] = gap;
+      total += gap;
+    }
+    const scale = Math.min(1, (length - 24) / total);
+    if (scale <= 0) continue;
+    let at = (across ? cnodes[item].y : cnodes[item].x) - (total * scale) / 2;
+    for (let j = 0; j < list.length; j++) {
+      list[j].route[list[j].at + across] = at;
+      at += gaps[j] * scale;
+    }
+  }
+
+  const straighten = (route: number[], end: End | undefined, room: number, first: boolean): void => {
+    if (end === undefined || room <= 0) return;
+    const across = end.side & 1;
+    const at = first ? 0 : route.length - 3;
+    const along = at + 1 - across;
+    const reach = Math.abs(route[(first ? 3 : at - 3) + 1 - across] - route[along]);
+    const length = Math.min(across ? room + 10 : tinyHeight + 6, reach * 0.35);
+    if (length < 4) return;
+    const point = [route[at], route[at + 1], route[at + 2]];
+    point[1 - across] += (end.side === 0 || end.side === 3 ? -1 : 1) * length;
+    route.splice(first ? 3 : at, 0, point[0], point[1], point[2]);
+  };
+  for (let i = 0; i < cedges.length; i++) {
+    straighten(cedges[i].route, starts[i], startRoom[i], true);
+    straighten(cedges[i].route, ends[i], endRoom[i], false);
+  }
+
+  let minX = 0;
+  let minY = 0;
+  let maxX = layout.width;
+  let maxY = layout.height;
+  const card = (raw: string, width: number, x: number, y: number, side: number, after: boolean): void => {
+    if (!raw) return;
+    let cx = x;
+    let cy = y;
+    if (side & 1) {
+      cx += (side === 3 ? -1 : 1) * (5 + width / 2);
+      cy += (after ? 1 : -1) * (7 + tinyHeight / 2);
+    } else {
+      cx += (after ? 1 : -1) * (9 + width / 2);
+      cy += (side === 0 ? -1 : 1) * (3 + tinyHeight / 2);
+    }
+    cards.push({ text: decodeEntities(raw), x: cx, y: cy });
+    minX = Math.min(minX, cx - width / 2);
+    maxX = Math.max(maxX, cx + width / 2);
+    minY = Math.min(minY, cy - tinyHeight / 2);
+    maxY = Math.max(maxY, cy + tinyHeight / 2);
+  };
+  const loopSeen = new Map<number, number>();
+  const loopAt = new Int32Array(cedges.length);
+  for (let i = 0; i < cedges.length; i++) {
+    const ce = cedges[i];
+    const edge = drawn[i];
+    const route = ce.route;
+    if (ce.src === ce.dst) {
+      const k = loopSeen.get(ce.src) ?? 0;
+      loopSeen.set(ce.src, k + 1);
+      loopAt[i] = k;
+      const c = cnodes[ce.src];
+      const view = views[ce.src];
+      const x = c.x + view.w / 2;
+      const spread = Math.min(view.h / 2 - 4, 8 + k * 6);
+      card(edge.startLabelRight, startRoom[i], x, c.y - spread, 1, false);
+      card(edge.endLabelLeft, endRoom[i], x, c.y + spread, 1, true);
+    } else if (route.length >= 6) {
+      const last = route.length - 3;
+      const from = starts[i];
+      const to = ends[i];
+      card(edge.startLabelRight, startRoom[i], route[0], route[1], from ? from.side : 2, from ? from.after : true);
+      card(edge.endLabelLeft, endRoom[i], route[last], route[last + 1], to ? to.side : 0, to ? to.after : true);
+    }
+  }
+
+  const ox = pad - minX;
+  const oy = pad - minY;
+  const width = Math.ceil(maxX - minX + 2 * pad);
+  const height = Math.ceil(maxY - minY + 2 * pad);
+  const links: LinkInfo[] = [];
+
+  // Route points by rounded y, to find the edges that cross a namespace's top border.
+  const crossings = new Map<number, number[]>();
+  if (graph.nodes.length > 0 && graph.nodes[0].isGroup) {
+    for (const e of cedges) {
+      const route = e.route;
+      for (let k = 0; k < route.length; k += 3) {
+        const key = Math.round(route[k + 1]);
+        const list = crossings.get(key);
+        if (list) list.push(route[k]);
+        else crossings.set(key, [route[k]]);
+      }
+    }
+  }
+
+  let clusters = '';
+  let nodesOut = '';
+  for (let i = 0; i < views.length; i++) {
+    const view = views[i];
+    const c = cnodes[i];
+    const node = view.node;
+    const x = c.x + ox;
+    const y = c.y + oy;
+    const id = esc(node.id);
+    const w = c.isGroup ? c.w : view.w;
+    const h = c.isGroup ? c.h : view.h;
+    if (node.isGroup) {
+      clusters +=
+        `<g class="pele-cluster pele-namespace" data-id="${id}">` +
+        `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"/>` +
+        labelSvg(
+          view.label,
+          (c.isGroup ? clusterTitleX(c, view.label.width, crossings) : c.x) + ox,
+          y - h / 2 + 8 + view.label.height / 2,
+          ' class="pele-cluster-label" fill="var(--_m)"'
+        ) +
+        '</g>';
+      continue;
+    }
+    const at = ` transform="translate(${num(x)},${num(y)})"`;
+    if (node.classNode) {
+      nodesOut += classSvg(view, node.classNode, id, at);
+    } else if (node.shape === 'note') {
+      const r = w / 2;
+      const t = -h / 2;
+      nodesOut +=
+        `<g class="pele-node pele-note" data-id="${id}"${at}>` +
+        `<path d="M${num(-r)},${num(t)}H${num(r - FOLD)}L${num(r)},${num(t + FOLD)}V${num(-t)}H${num(-r)}Z" fill="var(--_a)" stroke="var(--_b)" stroke-linejoin="round"/>` +
+        `<path d="M${num(r - FOLD)},${num(t)}V${num(t + FOLD)}H${num(r)}" fill="none" stroke="var(--_b)" stroke-linejoin="round"/>` +
+        labelSvg(view.label, 0, 0, ` class="pele-label" font-size="${small}"`, options.icons) +
+        '</g>';
+    } else {
+      nodesOut +=
+        `<g class="pele-node pele-interface" data-id="${id}"${at}>` +
+        labelSvg(view.label, 0, 0, ` class="pele-label" font-size="${small}"`, options.icons) +
+        '</g>';
+    }
+  }
+
+  function classSvg(view: View, cls: ClassNode, id: string, at: string): string {
+    const { w, h, style } = view;
+    const left = -w / 2;
+    const top = -h / 2;
+    const memberSize = Math.round(view.fontSize * 0.875);
+    const lineHeight = Math.round(memberSize * 1.5);
+    let body = `<rect x="${num(left)}" y="${num(top)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}" fill="var(--_s)" stroke="var(--_b)"${style.shape}/>`;
+    const first = top + view.titleH;
+    const second = first + view.attributesH;
+    if (h > view.titleH) {
+      const stroke = style.stroke ? ` style="stroke:${esc(style.stroke)}"` : '';
+      body += `<path class="pele-divider" d="M${num(left)},${num(first)}H${num(-left)}M${num(left)},${num(second)}H${num(-left)}" fill="none" stroke="var(--_b)"${stroke}/>`;
+    }
+    let y = top + TITLE_PAD;
+    for (const annotation of view.annotations) {
+      body += `<text class="pele-annotation" x="0" y="${num(y + tinyHeight / 2 + tiny * 0.35)}" text-anchor="middle" font-size="${tiny}" fill="var(--_m)">${esc(annotation)}</text>`;
+      y += tinyHeight;
+    }
+    const titleSize = view.fontSize === size ? '' : ` font-size="${num(view.fontSize)}"`;
+    body += labelSvg(view.label, 0, (y + first - TITLE_PAD) / 2, ` class="pele-label"${titleSize}${style.text}`, options.icons);
+    const lines = (list: Line[], kind: string, from: number): string => {
+      let out = '';
+      let baseline = from + SECTION_PAD + lineHeight / 2 + memberSize * 0.35;
+      for (const line of list) {
+        const mark =
+          line.classifier === '$'
+            ? ` pele-static"${style.text ? style.text.slice(0, -1) + 'text-decoration:underline"' : ' style="text-decoration:underline"'}`
+            : line.classifier === '*'
+              ? ` pele-abstract" font-style="italic"${style.text}`
+              : `"${style.text}`;
+        out += `<text class="pele-member pele-${kind}${mark} x="${num(left + PAD_X)}" y="${num(baseline)}">${esc(line.text)}</text>`;
+        baseline += lineHeight;
+      }
+      return out;
+    };
+    if (view.attributes.length > 0 || view.methods.length > 0) {
+      body += `<g class="pele-members" font-size="${memberSize}">${lines(view.attributes, 'attribute', first)}${lines(view.methods, 'method', second)}</g>`;
+    }
+    if (cls.tooltip) body = `<title>${esc(decodeEntities(cls.tooltip))}</title>` + body;
+    if (cls.link) {
+      const target = cls.linkTarget && TARGETS.has(cls.linkTarget) ? ` target="${cls.linkTarget}"` : '';
+      body = `<a href="${esc(cls.link)}"${target} rel="noopener">${body}</a>`;
+      links.push({ id: cls.id, href: cls.link, internal: false });
+    }
+    return `<g class="pele-node pele-class${classNames(cls.cssClasses.replace(/^default\s?/, ''))}" data-id="${id}"${at}>${body}</g>`;
+  }
+
+  let edgesOut = '';
+  let labelsOut = '';
+  for (let i = 0; i < cedges.length; i++) {
+    const ce = cedges[i];
+    const edge = drawn[i];
+    const label = edgeLabels[i];
+    const startType = edge.arrowTypeStart;
+    const endType = edge.arrowTypeEnd;
+    const startTrim = classMarkerTrim(startType);
+    const endTrim = classMarkerTrim(endType);
+    let path: EdgePath;
+    if (ce.src === ce.dst) {
+      const c = cnodes[ce.src];
+      const view = views[ce.src];
+      const k = loopAt[i];
+      const x = c.x + ox + view.w / 2;
+      const y = c.y + oy;
+      const spread = Math.min(view.h / 2 - 4, 8 + k * 6);
+      const reach = LOOP + k * 8;
+      path = {
+        d: `M${num(x + startTrim)},${num(y - spread)}C${num(x + reach + startTrim)},${num(y - spread)} ${num(
+          x + reach + endTrim
+        )},${num(y + spread)} ${num(x + endTrim)},${num(y + spread)}`,
+        sx: x,
+        sy: y - spread,
+        sdx: -1,
+        sdy: 0,
+        ex: x,
+        ey: y + spread,
+        edx: -1,
+        edy: 0,
+      };
+      ce.labelX = c.x + view.w / 2 + reach + 4 + ce.labelW / 2;
+      ce.labelY = c.y;
+    } else {
+      const route = ce.route;
+      for (let k = 0; k < route.length; k += 3) {
+        route[k] += ox;
+        route[k + 1] += oy;
+      }
+      path = routePath(route, undefined, startTrim, endTrim);
+    }
+    const attrs = edge.pattern === 'dashed' ? ' stroke-dasharray="6 4"' : edge.pattern === 'dotted' ? ' stroke-dasharray="2 4"' : '';
+    edgesOut +=
+      `<g class="pele-edge${edge.pattern === 'dotted' ? ' pele-note-edge' : ' pele-relation'}" data-id="${esc(edge.id)}">` +
+      `<path d="${path.d}"${attrs}/>` +
+      classMarker(startType, path.sx, path.sy, path.sdx, path.sdy, LINE) +
+      classMarker(endType, path.ex, path.ey, path.edx, path.edy, LINE) +
+      '</g>';
+    if (label.width > 0) {
+      const x = ce.labelX + ox;
+      const y = ce.labelY + oy;
+      const w = label.width + 8;
+      const h = label.height;
+      labelsOut +=
+        `<g class="pele-edge-label" data-id="${esc(edge.id)}">` +
+        `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="3" fill="var(--_bg)"/>` +
+        labelSvg(label, x, y, '', options.icons) +
+        '</g>';
+    }
+  }
+
+  let cardsOut = '';
+  for (const item of cards) {
+    cardsOut += `<text class="pele-cardinality" x="${num(item.x + ox)}" y="${num(item.y + oy + tiny * 0.35)}" text-anchor="middle">${esc(item.text)}</text>`;
+  }
+
+  const svg = svgDocument(
+    'class',
+    width,
+    height,
+    size,
+    options,
+    db,
+    (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
+      (edgesOut ? `<g class="pele-edges" fill="none" stroke="${LINE}" stroke-linecap="round">${edgesOut}</g>` : '') +
+      (labelsOut ? `<g class="pele-edge-labels" font-size="${small}">${labelsOut}</g>` : '') +
+      (cardsOut ? `<g class="pele-cardinalities" font-size="${tiny}" fill="var(--_m)">${cardsOut}</g>` : '') +
+      `<g class="pele-nodes">${nodesOut}</g>`
+  );
+
+  return { svg, width, height, links };
+}
+
+// Picks where a namespace title sits along the top edge so that edges entering there do not cross it.
+function clusterTitleX(c: CNode, width: number, crossings: Map<number, number[]>): number {
+  if (width === 0) return c.x;
+  const left = c.x - c.w / 2;
+  const half = width / 2;
+  const candidates = [left + GROUP_PAD - 6 + half, c.x, left + c.w - GROUP_PAD + 6 - half];
+  const xs = crossings.get(Math.round(c.y - c.h / 2));
+  if (xs === undefined) return candidates[0];
+  let best = candidates[0];
+  let bestGap = -1;
+  for (const x of candidates) {
+    let gap = Infinity;
+    for (const cx of xs) if (cx > left && cx < left + c.w) gap = Math.min(gap, Math.abs(cx - x) - half);
+    if (gap >= 6) return x;
+    if (gap > bestGap + 0.5) {
+      bestGap = gap;
+      best = x;
+    }
+  }
+  return best;
+}
