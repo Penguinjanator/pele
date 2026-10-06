@@ -120,15 +120,6 @@
 .playground-language + .playground-copy { margin-left: auto; }
 .playground-output-views { margin-right: auto; }
 .playground-panel-header:has(.playground-output-views) { gap: 8px; }
-.playground-preview-theme {
-  flex-shrink: 0;
-
-  .preview-theme-dark { display: none; }
-  &[aria-pressed="true"] {
-    .preview-theme-light { display: none; }
-    .preview-theme-dark { display: block; }
-  }
-}
 @container (max-width: 520px) {
   .playground-panel-header:has(.playground-output-views) h2 { display: none; }
 }
@@ -141,12 +132,11 @@
   }
 }
 
-// One output panel, four views. The copy button belongs to the SVG source and
-// the theme toggle to the rendered previews, so they share a place in the header.
+// One output panel, four views. The copy button belongs to the SVG source.
 #output-panel {
   &:not([data-view="svg"]) > .playground-editor,
   &:not([data-view="svg"]) .playground-copy { display: none; }
-  &[data-view="svg"] :is(.playground-preview, .playground-preview-theme) { display: none; }
+  &[data-view="svg"] .playground-preview { display: none; }
   &[data-view="pele"] .playground-diagram[data-renderer="mermaid"],
   &[data-view="mermaid"] .playground-diagram[data-renderer="pele"] { display: none; }
   &:not([data-view="compare"]) .playground-diagram figcaption { display: none; }
@@ -158,24 +148,16 @@
   grid-auto-rows: minmax(0, 1fr);
   flex: 1;
   min-height: 0;
-  margin: 8px 8px 0;
   overflow: hidden;
-  border-radius: 8px;
-  background: var(--pele-bg);
   color: var(--pele-fg);
 
-  &[data-pele-theme="light"] { color-scheme: light; }
-
-  // The dark preview has no surface of its own: the diagram sits on the panel,
+  // The preview has no surface of its own: the diagram sits on the panel,
   // so its tokens step up one level from the page, as on the home page.
-  &[data-pele-theme="dark"] {
+  &[data-pele-theme] {
     --pele-bg: var(--panel);
     --pele-surface: var(--line);
     --pele-surface-alt: var(--line-hover);
     --pele-border: var(--line-active);
-    margin: 0;
-    border-radius: 0;
-    background: transparent;
   }
 }
 .playground-diagram {

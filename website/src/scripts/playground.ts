@@ -12,10 +12,8 @@ import { setStatus } from './playground-status';
 import { setupPlaygroundTabs } from './playground-tabs';
 
 type View = 'pele' | 'mermaid' | 'svg' | 'compare';
-type PreviewTheme = 'light' | 'dark';
 
 const wrapStorageKey = 'pele:playground:wrap';
-const themeStorageKey = 'pele:playground:preview-theme';
 const renderDelay = 150;
 
 const readStorage = (key: string) => {
@@ -55,12 +53,11 @@ const outputCopy = setupPlaygroundCopy('output', 'Copy SVG', () => output.value)
 
 let initialSource = input.value;
 let view: View = 'pele';
-let previewTheme: PreviewTheme = readStorage(themeStorageKey) === 'light' ? 'light' : 'dark';
 let timer: number | undefined;
 let peleStatus: { text: string; error: boolean } = { text: '', error: false };
 let mermaidStatus = '';
 let mermaidRevision = 0;
-let mermaidRendered: { source: string; theme: PreviewTheme } | undefined;
+let mermaidRendered: { source: string } | undefined;
 
 const formatTime = (milliseconds: number) => milliseconds < 0.05
   ? '< 0.1 ms'
@@ -161,10 +158,10 @@ function renderPele() {
 async function updateMermaid() {
   if (!showsMermaid()) return;
   const source = input.value;
-  if (mermaidRendered?.source === source && mermaidRendered.theme === previewTheme) return;
+  if (mermaidRendered?.source === source) return;
   const revision = ++mermaidRevision;
   if (!source.trim()) {
-    mermaidRendered = { source, theme: previewTheme };
+    mermaidRendered = { source };
     showEmpty(mermaidOutput, 'Enter Mermaid source to render a diagram.');
     mermaidStatus = '';
     mermaidTime.textContent = '';
@@ -176,11 +173,10 @@ async function updateMermaid() {
   mermaidStatus = 'Mermaid rendering…';
   showOutputStatus();
   try {
-    const theme = previewTheme;
-    const result = await renderMermaid(source, theme === 'dark' ? 'dark' : 'default');
-    // A newer edit or theme change supersedes this render.
+    const result = await renderMermaid(source, 'dark');
+    // A newer edit supersedes this render.
     if (revision !== mermaidRevision) return;
-    mermaidRendered = { source, theme };
+    mermaidRendered = { source };
     mermaidOutput.innerHTML = result.svg;
     delete mermaidOutput.dataset.stale;
     const time = formatTime(result.time);
@@ -188,7 +184,7 @@ async function updateMermaid() {
     mermaidTime.textContent = time;
   } catch (error) {
     if (revision !== mermaidRevision) return;
-    mermaidRendered = { source, theme: previewTheme };
+    mermaidRendered = { source };
     showEmpty(mermaidOutput, error instanceof Error ? error.message : 'Mermaid could not render this diagram.');
     mermaidStatus = 'Mermaid could not render this diagram.';
     mermaidTime.textContent = '';
@@ -240,23 +236,6 @@ viewButtons.forEach((button, index) => {
     viewButtons[next].focus();
   });
 });
-
-const themeButton = document.querySelector<HTMLButtonElement>('#preview-theme')!;
-function setPreviewTheme(theme: PreviewTheme) {
-  previewTheme = theme;
-  // Pele's SVG follows the tokens on the preview without rendering again.
-  preview.dataset.peleTheme = theme;
-  const label = `Use ${theme === 'light' ? 'dark' : 'light'} preview`;
-  themeButton.setAttribute('aria-pressed', String(theme === 'light'));
-  themeButton.setAttribute('aria-label', label);
-  themeButton.title = label;
-  void updateMermaid();
-}
-themeButton.addEventListener('click', () => {
-  setPreviewTheme(previewTheme === 'light' ? 'dark' : 'light');
-  writeStorage(themeStorageKey, previewTheme);
-});
-setPreviewTheme(previewTheme);
 
 const wrapButton = document.querySelector<HTMLButtonElement>('#wrap-lines')!;
 wrapButton.setAttribute('aria-checked', String(initialWrap));

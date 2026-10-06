@@ -67,7 +67,7 @@ All options are optional.
 | `fontFamily` | `string` | Font used to measure labels. Set it to the font that `--pele-font` resolves to. The SVG still refers to `var(--pele-font)`. |
 | `fontSize` | `number` | Base font size in pixels. Defaults to `16`. |
 | `idPrefix` | `string` | Prefix for the ids of the accessible title and description. Use a different prefix for each diagram on a page that has them. |
-| `maxWidth` | `boolean` | Lets the SVG scale to the width of its container instead of using a fixed pixel width. |
+| `responsive` | `boolean` | Shrinks the SVG to fit a container narrower than the diagram. It never grows past its natural size. Defaults to `true`. Set `false` for a fixed pixel size. A diagram that sets Mermaid's `useMaxWidth: false` is also fixed. |
 | `padding` | `number` | Space around the diagram in pixels. |
 | `limit` | `number` | Maximum length of `text` in characters. The default is 50,000, as in Mermaid. Longer input throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
 | `icons` | `(name: string) => string \| null \| undefined` | Returns the inner SVG markup for an icon name such as `fa:fa-car`. Without a resolver, the icon's space is left empty. |
@@ -78,7 +78,7 @@ All options are optional.
 | Field | Type | Description |
 | --- | --- | --- |
 | `svg` | `string` | The diagram as an `<svg>` element. |
-| `width` | `number` | Width of the diagram in pixels. |
+| `width` | `number` | Natural width of the diagram in pixels. |
 | `height` | `number` | Height of the diagram in pixels. |
 | `type` | `DiagramType` | The detected diagram type, such as `'flowchart'`. |
 | `links` | `LinkInfo[]` | Links found in the diagram, so an app can attach its own navigation without querying the SVG. |
