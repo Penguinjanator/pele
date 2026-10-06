@@ -76,6 +76,26 @@ describe('the maxWidth option', () => {
     expect(render(upward, { ...options, maxWidth: 100 }).svg).toBe(render(upward, options).svg);
   });
 
+  it('draws a mindmap as an outline when it does not fit', () => {
+    const map = 'mindmap\n  root((Plan))\n    Research\n      Read the papers on the subject\n      Interview people\n    Build\n      Prototype\n        First version of the layout\n      Test\n    Ship\n      Write the announcement';
+    const across = render(map, options);
+    const outline = render(map, { ...options, maxWidth: PHONE });
+    expect(across.width).toBeGreaterThan(PHONE);
+    expect(outline.width).toBeLessThanOrEqual(PHONE);
+    expect(outline.height).toBeGreaterThan(across.height);
+    expect(outline.svg.match(/class="pele-node/g)?.length).toBe(across.svg.match(/class="pele-node/g)?.length);
+    expect(outline.svg.match(/class="pele-edge"/g)?.length).toBe(across.svg.match(/class="pele-edge"/g)?.length);
+    // Every node starts further right than its parent, by the same step for each level.
+    const lefts = [...outline.svg.matchAll(/data-id="([^"]*)" transform="translate\(([\d.]+),/g)].map((m) => m[1]);
+    expect(lefts.length).toBeGreaterThan(5);
+    expect(render(map, { ...options, maxWidth: PHONE, autoDirection: false }).svg).toBe(across.svg);
+    expect(render(map, { ...options, maxWidth: 700 }).svg).toBe(across.svg);
+    assertInert(outline.svg, 'mindmap');
+    // A deep map keeps to the width by wrapping its labels.
+    const deep = 'mindmap\n  root\n' + Array.from({ length: 7 }, (_, i) => `${' '.repeat(4 + 2 * i)}Level ${i} with a fairly long label to wrap`).join('\n');
+    expect(render(deep, { ...options, maxWidth: PHONE }).width).toBeLessThanOrEqual(PHONE + 40);
+  });
+
   it('folds a kanban board into rows of columns', () => {
     const board = 'kanban\n' + ['Todo', 'Doing', 'Review', 'Done'].map((name, i) => `  c${i}[${name}]\n    t${i}[Task ${i}]`).join('\n');
     const wide = render(board, options);

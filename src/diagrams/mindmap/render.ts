@@ -6,6 +6,7 @@ import { classNames, seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { titleRoom, turnToFit } from '../common/fit-width.js';
 import { iconSvg } from '../common/icon.js';
 import type { MindmapModel, MindmapNode } from './db.js';
 
@@ -19,8 +20,31 @@ const BRANCH_GAP_X = 52;
 const BRANCH_GAP_Y = 20;
 const TEXT_PAD = 6;
 const ICON_GAP = 6;
+// Running down, each level is set in by this much, and links leave a node this far from its left edge.
+const INDENT = 28;
+const STEM = 12;
+const BEND = 8;
+const ROW_GAP = 10;
+
+// A label with each line starting at `left`, for an outline, where centered lines would look ragged.
+function leftLabel(label: Label, left: number, cy: number, icons: RenderOptions['icons']): string {
+  if (label.lines.length < 2) return labelSvg(label, left + label.width / 2, cy, ' class="pele-label"', icons);
+  let out = '';
+  for (let k = 0; k < label.lines.length; k++) {
+    const width = label.widths[k];
+    const line: Label = { lines: [label.lines[k]], widths: [width], width, height: label.lineHeight, size: label.size, lineHeight: label.lineHeight };
+    out += labelSvg(line, left + width / 2, cy + (k - (label.lines.length - 1) / 2) * label.lineHeight, ' class="pele-label"', icons);
+  }
+  return out;
+}
 
 export function renderMindmap(model: MindmapModel, config: Config, options: RenderOptions): Rendered {
+  return turnToFit(options, (down) => draw(model, config, options, down));
+}
+
+// `down` draws the map as an outline: the root at the top, and each level set in under its parent.
+// It is far narrower than branches spreading to both sides, and as tall as it needs to be.
+function draw(model: MindmapModel, config: Config, options: RenderOptions, down: boolean): Rendered {
   const size = options.fontSize ?? 16;
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
   const pad = options.padding ?? 8;
@@ -31,6 +55,16 @@ export function renderMindmap(model: MindmapModel, config: Config, options: Rend
 
   const nodes = model.nodes;
   const n = nodes.length;
+  const parent = new Int32Array(n);
+  const depth = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    for (const child of nodes[i].children) {
+      parent[child.id] = i;
+      depth[child.id] = depth[i] + 1;
+    }
+  }
+  // An outline has the width the host gives it, less what its level is set in.
+  const room = down && options.maxWidth !== undefined && options.maxWidth > 0 ? options.maxWidth - 2 * pad : Infinity;
   const labels = new Array<Label>(n);
   const shapes = new Array<string>(n);
   const w = new Float64Array(n);
@@ -41,7 +75,8 @@ export function renderMindmap(model: MindmapModel, config: Config, options: Rend
 
   for (let i = 0; i < n; i++) {
     const node = nodes[i];
-    const label = (labels[i] = layoutLabel(node.descr, true, measurer, size, wrap));
+    const fit = Math.min(wrap, Math.max(72, room - depth[i] * INDENT - 2 * TEXT_PAD - (node.icon ? glyph + ICON_GAP : 0)));
+    const label = (labels[i] = layoutLabel(node.descr, true, measurer, size, fit));
     const tw = label.width + (node.icon ? glyph + (label.width > 0 ? ICON_GAP : 0) : 0);
     const th = Math.max(label.height, Math.round(size * 1.5));
     const shape = (shapes[i] = SHAPES[node.type] || (i === 0 ? ROOT_SHAPE : ''));
@@ -98,9 +133,19 @@ export function renderMindmap(model: MindmapModel, config: Config, options: Rend
   const y = new Float64Array(n);
   const band = new Float64Array(n);
   const side = new Int8Array(n);
-  const parent = new Int32Array(n);
+  // Running down: how far the trunk under each node has been drawn.
+  const trunk = new Float64Array(n);
 
-  if (n > 0) {
+  if (down) {
+    // Nodes are in depth-first order, which is the order of an outline's rows.
+    let row = 0;
+    for (let i = 0; i < n; i++) {
+      if (i > 0 && parent[i] === 0) row += ROW_GAP;
+      x[i] = depth[i] * INDENT + w[i] / 2;
+      y[i] = row;
+      row += h[i] + ROW_GAP;
+    }
+  } else if (n > 0) {
     // The first branches go right and the rest left, split where the two sides are closest in height.
     const branches = nodes[0].children;
     const count = branches.length;
@@ -130,7 +175,6 @@ export function renderMindmap(model: MindmapModel, config: Config, options: Rend
       if (i > 0) y[i] = band[i] + own[i];
       for (const child of nodes[i].children) {
         const c = child.id;
-        parent[c] = i;
         if (i > 0) {
           side[c] = side[i];
           band[c] = band[i] + kids[i] + rel[c];
@@ -171,7 +215,25 @@ export function renderMindmap(model: MindmapModel, config: Config, options: Rend
     maxY = Math.max(maxY, top + h[i]);
 
     if (i === 0 || parent[i] === 0) flush(nodes[k - 1].section);
-    if (i > 0) {
+    if (i > 0 && down) {
+      if (parent[i] === 0) color = seriesColor(node.section ?? 0);
+      const p = parent[i];
+      // The link drops from under its parent and turns in to the node's left. It starts where
+      // the link to the sibling above turned in, so each stretch of a shared trunk has one color.
+      const x1 = x[p] - w[p] / 2 + Math.min(STEM, w[p] / 2);
+      const y1 = trunk[p] || y[p] + (shapes[p] ? h[p] : anchor[p]);
+      trunk[p] = top + anchor[i];
+      const left = cx - w[i] / 2;
+      const x2 = left + (shape ? shapeInset(shape, w[i], h[i], 3) : 0);
+      const y2 = top + anchor[i];
+      const bend = Math.max(0, Math.min(BEND, x2 - x1, y2 - y1));
+      edges +=
+        `<path class="pele-edge" d="M${num(x1)},${num(y1)}V${num(y2 - bend)}Q${num(x1)},${num(y2)} ${num(x1 + bend)},${num(y2)}` +
+        `H${num(shape ? x2 : cx + w[i] / 2)}"/>`;
+      if (!shape && node.children.length > 0) {
+        joints += `<circle class="pele-marker" cx="${num(left + Math.min(STEM, w[i] / 2))}" cy="${num(y2)}" r="2.5" fill="var(--_bg)"/>`;
+      }
+    } else if (i > 0) {
       if (parent[i] === 0) color = seriesColor(node.section ?? 0);
       const p = parent[i];
       const dir = side[i];
@@ -204,13 +266,13 @@ export function renderMindmap(model: MindmapModel, config: Config, options: Rend
         node.nodeId
       )}" transform="translate(${num(cx)},${num(top + h[i] / 2)})">` +
       inner +
-      labelSvg(label, shift, dy[i], ' class="pele-label"', icons) +
+      (down && !shape ? leftLabel(label, shift - label.width / 2, dy[i], icons) : labelSvg(label, shift, dy[i], ' class="pele-label"', icons)) +
       '</g>';
     if (i > 0) body += group;
     else out += group;
   }
 
-  const title = layoutLabel(model.title, false, measurer, size, 4000, Style.Bold);
+  const title = layoutLabel(model.title, false, measurer, size, titleRoom(options), Style.Bold);
   const titleHeight = title.height > 0 ? title.height + 16 : 0;
   const width = Math.max(maxX - minX, title.width);
   const totalWidth = Math.ceil(width + 2 * pad);

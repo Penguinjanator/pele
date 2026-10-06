@@ -132,6 +132,7 @@ Layout changes depend on the diagram type:
 | Sankey, XY chart, treemap, Gantt | Fits the available width |
 | Pie, radar | Fits the available width, with the legend below the chart |
 | Kanban | Columns fold into rows |
+| Mindmap | Switches to an indented outline. See [Direction](#direction). |
 | Quadrant chart, Wardley map | Reduces width while preserving space for labels |
 | Flowchart, class, state, entity relationship, requirement, use case, agentflow, timeline, git graph | Switches to a vertical layout. See [Direction](#direction). |
 | Flowchart, class | Reduces spacing between nodes and around groups |
