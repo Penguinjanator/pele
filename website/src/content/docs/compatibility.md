@@ -82,7 +82,7 @@ A subgraph with no name is accepted. Mermaid 12.1.0 fails on it.
 
 Pele has no limit on the number of edges. Mermaid stops at 500 unless configured otherwise.
 
-Like Mermaid, Pele refuses source longer than 50,000 characters by default. Change this with the [`limit`](/api#renderoptions) option.
+Like Mermaid, Pele refuses source longer than 50,000 characters by default. Change this with the [`limit`](/api#renderoptions) option. Pele also refuses to return an SVG longer than 4,000,000 characters, which Mermaid has no limit for. Change this with the [`outputLimit`](/api#renderoptions) option.
 
 In a very large graph, the longest edges are drawn as single curves that may pass behind nodes, instead of bending around every rank they cross.
 
@@ -93,6 +93,8 @@ Labels are SVG text. Pele does not create HTML labels with `<foreignObject>`, so
 ### Interaction
 
 `click` statements that open a link are supported. `click … call` and `click … callback` statements are parsed, but Pele never executes them. The SVG contains no scripts and no event handlers.
+
+A link may be relative or use `http`, `https`, `mailto`, or `tel`, and an image may be relative or use `http` or `https`. Mermaid allows every scheme except `javascript`, `data`, and `vbscript`. Pele replaces any other address with `about:blank`, unless the app allows its scheme. See [Security](/security#links-and-images).
 
 ### Icons
 

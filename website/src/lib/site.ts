@@ -8,6 +8,7 @@ export const docsPages = [
   { id: 'api', title: 'API' },
   { id: 'theming', title: 'Theming' },
   { id: 'compatibility', title: 'Compatibility' },
+  { id: 'security', title: 'Security' },
 ] as const;
 
 export type DocsPageId = typeof docsPages[number]['id'];

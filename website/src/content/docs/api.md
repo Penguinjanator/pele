@@ -39,6 +39,8 @@ function draw(source: string, element: HTMLElement) {
 }
 ```
 
+An error message quotes the diagram source, so show it as text. [Security](/security) lists what else an app that displays untrusted diagrams should take care of.
+
 Pele is in early development and has not had a stable release. Every diagram type built into Mermaid is implemented. See [Examples](/examples) for what they look like and [Compatibility](/compatibility) for the full list.
 
 ## Loading only what you need
@@ -113,7 +115,10 @@ All options are optional.
 | `now` | `number \| Date` | The time a Gantt chart treats as now, for the today marker and for tasks with no start date. Defaults to the current time. |
 | `padding` | `number` | Space around the diagram in pixels. |
 | `limit` | `number` | Maximum length of `text` in characters. The default is 50,000, as in Mermaid. Longer input throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
-| `icons` | `(name: string) => string \| null \| undefined` | Returns the inner SVG markup for an icon name such as `fa:fa-car`. Without a resolver, the icon's space is left empty. |
+| `outputLimit` | `number` | Maximum length of the SVG in characters. The default is 4,000,000. A larger diagram throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
+| `linkSchemes` | `string[]` | URL schemes a link may use. The default is `['http', 'https', 'mailto', 'tel']`. Relative addresses are always kept. See [Security](/security#links-and-images). |
+| `imageSchemes` | `string[]` | URL schemes an image may use. The default is `['http', 'https']`. |
+| `icons` | `(name: string) => string \| null \| undefined` | Returns the inner SVG markup for an icon name such as `fa:fa-car`. Without a resolver, the icon's space is left empty. The markup is inserted as it is, so return only markup you trust. |
 | `config` | `object` | Mermaid configuration. Frontmatter and directives in the text take precedence over it. |
 
 ### RenderResult
@@ -126,7 +131,7 @@ All options are optional.
 | `type` | `DiagramType` | The detected diagram type, such as `'flowchart'`. |
 | `links` | `LinkInfo[]` | Links found in the diagram, so an app can attach its own navigation without querying the SVG. |
 
-Each `LinkInfo` has the `id` of the node that carries the link, its `href`, and `internal`. A node with a `click` link is reported with `internal: false`. A node with the class `internal-link` is reported with `internal: true` and its label text as the `href`.
+Each `LinkInfo` has the `id` of the node that carries the link, its `href`, and `internal`. A node with a `click` link is reported with `internal: false`. A node with the class `internal-link` is reported with `internal: true` and its label text as the `href`. An address that is [not allowed](/security#links-and-images) is reported as `about:blank`.
 
 ## parse
 
@@ -195,7 +200,7 @@ supports('sequenceDiagram\n  A->>B: Hi');    // false
 | `unsupported-diagram` | The text is not a Mermaid diagram, or its type is one Pele does not draw. |
 | `syntax` | The diagram could not be parsed. `line`, `column`, and `snippet` locate the problem. |
 | `semantic` | The diagram parsed but describes something invalid. |
-| `limit` | The text is longer than the `limit` option, or is nested too deeply to process. |
+| `limit` | The text is longer than the `limit` option, the SVG is longer than the `outputLimit` option, or the diagram is nested too deeply to process. |
 
 ```ts
 try {

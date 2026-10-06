@@ -61,6 +61,10 @@ The SVG has no colors of its own. Set these properties on the diagram or any ele
 
 A diagram follows a change of theme without being rendered again.
 
+## Security
+
+The SVG contains no scripts, event handlers, or HTML, and Pele never runs code from a diagram. Links and images are limited to web addresses by default, and both the source and the output have a size limit. An error message quotes the diagram source, so show it as text. See [SECURITY.md](SECURITY.md) for what an app that displays untrusted diagrams should take care of.
+
 ## Compatibility
 
 Pele targets the syntax of Mermaid 12.1.0. Each of its parsers runs Mermaid's own parser specs for that diagram type and is fuzzed against Mermaid's parser. Layout and visual style are Pele's own.
