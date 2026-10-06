@@ -2,8 +2,7 @@ import { detect, type DiagramType } from './detect.js';
 import { diagrams } from './diagrams/registry.js';
 import { PeleError } from './errors.js';
 import { encodeEntities, preprocess, type Config } from './preprocess.js';
-import type { FlowchartModel } from './diagrams/flowchart/types.js';
-import type { PieModel } from './diagrams/pie/model.js';
+import type { DiagramModel } from './models.js';
 import type { Diagram, RenderOptions, RenderResult } from './types.js';
 
 export { PeleError } from './errors.js';
@@ -11,11 +10,7 @@ export type { PeleErrorCode } from './errors.js';
 export type { DiagramType } from './detect.js';
 export type { TextMeasurer } from './text/measurer.js';
 export type { IconResolver, LinkInfo, RenderOptions, RenderResult } from './types.js';
-export type { FlowchartModel } from './diagrams/flowchart/types.js';
-export type { PieModel } from './diagrams/pie/model.js';
-
-// The union of every implemented diagram's model; narrow it with its `type` field.
-export type DiagramModel = FlowchartModel | PieModel;
+export type * from './models.js';
 
 // Mermaid's default maxTextSize.
 const DEFAULT_LIMIT = 50000;

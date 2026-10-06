@@ -535,15 +535,38 @@ function reduceCrossings(g: Graph, nodes: LNode[]): void {
   const { n, real, maxRank, W, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos, offsets } = g;
   let widest = 0;
   for (let r = 0; r <= maxRank; r++) widest = Math.max(widest, layerStart[r + 1] - layerStart[r]);
+  // With offsets, edges that reach one node at different offsets take separate places along it.
+  const place = offsets ? new Int32Array(EF.length) : undefined;
   let size = 1;
-  while (size < widest) size <<= 1;
+  while (size < (place ? widest + EF.length : widest)) size <<= 1;
   const tree = new Int32Array(2 * size);
   const targets = new Int32Array(EF.length);
 
   const count = (): number => {
     let total = 0;
     for (let r = 0; r < maxRank; r++) {
-      const southLen = layerStart[r + 2] - layerStart[r + 1];
+      let southLen = layerStart[r + 2] - layerStart[r + 1];
+      if (place) {
+        let places = 0;
+        for (let i = layerStart[r + 1]; i < layerStart[r + 2]; i++) {
+          const from = predStart[order[i]];
+          const to = predStart[order[i] + 1];
+          let mixed = false;
+          for (let k = from + 1; k < to; k++) if (ETD[predE[k]] !== ETD[predE[from]]) mixed = true;
+          if (mixed) {
+            const ids = Array.from(predE.subarray(from, to));
+            ids.sort((a, b) => ETD[a] - ETD[b]);
+            for (let k = 0; k < ids.length; k++) {
+              if (k > 0 && ETD[ids[k]] !== ETD[ids[k - 1]]) places++;
+              place[ids[k]] = places;
+            }
+          } else {
+            for (let k = from; k < to; k++) place[predE[k]] = places;
+          }
+          places++;
+        }
+        southLen = places;
+      }
       if (southLen < 2) continue;
       let t = 0;
       for (let i = layerStart[r]; i < layerStart[r + 1]; i++) {
@@ -551,15 +574,15 @@ function reduceCrossings(g: Graph, nodes: LNode[]): void {
         const from = succStart[v];
         const to = succStart[v + 1];
         const t0 = t;
-        for (let k = from; k < to; k++) targets[t++] = pos[ET[succE[k]]];
+        for (let k = from; k < to; k++) targets[t++] = place ? place[succE[k]] : pos[ET[succE[k]]];
         const d = t - t0;
         if (d < 2) continue;
         let mixed = false;
-        if (offsets) for (let k = from + 1; k < to; k++) if (EFD[succE[k]] !== EFD[succE[from]]) mixed = true;
-        if (mixed) {
+        if (place) for (let k = from + 1; k < to; k++) if (EFD[succE[k]] !== EFD[succE[from]]) mixed = true;
+        if (place && mixed) {
           const ids = Array.from(succE.subarray(from, to));
-          ids.sort((a, b) => EFD[a] - EFD[b] || pos[ET[a]] - pos[ET[b]]);
-          for (let k = 0; k < d; k++) targets[t0 + k] = pos[ET[ids[k]]];
+          ids.sort((a, b) => EFD[a] - EFD[b] || place[a] - place[b]);
+          for (let k = 0; k < d; k++) targets[t0 + k] = place[ids[k]];
         } else if (d <= 12) {
           for (let a = t0 + 1; a < t; a++) {
             const item = targets[a];

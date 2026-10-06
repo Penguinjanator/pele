@@ -8,7 +8,7 @@ import { assertWellFormed, elements } from './xml.js';
 const ELEMENTS = new Set(['svg', 'g', 'rect', 'circle', 'ellipse', 'polygon', 'path', 'text', 'tspan', 'a', 'title', 'desc', 'image']);
 const ATTRIBUTES = new Set([
   'xmlns', 'class', 'viewBox', 'width', 'height', 'style', 'font-family', 'font-size', 'font-weight', 'font-style',
-  'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin',
+  'fill', 'fill-opacity', 'opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin',
   'role', 'aria-roledescription', 'aria-labelledby', 'aria-describedby', 'id', 'data-id', 'data-icon', 'data-href',
   'transform', 'x', 'y', 'rx', 'ry', 'r', 'cx', 'cy', 'd', 'points', 'text-anchor', 'xml:space',
   'href', 'target', 'rel', 'preserveAspectRatio',
