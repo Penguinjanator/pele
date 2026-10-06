@@ -3,13 +3,12 @@ import { exampleGroups } from './examples';
 
 const corpora = import.meta.glob<unknown>('../../../tests/corpus/*-docs.json', { eager: true, import: 'default' });
 
-const renders = (source: string): boolean => {
+const draw = (source: string): string | undefined => {
   try {
-    render(source);
-    return true;
+    return render(source).svg;
   } catch {
-    return false;
+    return undefined;
   }
 };
 
-export const groups = exampleGroups(corpora, renders);
+export const groups = exampleGroups(corpora, draw);

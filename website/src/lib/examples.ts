@@ -131,16 +131,25 @@ function overlap(a: string, b: string): number {
   return shared / Math.max(1, Math.min(first.size, second.size));
 }
 
+// Pele paints with theme tokens only, so any other fill or stroke in the SVG is a color the example chose.
+// The source is checked too, for theme variables, which Pele does not draw, and for styles nothing uses.
+const RE_OWN_PAINT = /(?:fill|stroke)(?:="|:)(?!none|currentColor|var\()/;
+const RE_OWN_STYLE = /themeVariables|\b(?:fill|stroke)\s*:/;
+const ownColors = (source: string, svg: string): boolean => RE_OWN_PAINT.test(svg) || RE_OWN_STYLE.test(source);
+
 // Two examples of each type from Mermaid's documentation: the fullest one of moderate size,
-// and a larger one that is not a variation of it.
-export function exampleGroups(corpora: Record<string, unknown>, renders: (source: string) => boolean): ExampleGroup[] {
+// and a larger one that is not a variation of it. Examples that leave their colors to the theme
+// come first; one that sets its own is shown only when the type has no other.
+export function exampleGroups(corpora: Record<string, unknown>, draw: (source: string) => string | undefined): ExampleGroup[] {
   const order = [...TYPE_TITLES.keys()];
   const rank = (type: string): number => (order.includes(type) ? order.indexOf(type) : order.length);
   return Object.entries(corpora)
     .map(([path, corpus]) => {
       const type = path.match(/([\w-]+)-docs\.json$/)?.[1] ?? path;
       const all = Array.isArray(corpus) ? corpus.filter((source): source is string => typeof source === 'string' && source.trim() !== '') : [];
-      const usable = [...new Set(all)].filter(renders);
+      const drawn = [...new Set(all)].map((source) => ({ source, svg: draw(source) })).filter((example) => example.svg !== undefined);
+      const themed = drawn.filter((example) => !ownColors(example.source, example.svg!));
+      const usable = (themed.length > 0 ? themed : drawn).map((example) => example.source);
       const bySize = [...usable].sort((a, b) => b.length - a.length);
       const first = bySize.find((source) => source.length <= FIRST_LIMIT) ?? bySize.at(-1);
       const sources = first === undefined ? [] : [first];
