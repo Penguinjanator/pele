@@ -4,7 +4,9 @@ import type { ArchitectureModel } from './diagrams/architecture/db.js';
 import type { BlockModel } from './diagrams/block/types.js';
 import type { C4Model } from './diagrams/c4/types.js';
 import type { ClassModel } from './diagrams/class/types.js';
+import type { CynefinModel } from './diagrams/cynefin/model.js';
 import type { ErModel } from './diagrams/er/types.js';
+import type { EventModelingModel } from './diagrams/eventmodeling/model.js';
 import type { FlowchartModel } from './diagrams/flowchart/types.js';
 import type { GanttModel } from './diagrams/gantt/types.js';
 import type { GitModel } from './diagrams/git/db.js';
@@ -22,7 +24,9 @@ import type { SankeyModel } from './diagrams/sankey/db.js';
 import type { SequenceModel } from './diagrams/sequence/types.js';
 import type { StateModel } from './diagrams/state/types.js';
 import type { TimelineModel } from './diagrams/timeline/db.js';
+import type { TreeViewModel } from './diagrams/treeview/model.js';
 import type { TreemapModel } from './diagrams/treemap/model.js';
+import type { WardleyModel } from './diagrams/wardley/model.js';
 import type { XyChartModel } from './diagrams/xychart/db.js';
 
 export type {
@@ -51,6 +55,10 @@ export type {
   BlockModel,
   RailroadModel,
   AgentflowModel,
+  TreeViewModel,
+  CynefinModel,
+  WardleyModel,
+  EventModelingModel,
 };
 
 // The union of every implemented diagram's model; narrow it with its `type` field.
@@ -79,4 +87,8 @@ export type DiagramModel =
   | C4Model
   | BlockModel
   | RailroadModel
-  | AgentflowModel;
+  | AgentflowModel
+  | TreeViewModel
+  | CynefinModel
+  | WardleyModel
+  | EventModelingModel;

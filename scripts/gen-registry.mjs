@@ -29,6 +29,10 @@ const DIAGRAMS = [
   ['block', 'block', 'BlockModel', 'types'],
   ['railroad', 'railroad', 'RailroadModel', 'types'],
   ['agentflow', 'agentflow', 'AgentflowModel', 'types'],
+  ['treeView', 'treeview', 'TreeViewModel', 'model'],
+  ['cynefin', 'cynefin', 'CynefinModel', 'model'],
+  ['wardley', 'wardley', 'WardleyModel', 'model'],
+  ['eventmodeling', 'eventmodeling', 'EventModelingModel', 'model'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();

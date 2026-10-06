@@ -5,7 +5,9 @@ import { architecture } from './architecture/index.js';
 import { block } from './block/index.js';
 import { c4 } from './c4/index.js';
 import { classDiagram } from './class/index.js';
+import { cynefin } from './cynefin/index.js';
 import { er } from './er/index.js';
+import { eventmodeling } from './eventmodeling/index.js';
 import { flowchart } from './flowchart/index.js';
 import { gantt } from './gantt/index.js';
 import { gitGraph } from './git/index.js';
@@ -23,7 +25,9 @@ import { sankey } from './sankey/index.js';
 import { sequence } from './sequence/index.js';
 import { state } from './state/index.js';
 import { timeline } from './timeline/index.js';
+import { treeView } from './treeview/index.js';
 import { treemap } from './treemap/index.js';
+import { wardley } from './wardley/index.js';
 import { xychart } from './xychart/index.js';
 
 // Every implemented diagram type. Detection covers more types than this; the rest are unsupported.
@@ -54,6 +58,10 @@ const all = [
   block,
   railroad,
   agentflow,
+  treeView,
+  cynefin,
+  wardley,
+  eventmodeling,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));
