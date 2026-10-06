@@ -12,9 +12,12 @@ export interface TokenType {
   // Start of a construct that needs a closer. When this matches but the whole pattern does not,
   // no closer exists in the rest of the text, so the pattern is not tried again.
   opener?: RegExp;
-  // Regular expression token types tried when this one matches. The first to match more text
-  // replaces it, as Chevrotain's LONGER_ALT does, so a keyword does not split an identifier.
+  // Chevrotain's LONGER_ALT, which Langium sets on a keyword that a terminal can also match:
+  // when this type matches, the others are tried at the same place and the first to match more text wins.
   longer?: readonly TokenType[];
+  // Matches in place of the pattern, for a pattern that would rescan text from every position.
+  // Returns the end of the match, or -1.
+  match?: (src: string, at: number) => number;
 }
 
 export interface Tokens {
@@ -22,6 +25,19 @@ export interface Tokens {
   starts: number[];
   ends: number[];
   src: string;
+}
+
+function matchAt(type: TokenType, k: number, src: string, p: number, dead: Uint8Array): number {
+  if (type.match !== undefined) return type.match(src, p);
+  const pattern = type.pattern;
+  if (typeof pattern === 'string') return src.startsWith(pattern, p) ? p + pattern.length : -1;
+  pattern.lastIndex = p;
+  if (pattern.test(src)) return pattern.lastIndex;
+  if (type.opener !== undefined) {
+    type.opener.lastIndex = p;
+    if (type.opener.test(src)) dead[k] = 1;
+  }
+  return -1;
 }
 
 export function tokenize(src: string, types: readonly TokenType[], diagram: string): Tokens {
@@ -34,42 +50,23 @@ export function tokenize(src: string, types: readonly TokenType[], diagram: stri
   scan: while (p < n) {
     for (let k = 0; k < types.length; k++) {
       if (dead[k]) continue;
-      const type = types[k];
-      const pattern = type.pattern;
-      let end = -1;
-      if (typeof pattern === 'string') {
-        if (src.startsWith(pattern, p)) end = p + pattern.length;
-      } else {
-        pattern.lastIndex = p;
-        if (pattern.test(src)) {
-          end = pattern.lastIndex;
-        } else if (type.opener !== undefined) {
-          type.opener.lastIndex = p;
-          if (type.opener.test(src)) dead[k] = 1;
-        }
-      }
+      let type = types[k];
+      let end = matchAt(type, k, src, p, dead);
       if (end > p) {
-        let kind = k;
         if (type.longer !== undefined) {
           for (const alt of type.longer) {
-            const at = types.indexOf(alt);
-            if (dead[at]) continue;
-            const re = alt.pattern as RegExp;
-            re.lastIndex = p;
-            if (re.test(src)) {
-              if (re.lastIndex > end) {
-                kind = at;
-                end = re.lastIndex;
-                break;
-              }
-            } else if (alt.opener !== undefined) {
-              alt.opener.lastIndex = p;
-              if (alt.opener.test(src)) dead[at] = 1;
+            const a = types.indexOf(alt);
+            const altEnd = dead[a] ? -1 : matchAt(alt, a, src, p, dead);
+            if (altEnd > end) {
+              end = altEnd;
+              type = alt;
+              k = a;
+              break;
             }
           }
         }
-        if (!types[kind].hidden) {
-          kinds.push(kind);
+        if (!type.hidden) {
+          kinds.push(k);
           starts.push(p);
           ends.push(end);
         }

@@ -4,15 +4,19 @@ import type { ClassModel } from './diagrams/class/types.js';
 import type { ErModel } from './diagrams/er/types.js';
 import type { FlowchartModel } from './diagrams/flowchart/types.js';
 import type { GanttModel } from './diagrams/gantt/types.js';
+import type { InfoModel } from './diagrams/info/model.js';
 import type { JourneyModel } from './diagrams/journey/db.js';
 import type { KanbanModel } from './diagrams/kanban/db.js';
 import type { MindmapModel } from './diagrams/mindmap/db.js';
+import type { PacketModel } from './diagrams/packet/model.js';
 import type { PieModel } from './diagrams/pie/model.js';
 import type { QuadrantModel } from './diagrams/quadrant/db.js';
+import type { RadarModel } from './diagrams/radar/model.js';
 import type { RequirementModel } from './diagrams/requirement/types.js';
 import type { SankeyModel } from './diagrams/sankey/db.js';
 import type { StateModel } from './diagrams/state/types.js';
 import type { TimelineModel } from './diagrams/timeline/db.js';
+import type { TreemapModel } from './diagrams/treemap/model.js';
 import type { XyChartModel } from './diagrams/xychart/db.js';
 
 export type {
@@ -31,6 +35,10 @@ export type {
   ArchitectureModel,
   RequirementModel,
   SankeyModel,
+  PacketModel,
+  RadarModel,
+  TreemapModel,
+  InfoModel,
 };
 
 // The union of every implemented diagram's model; narrow it with its `type` field.
@@ -49,4 +57,8 @@ export type DiagramModel =
   | GanttModel
   | ArchitectureModel
   | RequirementModel
-  | SankeyModel;
+  | SankeyModel
+  | PacketModel
+  | RadarModel
+  | TreemapModel
+  | InfoModel;

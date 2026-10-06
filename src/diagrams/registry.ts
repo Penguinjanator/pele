@@ -5,15 +5,19 @@ import { classDiagram } from './class/index.js';
 import { er } from './er/index.js';
 import { flowchart } from './flowchart/index.js';
 import { gantt } from './gantt/index.js';
+import { info } from './info/index.js';
 import { journey } from './journey/index.js';
 import { kanban } from './kanban/index.js';
 import { mindmap } from './mindmap/index.js';
+import { packet } from './packet/index.js';
 import { pie } from './pie/index.js';
 import { quadrantChart } from './quadrant/index.js';
+import { radar } from './radar/index.js';
 import { requirement } from './requirement/index.js';
 import { sankey } from './sankey/index.js';
 import { state } from './state/index.js';
 import { timeline } from './timeline/index.js';
+import { treemap } from './treemap/index.js';
 import { xychart } from './xychart/index.js';
 
 // Every implemented diagram type. Detection covers more types than this; the rest are unsupported.
@@ -34,6 +38,10 @@ const all = [
   architecture,
   requirement,
   sankey,
+  packet,
+  radar,
+  treemap,
+  info,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));

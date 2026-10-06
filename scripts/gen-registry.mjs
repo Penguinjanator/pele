@@ -19,6 +19,10 @@ const DIAGRAMS = [
   ['architecture', 'architecture', 'ArchitectureModel', 'db'],
   ['requirement', 'requirement', 'RequirementModel', 'types'],
   ['sankey', 'sankey', 'SankeyModel', 'db'],
+  ['packet', 'packet', 'PacketModel', 'model'],
+  ['radar', 'radar', 'RadarModel', 'model'],
+  ['treemap', 'treemap', 'TreemapModel', 'model'],
+  ['info', 'info', 'InfoModel', 'model'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();
