@@ -3,6 +3,7 @@ import type { Diagram } from '../types.js';
 import { classDiagram } from './class/index.js';
 import { er } from './er/index.js';
 import { flowchart } from './flowchart/index.js';
+import { gantt } from './gantt/index.js';
 import { journey } from './journey/index.js';
 import { kanban } from './kanban/index.js';
 import { mindmap } from './mindmap/index.js';
@@ -26,6 +27,7 @@ const all = [
   quadrantChart,
   xychart,
   state,
+  gantt,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));

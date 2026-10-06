@@ -14,6 +14,8 @@ export interface RenderOptions {
   limit?: number;
   icons?: IconResolver;
   config?: Config;
+  // The time gantt charts treat as now. Defaults to the current time.
+  now?: number | Date;
 }
 
 export interface LinkInfo {
