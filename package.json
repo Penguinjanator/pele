@@ -16,6 +16,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/pele.js"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/esm/core.js"
+    },
+    "./lazy": {
+      "types": "./dist/lazy.d.ts",
+      "import": "./dist/esm/lazy.js"
+    },
+    "./diagrams/*": {
+      "types": "./dist/entries/*.d.ts",
+      "import": "./dist/esm/diagrams/*.js"
     }
   },
   "files": [
@@ -23,7 +35,10 @@
     "LICENSE",
     "README.md"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/pele.js",
+    "./src/index.ts"
+  ],
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",

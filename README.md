@@ -23,7 +23,22 @@ const { svg } = render(`flowchart TD
 document.querySelector('#diagram').innerHTML = svg;
 ```
 
-`render()` throws a `PeleError` for a syntax error or a diagram type that is not implemented. `supports(text)` tells you in advance whether Pele can render a diagram, so an app can fall back to Mermaid.
+`render()` throws a `PeleError` for a syntax error or for text it cannot draw. `supports(text)` tells you in advance whether Pele can render a diagram, so an app can fall back to Mermaid.
+
+The main entry point includes every diagram type. To load less, register the types you need on the core, or let Pele fetch each type when it is first used:
+
+```ts
+import { register, render } from '@kepano/pele/core';
+import flowchart from '@kepano/pele/diagrams/flowchart';
+
+register(flowchart);
+```
+
+```ts
+import { renderAsync } from '@kepano/pele/lazy';
+
+const { svg } = await renderAsync(text);
+```
 
 ## Theme
 
@@ -48,7 +63,7 @@ A diagram follows a change of theme without being rendered again.
 
 ## Compatibility
 
-Pele targets the syntax of Mermaid 12.1.0. Its flowchart parser runs Mermaid's own parser specs and is fuzzed against the parser generated from Mermaid's grammar. Layout and visual style are Pele's own.
+Pele targets the syntax of Mermaid 12.1.0. Each of its parsers runs Mermaid's own parser specs for that diagram type and is fuzzed against Mermaid's parser. Layout and visual style are Pele's own.
 
 ## Develop
 
