@@ -37,7 +37,8 @@ export function assertInert(svg: string, where: string): void {
         for (const decl of value.split(';')) {
           if (decl.trim() === '') continue;
           const prop = decl.slice(0, decl.indexOf(':')).trim();
-          expect(STYLE_PROPERTIES.has(prop) || prop.startsWith('--_'), `${where}: style property ${prop}`).toBe(true);
+          const sizing = el.name === 'svg' && decl.trim() === 'height:auto';
+          expect(sizing || STYLE_PROPERTIES.has(prop) || prop.startsWith('--_'), `${where}: style property ${prop}`).toBe(true);
         }
       }
       if (['fill', 'stroke', 'font-family', 'rx'].includes(name)) {

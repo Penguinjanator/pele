@@ -156,10 +156,14 @@ describe('flowchart rendering', () => {
     expect(svg).toContain('aria-labelledby="d1-title"');
   });
 
-  it('scales to its container when asked', () => {
-    const { svg, width } = render('flowchart TD\n  A --> B', { ...options, maxWidth: true });
-    expect(svg).toContain('width="100%"');
-    expect(svg).toContain(`max-width:${width}px`);
+  it('shrinks to its container unless told not to', () => {
+    const source = 'flowchart TD\n  A --> B';
+    const { svg, width, height } = render(source, options);
+    expect(svg).toContain(`width="${width}" height="${height}" style="max-width:100%;height:auto;`);
+    expect(render(source, { ...options, responsive: false }).svg).not.toContain('max-width');
+    const fixed = '---\nconfig:\n  flowchart:\n    useMaxWidth: false\n---\n' + source;
+    expect(render(fixed, options).svg).not.toContain('max-width');
+    expect(render(fixed, { ...options, responsive: true }).svg).toContain('max-width:100%');
   });
 
   it('reads front matter and init directives', () => {

@@ -70,6 +70,9 @@ export function parse(text: string, options: { limit?: number } = {}): DiagramMo
 export function render(text: string, options: RenderOptions = {}): RenderResult {
   return guarded(() => {
     const { type, diagram, model, config } = parseSource(text, options.limit, options.config);
-    return { type, ...diagram.render(model, config, options) };
+    const section = config[type === 'xychart' ? 'xyChart' : type];
+    const fixed = typeof section === 'object' && section !== null && !Array.isArray(section) && section.useMaxWidth === false;
+    const responsive = options.responsive ?? !fixed;
+    return { type, ...diagram.render(model, config, { ...options, responsive }) };
   });
 }

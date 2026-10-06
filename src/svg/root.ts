@@ -28,11 +28,9 @@ export function svgDocument(
     head += `<desc id="${prefix}-desc">${esc(acc.accDescr)}</desc>`;
     aria += ` aria-describedby="${prefix}-desc"`;
   }
-  const size = options.maxWidth
-    ? ` width="100%" style="max-width:${width}px;${ROOT_STYLE}"`
-    : ` width="${width}" height="${height}" style="${ROOT_STYLE}"`;
+  const fit = options.responsive === false ? '' : 'max-width:100%;height:auto;';
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-${type}" viewBox="0 0 ${width} ${height}"${size} font-family="${FONT}" font-size="${fontSize}" fill="var(--_fg)" role="graphics-document document" aria-roledescription="${type}"${aria}>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-${type}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="${fit}${ROOT_STYLE}" font-family="${FONT}" font-size="${fontSize}" fill="var(--_fg)" role="graphics-document document" aria-roledescription="${type}"${aria}>` +
     head +
     content +
     '</svg>'

@@ -9,7 +9,7 @@ export interface RenderOptions {
   fontFamily?: string;
   fontSize?: number;
   idPrefix?: string;
-  maxWidth?: boolean;
+  responsive?: boolean;
   padding?: number;
   limit?: number;
   icons?: IconResolver;
