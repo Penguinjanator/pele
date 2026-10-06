@@ -111,6 +111,16 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     cnodes[i].parent = node.parentId !== undefined ? (index.get(node.parentId) ?? -1) : -1;
   });
 
+  const rootDir = direction(db.direction);
+  const flowsSideways = (i: number): boolean => {
+    let dir: Dir | undefined;
+    for (let p = cnodes[i].parent, hops = 0; p >= 0 && dir === undefined && hops < 10000; p = cnodes[p].parent, hops++) {
+      dir = cnodes[p].dir;
+    }
+    dir ??= rootDir;
+    return dir === 'LR' || dir === 'RL';
+  };
+
   const cedges: CEdge[] = [];
   const edgeLabels: Label[] = [];
   const drawn: GraphEdge[] = [];
@@ -120,8 +130,10 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     if (src === undefined || dst === undefined) continue;
     const label = layoutLabel(edge.label, edge.labelType === 'markdown', measurer, edgeSize, wrapWidth);
     if (src === dst) {
+      // A self-loop sits beside the node, across the flow, and the node's box grows to hold it.
       views[src].loops++;
-      cnodes[src].w += 2 * (LOOP + (label.width > 0 ? label.width + 12 : 0));
+      if (flowsSideways(src)) cnodes[src].h += 2 * (LOOP + (label.height > 0 ? label.height + 8 : 0));
+      else cnodes[src].w += 2 * (LOOP + (label.width > 0 ? label.width + 12 : 0));
     }
     drawn.push(edge);
     edgeLabels.push(label);
@@ -137,15 +149,33 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     });
   }
 
-  const layout = compoundLayout(cnodes, cedges, direction(db.direction), {
+  const layout = compoundLayout(cnodes, cedges, rootDir, {
     nodeSep: numberOption(config, 'nodeSpacing', NODE_SEP),
     edgeSep: EDGE_SEP,
     rankSep: numberOption(config, 'rankSpacing', RANK_SEP),
     portSep: 20,
   });
 
-  const width = Math.ceil(layout.width + 2 * pad);
-  const height = Math.ceil(layout.height + 2 * pad);
+  // Move everything once, to make room for the padding and the title.
+  const title = layoutLabel(db.title, false, measurer, size, 4000, Style.Bold);
+  const titleHeight = title.height > 0 ? title.height + 12 : 0;
+  const inner = Math.max(layout.width, title.width);
+  const ox = pad + (inner - layout.width) / 2;
+  const oy = pad + titleHeight;
+  for (const c of cnodes) {
+    c.x += ox;
+    c.y += oy;
+  }
+  for (const e of cedges) {
+    for (let k = 0; k < e.route.length; k += 3) {
+      e.route[k] += ox;
+      e.route[k + 1] += oy;
+    }
+    e.labelX += ox;
+    e.labelY += oy;
+  }
+  const width = Math.ceil(inner + 2 * pad);
+  const height = Math.ceil(layout.height + titleHeight + 2 * pad);
   const links: LinkInfo[] = [];
 
   // Route points by rounded y, to find the edges that cross a cluster's top border.
@@ -170,8 +200,8 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     const view = views[i];
     const c = cnodes[i];
     const node = view.node;
-    const x = c.x + pad;
-    const y = c.y + pad;
+    const x = c.x;
+    const y = c.y;
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
     const id = esc(node.id);
     if (c.isGroup) {
@@ -181,7 +211,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
         `<rect x="${num(x - c.w / 2)}" y="${num(y - c.h / 2)}" width="${num(c.w)}" height="${num(c.h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${
           view.style.shape
         }/>` +
-        labelSvg(view.label, titleX + pad, y - c.h / 2 + 8 + view.label.height / 2, ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`, icons) +
+        labelSvg(view.label, titleX, y - c.h / 2 + 8 + view.label.height / 2, ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`, icons) +
         '</g>';
       continue;
     }
@@ -257,37 +287,43 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
         const view = views[ce.src];
         const k = loopSeen.get(ce.src) ?? 0;
         loopSeen.set(ce.src, k + 1);
-        const x = c.x + pad + view.w / 2;
-        const y = c.y + pad;
-        const spread = Math.min(view.h / 2 - 4, 8 + k * 6);
+        const sideways = flowsSideways(ce.src);
+        const half = (sideways ? view.w : view.h) / 2;
+        const spread = Math.min(half - 4, 8 + k * 6);
         const reach = LOOP + k * 8;
         const trim = markerTrim(endType);
         const len = Math.hypot(reach, spread) || 1;
-        const edx = -reach / len;
-        const edy = -spread / len;
+        // Local frame: `out` points away from the node, `along` runs along its side.
+        const at = (out: number, along: number): string =>
+          sideways
+            ? `${num(c.x + along)},${num(c.y + view.h / 2 + out)}`
+            : `${num(c.x + view.w / 2 + out)},${num(c.y + along)}`;
+        const tx = (reach / len) * trim;
+        const ty = (spread / len) * trim;
+        const ex = sideways ? c.x + spread : c.x + view.w / 2;
+        const ey = sideways ? c.y + view.h / 2 : c.y + spread;
         path = {
-          d: `M${num(x)},${num(y - spread)}C${num(x + reach)},${num(y - spread * 2)} ${num(x + reach)},${num(
-            y + spread * 2
-          )} ${num(x - edx * trim)},${num(y + spread - edy * trim)}`,
-          sx: x,
-          sy: y - spread,
-          sdx: -1,
-          sdy: 0,
-          ex: x,
-          ey: y + spread,
-          edx,
-          edy,
+          d: `M${at(0, -spread)}C${at(reach, -spread * 2)} ${at(reach, spread * 2)} ${at(tx, spread + ty)}`,
+          sx: sideways ? c.x - spread : c.x + view.w / 2,
+          sy: sideways ? c.y + view.h / 2 : c.y - spread,
+          sdx: sideways ? 0 : -1,
+          sdy: sideways ? -1 : 0,
+          ex,
+          ey,
+          edx: sideways ? -spread / len : -reach / len,
+          edy: sideways ? -reach / len : -spread / len,
         };
-        ce.labelX = c.x + view.w / 2 + reach + 4 + ce.labelW / 2;
-        ce.labelY = c.y;
+        if (sideways) {
+          ce.labelX = c.x;
+          ce.labelY = c.y + view.h / 2 + reach + 4 + ce.labelH / 2;
+        } else {
+          ce.labelX = c.x + view.w / 2 + reach + 4 + ce.labelW / 2;
+          ce.labelY = c.y;
+        }
       } else {
         const route = ce.route.slice();
-        for (let k = 0; k < route.length; k += 3) {
-          route[k] += pad;
-          route[k + 1] += pad;
-        }
-        inset(route, 0, views[ce.src], cnodes[ce.src], pad);
-        inset(route, route.length - 3, views[ce.dst], cnodes[ce.dst], pad);
+        inset(route, 0, views[ce.src], cnodes[ce.src]);
+        inset(route, route.length - 3, views[ce.dst], cnodes[ce.dst]);
         path = routePath(route, edge.curve, markerTrim(startType), markerTrim(endType));
       }
       const color = style?.stroke && edge.thickness !== 'invisible' ? esc(style.stroke) : 'var(--_l)';
@@ -303,8 +339,8 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
         '</g>';
     }
     if (label.width > 0) {
-      const x = ce.labelX + pad;
-      const y = ce.labelY + pad;
+      const x = ce.labelX;
+      const y = ce.labelY;
       const w = label.width + 8;
       const h = label.height;
       labelsOut +=
@@ -322,7 +358,8 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     size,
     options,
     db,
-    (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+      (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${edgeSize}">${labelsOut}</g>` : '') +
       `<g class="pele-nodes">${nodesOut}</g>`
@@ -354,24 +391,18 @@ function clusterTitleX(c: CNode, width: number, crossings: Map<number, number[]>
   return best;
 }
 
-// Moves a route end from the node's bounding box onto its outline.
-function inset(route: number[], at: number, view: NodeView, c: CNode, pad: number): void {
+// Moves a route end from the node's layout box onto its outline.
+function inset(route: number[], at: number, view: NodeView, c: CNode): void {
   if (c.isGroup) return;
-  const x = route[at];
-  const y = route[at + 1];
-  const cx = c.x + pad;
-  const cy = c.y + pad;
-  const dx = x - cx;
-  const dy = y - cy;
-  let side: number;
-  if (Math.abs(Math.abs(dy) - view.h / 2) < 0.5) side = dy < 0 ? 0 : 2;
-  else if (Math.abs(Math.abs(dx) - c.w / 2) < 0.5) side = dx < 0 ? 3 : 1;
-  else return;
-  let amount = shapeInset(view.shape, view.w, view.h, side);
-  if (side & 1) amount += (c.w - view.w) / 2;
-  if (amount === 0) return;
-  if (side === 0) route[at + 1] += amount;
-  else if (side === 2) route[at + 1] -= amount;
-  else if (side === 3) route[at] += amount;
-  else route[at] -= amount;
+  const dx = route[at] - c.x;
+  const dy = route[at + 1] - c.y;
+  if (Math.abs(Math.abs(dy) - c.h / 2) < 0.5) {
+    const side = dy < 0 ? 0 : 2;
+    const amount = shapeInset(view.shape, view.w, view.h, side) + (c.h - view.h) / 2;
+    route[at + 1] += side === 0 ? amount : -amount;
+  } else if (Math.abs(Math.abs(dx) - c.w / 2) < 0.5) {
+    const side = dx < 0 ? 3 : 1;
+    const amount = shapeInset(view.shape, view.w, view.h, side) + (c.w - view.w) / 2;
+    route[at] += side === 3 ? amount : -amount;
+  }
 }
