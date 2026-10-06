@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -14,10 +15,16 @@ execFileSync('tar', ['-xzf', tarball, '-C', installed, '--strip-components=1']);
 
 const pkg = JSON.parse(readFileSync(join(installed, 'package.json'), 'utf8'));
 for (const [name, entry] of Object.entries(pkg.exports)) {
-  for (const file of Object.values(entry)) {
+  for (const file of typeof entry === 'string' ? [entry] : Object.values(entry)) {
     const path = join(installed, file.replace('*', 'flowchart'));
     if (!existsSync(path)) throw new Error(`${name} points at ${file}, which is not in the package`);
   }
+}
+
+// Bundlers and build scripts find a package with require.resolve, which does not use `import`.
+const resolver = createRequire(join(root, 'check.cjs'));
+for (const name of Object.keys(pkg.exports)) {
+  resolver.resolve(join('pele', name.replace('*', 'flowchart')));
 }
 
 writeFileSync(

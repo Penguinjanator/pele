@@ -25,20 +25,25 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/pele.js"
+      "import": "./dist/pele.js",
+      "default": "./dist/pele.js"
     },
     "./core": {
       "types": "./dist/core.d.ts",
-      "import": "./dist/esm/core.js"
+      "import": "./dist/esm/core.js",
+      "default": "./dist/esm/core.js"
     },
     "./lazy": {
       "types": "./dist/lazy.d.ts",
-      "import": "./dist/esm/lazy.js"
+      "import": "./dist/esm/lazy.js",
+      "default": "./dist/esm/lazy.js"
     },
     "./diagrams/*": {
       "types": "./dist/entries/*.d.ts",
-      "import": "./dist/esm/diagrams/*.js"
-    }
+      "import": "./dist/esm/diagrams/*.js",
+      "default": "./dist/esm/diagrams/*.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
