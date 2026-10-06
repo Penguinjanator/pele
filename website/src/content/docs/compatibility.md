@@ -14,16 +14,23 @@ Pele targets the syntax of Mermaid 12.1.0. Newer Mermaid syntax is adopted when 
 | Type | Keywords | Status |
 | --- | --- | --- |
 | Flowchart | `graph`, `flowchart` | Implemented |
-| Other Mermaid diagram types | `sequenceDiagram`, `classDiagram`, `stateDiagram`, `erDiagram`, and the rest | Planned |
+| Class | `classDiagram` | Implemented |
+| Entity relationship | `erDiagram` | Implemented |
+| Pie | `pie` | Implemented |
+| Mindmap | `mindmap` | Implemented |
+| Kanban | `kanban` | Implemented |
+| Timeline | `timeline` | Implemented |
+| User journey | `journey` | Implemented |
+| Other Mermaid diagram types | `sequenceDiagram`, `stateDiagram`, `gantt`, and the rest | Planned |
 
 For a type that is not implemented, [`supports()`](/api#supports) returns `false` and [`render()`](/api#render) throws a `PeleError` with the code `unsupported-diagram`. An app can use this to fall back to Mermaid for those diagrams.
 
 ## Syntax
 
-Pele has its own flowchart parser. It is tested in two ways.
+Pele has its own parser for each diagram type. Each one is tested in two ways.
 
-- It runs Mermaid's own flowchart parser spec suite. Two cases are skipped because they test details of Mermaid's implementation, not the syntax. The skipped cases are listed in the repository.
-- It is fuzzed against the parser generated from Mermaid's grammar, comparing what the two parsers accept and the diagrams they produce.
+- It runs Mermaid's own parser spec suite for that type. A few cases are skipped because they test details of Mermaid's implementation, not the syntax. The skipped cases are listed in the repository.
+- It is fuzzed against Mermaid's parser for that type, comparing what the two parsers accept and the diagrams they produce.
 
 Frontmatter, `%%{init}%%` directives, comments, and accessibility titles and descriptions are parsed as Mermaid parses them.
 
@@ -34,6 +41,10 @@ Frontmatter, `%%{init}%%` directives, comments, and accessibility titles and des
 Pele has its own layout engine and its own visual style. A diagram has the same nodes, connections, and labels as in Mermaid, but positions, sizes, spacing, and routing differ. Output is not pixel-identical to Mermaid's, and is not meant to be.
 
 Colors come from [theme tokens](/theming). Mermaid's named themes are not used.
+
+### Sizing
+
+A diagram is drawn at its natural size and shrinks to fit a narrower container, as in Mermaid. Unlike Mermaid, the SVG keeps its `width` and `height` attributes, so it also has a size when used as an image. Mermaid's `useMaxWidth: false` setting gives a fixed size, as does the [`responsive`](/api#renderoptions) option.
 
 ### Subgraphs
 
@@ -63,4 +74,4 @@ An icon reference in a label, such as `fa:fa-car`, reserves space for the icon. 
 
 ## Reporting differences
 
-If Mermaid accepts a flowchart that Pele rejects, or Pele parses it differently, that is a bug. Compare the two in the [Playground](/playground) and [report it](https://github.com/kepano/pele/issues).
+If Mermaid accepts a diagram that Pele rejects, or Pele parses it differently, that is a bug. Compare the two in the [Playground](/playground) and [report it](https://github.com/kepano/pele/issues).
