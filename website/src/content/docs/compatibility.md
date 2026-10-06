@@ -35,6 +35,16 @@ Pele has its own layout engine and its own visual style. A diagram has the same 
 
 Colors come from [theme tokens](/theming). Mermaid's named themes are not used.
 
+### Subgraphs
+
+A `direction` statement inside a subgraph always applies. In Mermaid it is ignored when one of the subgraph's nodes is linked to a node outside it. A subgraph with no `direction` statement uses the direction of the graph around it.
+
+A subgraph with no name is accepted. Mermaid 12.1.0 fails on it.
+
+### Limits
+
+Pele has no limit on the number of edges. Mermaid stops at 500 unless configured otherwise. Use the [`limit`](/api#renderoptions) option to cap the length of the source.
+
 ### Labels
 
 Labels are SVG text. Pele does not create HTML labels with `<foreignObject>`, so a label cannot contain arbitrary HTML. Line breaks, bold, and italic are supported, both in Markdown strings and with the `<br>`, `<b>`, and `<i>` tags. Other HTML tags in a label are removed and their text is kept.
