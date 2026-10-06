@@ -1,6 +1,6 @@
 import { PeleError } from '../../errors.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, marker, markerTrim } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape } from '../../svg/shapes.js';
@@ -127,7 +127,7 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
     if (startArrow && careful) taken.push(r.sx - ARROW, r.sy - ARROW, r.sx + ARROW, r.sy + ARROW);
     if (endArrow && careful) taken.push(r.ex - ARROW, r.ey - ARROW, r.ex + ARROW, r.ey + ARROW);
     edgesOut +=
-      `<g class="pele-edge" data-id="${esc(rel.from + '-' + rel.to)}"${style.line}><path d="${r.d}"/>` +
+      `<g class="pele-edge" data-id="${escText(rel.from + '-' + rel.to)}"${style.line}><path d="${r.d}"/>` +
       (startArrow ? marker('arrow_point', r.sx, r.sy, r.sdx, r.sdy, color) : '') +
       (endArrow ? marker('arrow_point', r.ex, r.ey, r.edx, r.edy, color) : '') +
       '</g>';
@@ -197,8 +197,8 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
     if (careful) taken.push(cx - lw / 2, top, cx + lw / 2, top + lh);
     grow(cx - lw / 2, top, cx + lw / 2, top + lh);
     labelsOut +=
-      `<g class="pele-edge-label" data-id="${esc(id)}">` +
-      (rel.descr ? `<title>${esc(rel.descr)}</title>` : '') +
+      `<g class="pele-edge-label" data-id="${escText(id)}">` +
+      (rel.descr ? `<title>${escText(rel.descr)}</title>` : '') +
       `<rect x="${num(cx - lw / 2)}" y="${num(top)}" width="${num(lw)}" height="${num(lh)}" rx="3" fill="var(--_bg)"/>` +
       link(
         labelSvg(label, cx, top + label.height / 2, style.text) +
@@ -224,7 +224,7 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
       y += group.labels[1].height;
       text += leftLabel(group.labels[2], x, y, ` class="pele-c4-descr" font-size="${small}" fill="var(--_m)"${style.text}`);
       clusters +=
-        `<g class="pele-cluster pele-c4-${boundary.nodeType ? 'node' : 'boundary'}" data-id="${esc(boundary.alias)}">` +
+        `<g class="pele-cluster pele-c4-${boundary.nodeType ? 'node' : 'boundary'}" data-id="${escText(boundary.alias)}">` +
         `<rect x="${num(group.x)}" y="${num(group.y)}" width="${num(group.w)}" height="${num(group.h)}" rx="${RADIUS}" fill="none" stroke="var(--_b)"${
           boundary.nodeType ? '' : ' stroke-dasharray="6 4"'
         }${style.shape}/>` +
@@ -249,7 +249,7 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
       y += labels[2].height + 4;
       text += labelSvg(labels[3], dx, y + labels[3].height / 2, ` class="pele-c4-descr" font-size="${small}"${style.text}`);
       nodesOut +=
-        `<g class="pele-node pele-shape-${form} pele-c4-${shape.kind}${external ? ' pele-c4-external' : ''}" data-id="${esc(
+        `<g class="pele-node pele-shape-${form} pele-c4-${shape.kind}${external ? ' pele-c4-external' : ''}" data-id="${escText(
           shape.alias
         )}" transform="translate(${num(node.x + w / 2)},${num(node.y + h / 2)})">` +
         link(

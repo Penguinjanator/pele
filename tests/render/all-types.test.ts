@@ -112,6 +112,68 @@ describe('every diagram type', () => {
     }
   });
 
+  it('turns entity codes into characters wherever text is read as text', { timeout: 300000 }, () => {
+    // A value that is checked before it is written (a style, a colour, a URL) keeps a code as it is.
+    const checked = new Set(['style', 'fill', 'stroke', 'href']);
+    let rendered = 0;
+    for (const { name, sources } of corpora) {
+      for (const src of sources) {
+        const variants = [
+          src.replace(/"([^"\n]*)"/g, (_, t: string) => `"${t}#35;"`),
+          src.replace(/\[([^\]\n[]*)\]/g, (_, t: string) => `[${t}#35;]`),
+          src.replace(/(: *)([^\n:]+)$/gm, (_, a: string, t: string) => `${a}${t}#35;`),
+          src.replace(/^(\s*)([A-Za-z][\w ]*)$/gm, (_, a: string, t: string) => `${a}${t}#35;`),
+          src.replace(/\b([A-Za-z]\w+)\b(?=\s*(-->|--|->|:|\(|\[|\{))/g, (_, t: string) => `${t}#35;`),
+        ];
+        for (const variant of variants) {
+          if (variant === src) continue;
+          let result: ReturnType<typeof render>;
+          try {
+            result = render(variant, options);
+          } catch (error) {
+            if (error instanceof PeleError) continue;
+            throw error;
+          }
+          rendered++;
+          const at = where(name, variant);
+          for (const m of result.svg.matchAll(/>[^<]*(?:\ufb02\u00b0|\u00b6\u00df)[^<]*</g)) expect.fail(`${at}: text ${m[0].slice(0, 60)}`);
+          for (const m of result.svg.matchAll(/ ([\w:-]+)="[^"]*(?:\ufb02\u00b0|\u00b6\u00df)[^"]*"/g)) {
+            expect(checked.has(m[1]), `${at}: attribute ${m[0].slice(0, 60)}`).toBe(true);
+          }
+          for (const link of result.links) expect(link.id, at).not.toMatch(/\ufb02\u00b0|\u00b6\u00df/);
+          assertInert(result.svg, at);
+        }
+      }
+    }
+    expect(rendered).toBeGreaterThan(600);
+  });
+
+  it('shows an entity code the same way in a label, a tooltip, an id and an accessible name', () => {
+    const flow = render('flowchart LR\n  accTitle: Issue #35; list\n  A["Issue #35; fixed"]\n  click A "https://example.com" "Issue #35; fixed"', options);
+    expect(flow.svg).toContain('>Issue # fixed<');
+    expect(flow.svg).toContain('<title>Issue # fixed</title>');
+    expect(flow.svg).toContain('>Issue # list</title>');
+    const pie = render('pie\n  "Issue #35;": 1\n  "A #amp; B": 2', options);
+    expect(pie.svg).toContain('data-id="Issue #"');
+    expect(pie.svg).toContain('data-id="A &amp; B"');
+    const quoted = render('pie\n  "#34; onload=#34;alert(1)": 1', options);
+    expect(quoted.svg).toContain('data-id="&quot; onload=&quot;alert(1)"');
+    assertInert(quoted.svg, 'quoted id');
+  });
+
+  it('gives the icon resolver and the returned links the names as written', () => {
+    const asked: string[] = [];
+    const icons = (icon: string): string => {
+      asked.push(icon);
+      return '';
+    };
+    const { svg, links } = render('flowchart LR\n  A@{ icon: "fa:user#35;", label: "x" }\n  B --> A\n  click A "https://example.com"', { ...options, icons });
+    expect(asked).toContain('fa:user#');
+    expect(svg).toContain('data-icon="fa:user#"');
+    expect(links.map((link) => link.id)).toEqual(['A']);
+    expect(svg).not.toMatch(/\ufb02\u00b0|\u00b6\u00df/);
+  });
+
   it('survives hostile values for every config key a renderer reads', { timeout: 300000 }, () => {
     const values: unknown[] = [1e308, -1e308, 1e9, -1, 0, 0.5, NaN, Infinity, '"><script>alert(1)</script>', 'url(javascript:alert(1))', true, null, [], { a: 1 }, '__proto__'];
     const literals = (dir: string): string[] => {

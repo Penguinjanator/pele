@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle, seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -141,7 +141,7 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
       text: label(point.text, pointSize, 200),
     });
     circles.push(
-      `<circle class="pele-point${classNames(point.className)}" data-id="${esc(point.text.text)}" cx="${num(cx)}" cy="${num(cy)}" r="${num(r)}"${
+      `<circle class="pele-point${classNames(point.className)}" data-id="${escText(point.text.text)}" cx="${num(cx)}" cy="${num(cy)}" r="${num(r)}"${
         strokeWidth && !strokeColor ? ` stroke="${fill}"` : ''
       }${resolveStyle(styles).shape}/>`
     );

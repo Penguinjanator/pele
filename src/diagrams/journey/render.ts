@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, seriesColor } from '../../svg/theme.js';
 import type { Label } from '../../text/label.js';
@@ -149,10 +149,10 @@ export function renderJourney(model: JourneyModel, _config: Config, options: Ren
       people.forEach((name, k) => {
         dots +=
           `<circle class="pele-actor" cx="${num(cx + (k - (people.length - 1) / 2) * step)}" cy="${num(cardsY + cardH - PAD_Y - DOT)}" r="${DOT}" fill="${seriesColor(actor.get(name) ?? 0)}" stroke="var(--_s)">` +
-          `<title>${esc(name)}</title></circle>`;
+          `<title>${escText(name)}</title></circle>`;
       });
       cards.push(
-        `<g class="pele-node pele-task" data-id="${esc(task.task.trim())}">` +
+        `<g class="pele-node pele-task" data-id="${escText(task.task.trim())}">` +
           `<rect x="${num(x)}" y="${num(cardsY)}" width="${num(cardW)}" height="${num(cardH)}" rx="${RADIUS}" fill="var(--_s)" stroke="var(--_b)"/>` +
           labelSvg(labels[i], cx, cardsY + PAD_Y + textH / 2, ` font-size="${small}"`) +
           dots +
@@ -173,7 +173,7 @@ export function renderJourney(model: JourneyModel, _config: Config, options: Ren
       const x = left + run.start * pitch;
       const w = run.count * pitch - GAP;
       body +=
-        `<g class="pele-cluster pele-section" data-id="${esc(tasks[run.start].section.trim())}">` +
+        `<g class="pele-cluster pele-section" data-id="${escText(tasks[run.start].section.trim())}">` +
         `<rect x="${num(x)}" y="${num(top)}" width="${num(w)}" height="${num(bandH)}" rx="${RADIUS}" fill="var(--_a)"/>` +
         labelSvg(run.label, x + w / 2, top + bandH / 2, ` font-size="${small}" font-weight="bold"`) +
         members +
@@ -188,7 +188,7 @@ export function renderJourney(model: JourneyModel, _config: Config, options: Ren
       for (const item of legend) {
         const cy = y0 + item.y + item.h / 2;
         items +=
-          `<g class="pele-legend-item" data-id="${esc(item.name)}">` +
+          `<g class="pele-legend-item" data-id="${escText(item.name)}">` +
           `<circle cx="${num(x0 + item.x + DOT)}" cy="${num(cy)}" r="${DOT}" fill="${seriesColor(actor.get(item.name) ?? 0)}"/>` +
           labelSvg(item.label, x0 + item.x + 2 * DOT + 6 + item.label.width / 2, cy, '') +
           '</g>';

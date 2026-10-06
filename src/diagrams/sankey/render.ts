@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { resolveStyle, seriesColor } from '../../svg/theme.js';
 import { layoutLabel } from '../../text/label.js';
@@ -91,7 +91,7 @@ export function renderSankey(model: SankeyModel, config: Config, options: Render
   nodes.forEach((node, i) => {
     const id = model.nodes[i].id;
     const height = Math.max(node.height, 1);
-    nodesOut += `<rect class="pele-sankey-node" data-id="${esc(id)}" x="${num(node.x)}" y="${num(node.y)}" width="${num(
+    nodesOut += `<rect class="pele-sankey-node" data-id="${escText(id)}" x="${num(node.x)}" y="${num(node.y)}" width="${num(
       nodeWidth
     )}" height="${num(height)}" rx="${num(Math.min(2, height / 2))}" fill="${seriesColor(i)}"${nodeStyle(i)}/>`;
 
@@ -107,7 +107,7 @@ export function renderSankey(model: SankeyModel, config: Config, options: Render
     const position = ` x="${num(x)}" y="${num(y + small * 0.35)}" text-anchor="${after ? 'start' : 'end'}"`;
     const text = esc(id) + (value ? ` <tspan class="pele-sankey-value" fill="var(--_m)">${esc(value)}</tspan>` : '');
     labelsOut +=
-      `<g class="pele-label" data-id="${esc(id)}">` +
+      `<g class="pele-label" data-id="${escText(id)}">` +
       (outlined
         ? `<text${position} fill="none" stroke="var(--_bg)" stroke-width="3" stroke-linejoin="round">${esc(id)}${
             value ? ' ' + esc(value) : ''
@@ -125,8 +125,8 @@ export function renderSankey(model: SankeyModel, config: Config, options: Render
     const x0 = nodes[link.source].x + nodeWidth;
     const x1 = nodes[link.target].x;
     const mid = num((x0 + x1) / 2);
-    const from = esc(model.nodes[link.source].id);
-    const to = esc(model.nodes[link.target].id);
+    const from = escText(model.nodes[link.source].id);
+    const to = escText(model.nodes[link.target].id);
     linksOut +=
       `<path class="pele-sankey-link" data-id="${from}-&gt;${to}" d="M${num(x0)},${num(link.sourceY - half)}C${mid},${num(
         link.sourceY - half
@@ -135,7 +135,7 @@ export function renderSankey(model: SankeyModel, config: Config, options: Render
       )}C${mid},${num(link.targetY + half)} ${mid},${num(link.sourceY + half)} ${num(x0)},${num(
         link.sourceY + half
       )}Z" fill="${seriesColor(end)}"${fixed || nodeStyle(end)}>` +
-      `<title>${from} → ${to}: ${esc(prefix)}${rounded(link.value)}${esc(suffix)}</title></path>`;
+      `<title>${from} → ${to}: ${escText(prefix)}${rounded(link.value)}${escText(suffix)}</title></path>`;
   }
 
   const title = layoutLabel(model.title, false, measurer, size, 4000, Style.Bold);

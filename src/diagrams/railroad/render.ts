@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { FONT_MONO, RADIUS } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
@@ -306,7 +306,7 @@ export function renderRailroad(model: RailroadModel, config: Config, options: Re
           if (box.kind === Kind.Terminal) {
             nodes += `<g class="pele-node pele-terminal">${shape} rx="${num(boxTop)}" fill="var(--_s)" stroke="var(--_b)"${stroke}/>${label} font-family="${FONT_MONO}">${esc(text)}</text></g>`;
           } else if (box.kind === Kind.NonTerminal) {
-            nodes += `<g class="pele-node pele-nonterminal" data-id="${esc(box.id)}">${shape} rx="${RADIUS}" fill="var(--_bg)" stroke="var(--_b)"${stroke}/>${label}>${esc(text)}</text></g>`;
+            nodes += `<g class="pele-node pele-nonterminal" data-id="${escText(box.id)}">${shape} rx="${RADIUS}" fill="var(--_bg)" stroke="var(--_b)"${stroke}/>${label}>${esc(text)}</text></g>`;
           } else {
             nodes +=
               `<g class="pele-node pele-special">${shape} rx="${RADIUS}" fill="var(--_bg)" stroke="var(--_b)" stroke-dasharray="4 3"${stroke}/>` +
@@ -340,7 +340,7 @@ export function renderRailroad(model: RailroadModel, config: Config, options: Re
           `<circle class="pele-marker pele-end" cx="${num(end + radius)}" cy="${num(baseline)}" r="${num(radius)}" fill="var(--_l)"/>`
         : '';
     rules +=
-      `<g class="pele-rule" data-id="${esc(rule.name)}">` +
+      `<g class="pele-rule" data-id="${escText(rule.name)}">` +
       `<text class="pele-rule-name" x="${num(pad)}" y="${num(top + headHeight / 2 + headSize * 0.35)}" font-size="${num(headSize)}" font-weight="bold" text-anchor="start">${esc(name)}</text>` +
       `<path class="pele-edge pele-track" d="${track}" fill="none" stroke="var(--_l)"${stroke}/>` +
       (arrows ? `<path class="pele-marker" d="${arrows}" fill="var(--_l)"/>` : '') +

@@ -1,6 +1,6 @@
 import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
@@ -282,7 +282,7 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
     const x = c.x;
     const y = c.y;
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
-    const id = esc(node.id);
+    const id = escText(node.id);
     if (c.isGroup) {
       const titleX = clusterTitleX(c, view.label.width, crossings, GROUP_PAD);
       clusters +=
@@ -336,7 +336,7 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
       links.push({ id: node.id, href: name, internal: true });
     }
     let body = shape + text;
-    if (node.tooltip) body = `<title>${esc(node.tooltip)}</title>` + body;
+    if (node.tooltip) body = `<title>${escText(node.tooltip)}</title>` + body;
     if (node.link) {
       const target = node.linkTarget ? ` target="${esc(node.linkTarget)}"` : '';
       body = `<a href="${esc(node.link)}"${target} rel="noopener">${body}</a>`;
@@ -359,12 +359,12 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
     const kind = edge.thickness === 'dotted' ? 'reference' : endType === 'arrow_cross' ? 'failure' : 'sequence';
     const classes = classNames(edge.classes.replace(/edge-thickness-normal|edge-pattern-solid|flowchart-link/g, ''));
     edgesOut +=
-      `<g class="pele-edge pele-edge-${kind}${classes}" data-id="${esc(edge.id)}"${style?.line ?? ''}>` +
+      `<g class="pele-edge pele-edge-${kind}${classes}" data-id="${escText(edge.id)}"${style?.line ?? ''}>` +
       `<path d="${path.d}"${edge.thickness === 'dotted' ? ' stroke-dasharray="3 4"' : ''}/>` +
       marker(endType, path.ex, path.ey, path.edx, path.edy, color) +
       '</g>';
     if (label.width > 0) {
-      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, style?.text ?? '', icons);
+      labelsOut += edgeLabelSvg(edge.id, label, x, y, style?.text ?? '', icons);
     }
   };
 

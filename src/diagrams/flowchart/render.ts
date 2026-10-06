@@ -1,7 +1,7 @@
 import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode, type CompoundResult, type Dir } from '../../layout/compound.js';
 import type { LayeredOptions } from '../../layout/layered.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
@@ -193,7 +193,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     const x = c.x;
     const y = c.y;
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
-    const id = esc(node.id);
+    const id = escText(node.id);
     if (c.isGroup && variant?.drawGroup && c.parent < 0) {
       clusters += variant.drawGroup(c, view.label, view.style, classes, id, rootDir, icons);
       continue;
@@ -234,7 +234,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
       const glyph = box * 0.6;
       inner =
         frame +
-        `<svg class="pele-icon" data-icon="${esc(node.icon)}" x="${num(-glyph / 2)}" y="${num(
+        `<svg class="pele-icon" data-icon="${escText(node.icon)}" x="${num(-glyph / 2)}" y="${num(
           top + (box - glyph) / 2
         )}" width="${num(glyph)}" height="${num(glyph)}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${
           icons?.(node.icon) ?? ''
@@ -254,7 +254,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
       links.push({ id: node.id, href: name, internal: true });
     }
     let body = inner + text;
-    if (node.tooltip) body = `<title>${esc(node.tooltip)}</title>` + body;
+    if (node.tooltip) body = `<title>${escText(node.tooltip)}</title>` + body;
     if (node.link) {
       const target = node.linkTarget ? ` target="${esc(node.linkTarget)}"` : '';
       body = `<a href="${esc(node.link)}"${target} rel="noopener">${body}</a>`;
@@ -294,7 +294,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
       else if (edge.thickness === 'dotted') attrs += ' stroke-dasharray="3 4"';
       const classes = classNames(edge.classes.replace(/edge-thickness-normal|edge-pattern-solid|flowchart-link/g, ''));
       edgesOut +=
-        `<g class="pele-edge${classes}" data-id="${esc(edge.id)}"${style?.line ?? ''}>` +
+        `<g class="pele-edge${classes}" data-id="${escText(edge.id)}"${style?.line ?? ''}>` +
         `<path d="${path.d}"${attrs}/>` +
         marker(startType, path.sx, path.sy, path.sdx, path.sdy, color) +
         marker(endType, path.ex, path.ey, path.edx, path.edy, color) +
@@ -303,7 +303,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     if (label.width > 0) {
       const x = ce.labelX;
       const y = ce.labelY;
-      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, style?.text ?? '', icons);
+      labelsOut += edgeLabelSvg(edge.id, label, x, y, style?.text ?? '', icons);
     }
   }
 

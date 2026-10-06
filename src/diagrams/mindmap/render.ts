@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape, shapeInset, shapeSize } from '../../svg/shapes.js';
 import { classNames, seriesColor } from '../../svg/theme.js';
@@ -200,7 +200,7 @@ export function renderMindmap(model: MindmapModel, config: Config, options: Rend
       inner += iconSvg(node.icon, -shift - label.width / 2, dy[i] - glyph / 2, glyph, icons);
     }
     const group =
-      `<g class="pele-node pele-shape-${shape || 'text'}${i > 0 ? '' : ' pele-root'}${classNames(node.class ?? '')}" data-id="${esc(
+      `<g class="pele-node pele-shape-${shape || 'text'}${i > 0 ? '' : ' pele-root'}${classNames(node.class ?? '')}" data-id="${escText(
         node.nodeId
       )}" transform="translate(${num(cx)},${num(top + h[i] / 2)})">` +
       inner +

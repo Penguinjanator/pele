@@ -1,3 +1,4 @@
+import { decodeEntities } from '../text/entities.js';
 import { Style } from '../text/measurer.js';
 import type { Label } from '../text/label.js';
 import type { IconResolver } from '../types.js';
@@ -11,6 +12,14 @@ const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"
 // Escapes text for XML and drops the control characters XML does not allow.
 export function esc(text: string): string {
   return RE_NEEDS_ESC.test(text) ? text.replace(RE_ESC, (c) => ESC[c] ?? '') : text;
+}
+
+// Escapes text that is only ever read as text: a tooltip, an accessible name, a `data-id`. Entity
+// codes are turned into their characters first. A value that was checked before it is written,
+// such as a style, a colour or a URL, must go through esc() instead, so that what was checked is
+// what is written.
+export function escText(text: string): string {
+  return esc(decodeEntities(text));
 }
 
 // The two decimals of a coordinate, by hundredths. Building the string from integers is much
@@ -59,7 +68,7 @@ export function labelSvg(label: Label, cx: number, cy: number, attrs: string, ic
         if (span.icon !== undefined) {
           const side = label.size * 1.1;
           const inner = icons?.(span.icon) ?? '';
-          extra += `<svg class="pele-icon" data-icon="${esc(span.icon)}" x="${num(x)}" y="${num(
+          extra += `<svg class="pele-icon" data-icon="${escText(span.icon)}" x="${num(x)}" y="${num(
             y - shift - side / 2
           )}" width="${num(side)}" height="${num(side)}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
         } else if (span.text !== '') {

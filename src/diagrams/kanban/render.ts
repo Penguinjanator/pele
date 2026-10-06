@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num, spanStyle, type IconResolver } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num, spanStyle, type IconResolver } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label, type Span } from '../../text/label.js';
@@ -227,12 +227,12 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
       body +=
         `<g class="pele-node pele-card${color === undefined ? '' : ' pele-priority-' + priority.replace(' ', '-')}${classNames(
           item.cssClasses ?? ''
-        )}" data-id="${esc(item.id)}" transform="translate(${COLUMN_PAD},${num(y)})" font-size="${small}">${inner}</g>`;
+        )}" data-id="${escText(item.id)}" transform="translate(${COLUMN_PAD},${num(y)})" font-size="${small}">${inner}</g>`;
       y += card.height + CARD_GAP;
     }
 
     out +=
-      `<g class="pele-cluster pele-column${classNames(section.cssClasses ?? '')}" data-id="${esc(section.id)}" transform="translate(${num(
+      `<g class="pele-cluster pele-column${classNames(section.cssClasses ?? '')}" data-id="${escText(section.id)}" transform="translate(${num(
         left + index * (columnWidth + COLUMN_GAP)
       )},${num(pad + titleHeight)})">${body}</g>`;
   }

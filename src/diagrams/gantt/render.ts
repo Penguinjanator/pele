@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, resolveStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -236,8 +236,8 @@ export function renderGantt(model: GanttDb, config: Config, options: RenderOptio
     while (line < vertEnds.length && cx - label.width / 2 < vertEnds[line] + 8) line++;
     vertEnds[line] = cx + label.width / 2;
     extent = Math.max(extent, vertEnds[line]);
-    vertLines += `<path class="pele-vert" data-id="${esc(task.id)}" d="M${num(vx)},${num(plotTop - gridLead)}V${num(plotBottom)}"/>`;
-    vertLabels += labelSvg(label, cx, vertTop + line * vertLine + vertLine / 2, ` class="pele-vert-label" data-id="${esc(task.id)}"`);
+    vertLines += `<path class="pele-vert" data-id="${escText(task.id)}" d="M${num(vx)},${num(plotTop - gridLead)}V${num(plotBottom)}"/>`;
+    vertLabels += labelSvg(label, cx, vertTop + line * vertLine + vertLine / 2, ` class="pele-vert-label" data-id="${escText(task.id)}"`);
   }
 
   const width = Math.ceil(Math.max(extent, pad + title.width) + pad);
@@ -259,7 +259,7 @@ export function renderGantt(model: GanttDb, config: Config, options: RenderOptio
       }"/>`;
     }
     const label = sectionLabels.get(section)!;
-    sectionOut += labelSvg(label, pad + 8 + label.width / 2, y + h / 2, ` class="pele-section-label" data-id="${esc(section)}"`, options.icons);
+    sectionOut += labelSvg(label, pad + 8 + label.width / 2, y + h / 2, ` class="pele-section-label" data-id="${escText(section)}"`, options.icons);
     row = end;
   }
 
@@ -336,7 +336,7 @@ export function renderGantt(model: GanttDb, config: Config, options: RenderOptio
       body = `<a href="${esc(href)}" rel="noopener">${body}</a>`;
       links.push({ id: task.id, href, internal: false });
     }
-    tasksOut += `<g class="${classes}" data-id="${esc(task.id)}">${body}</g>`;
+    tasksOut += `<g class="${classes}" data-id="${escText(task.id)}">${body}</g>`;
   }
 
   let today = '';

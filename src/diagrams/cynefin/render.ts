@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { marker, markerTrim } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, seriesColor } from '../../svg/theme.js';
@@ -177,7 +177,7 @@ export function renderCynefin(model: CynefinModel, config: Config, options: Rend
     for (const item of b.badges) {
       y += ITEM_GAP;
       out +=
-        `<g class="pele-node${item.overflow ? ' pele-cynefin-overflow' : ''}"${item.overflow ? '' : ` data-id="${esc(item.text)}"`}>` +
+        `<g class="pele-node${item.overflow ? ' pele-cynefin-overflow' : ''}"${item.overflow ? '' : ` data-id="${escText(item.text)}"`}>` +
         `<rect x="${num(b.cx - item.w / 2)}" y="${num(y)}" width="${num(item.w)}" height="${num(
           item.h
         )}" rx="${RADIUS}" fill="var(--_bg)" stroke="var(--_b)"${item.overflow ? ' stroke-dasharray="3 2"' : ''}/>` +

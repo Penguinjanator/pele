@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { marker, markerTrim } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { FONT_MONO, RADIUS, seriesColor } from '../../svg/theme.js';
@@ -130,7 +130,7 @@ export function renderEventModel(model: EventModelingModel, _config: Config, opt
     band.y = y;
     band.h += 2 * LANE_PAD;
     lanes +=
-      `<g class="pele-cluster pele-em-lane" data-id="${esc(band.lane.label)}">` +
+      `<g class="pele-cluster pele-em-lane" data-id="${escText(band.lane.label)}">` +
       `<rect x="${num(left)}" y="${num(y)}" width="${num(laneWidth)}" height="${num(band.h)}" rx="${RADIUS}" fill="var(--_s)"/>` +
       labelSvg(band.label, left + LANE_PAD + band.label.width / 2, y + band.h / 2, ` class="pele-cluster-label" font-size="${small}" fill="var(--_m)"`) +
       '</g>';
@@ -159,7 +159,7 @@ export function renderEventModel(model: EventModelingModel, _config: Config, opt
         monoStep,
         ` class="pele-em-data" font-family="${FONT_MONO}" font-size="${mono}"`
       );
-    nodes += `<g class="pele-node pele-em-${item.box.kind}${item.box.reset ? ' pele-em-reset' : ''}" data-id="${esc(item.box.id)}">${shape}${text}</g>`;
+    nodes += `<g class="pele-node pele-em-${item.box.kind}${item.box.reset ? ' pele-em-reset' : ''}" data-id="${escText(item.box.id)}">${shape}${text}</g>`;
   }
 
   let edges = '';
@@ -196,7 +196,7 @@ export function renderEventModel(model: EventModelingModel, _config: Config, opt
       d = sx === tx ? `M${num(sx)},${num(sy)}V${num(end)}` : `M${num(sx)},${num(sy)}C${num(sx)},${num(mid)} ${num(tx)},${num(mid)} ${num(tx)},${num(end)}`;
       head = marker('arrow_point', tx, ty, 0, dir, 'var(--_l)');
     }
-    edges += `<g class="pele-edge" data-id="${esc(relation.source.id)}-${esc(relation.target.id)}"><path d="${d}" fill="none" stroke="var(--_l)"/>${head}</g>`;
+    edges += `<g class="pele-edge" data-id="${escText(relation.source.id)}-${escText(relation.target.id)}"><path d="${d}" fill="none" stroke="var(--_l)"/>${head}</g>`;
   }
 
   // Notes and given/when/then specifications, listed under the lanes with the frame they belong to.
@@ -210,7 +210,7 @@ export function renderEventModel(model: EventModelingModel, _config: Config, opt
     const h = 2 * BOX_PAD_Y + head.height + rows.length * smallStep;
     const cy = bottom + (cards === '' && bands.size === 0 ? 0 : CARD_GAP);
     cards +=
-      `<g class="pele-em-${kind}" data-id="${esc(frame)}">` +
+      `<g class="pele-em-${kind}" data-id="${escText(frame)}">` +
       `<rect x="${num(left)}" y="${num(cy)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}" fill="var(--_bg)" stroke="var(--_b)"/>` +
       labelSvg(head, left + BOX_PAD_X + head.width / 2, cy + BOX_PAD_Y + head.height / 2, ` font-size="${small}"`) +
       lines(rows, left + BOX_PAD_X, cy + BOX_PAD_Y + head.height + smallStep / 2 + small * 0.35, smallStep, ` font-size="${small}"`) +

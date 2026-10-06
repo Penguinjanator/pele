@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { edgeLabelSvg, marker, markerTrim, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape, shapeInset, shapeSize } from '../../svg/shapes.js';
@@ -531,7 +531,7 @@ export function renderBlock(model: BlockModel, config: Config, options: RenderOp
     const v = order[i];
     if (v.kind === Kind.Space) continue;
     const classes = classNames((v.block.classes ?? NO_CLASSES).join(' '));
-    const id = esc(v.block.id);
+    const id = escText(v.block.id);
     if (v.kind === Kind.Composite) {
       const top = v.y - v.h / 2;
       clusters +=
@@ -567,7 +567,7 @@ export function renderBlock(model: BlockModel, config: Config, options: RenderOp
       }
       path = trace(points, markerTrim(startType), markerTrim(endType));
     }
-    const id = esc(edge.id);
+    const id = escText(edge.id);
     edges +=
       `<g class="pele-edge" data-id="${id}">` +
       `<path d="${path.d}"${edge.thickness === 'thick' ? ' stroke-width="2.5"' : ''}${edge.pattern === 'dotted' ? ' stroke-dasharray="3 4"' : ''}/>` +
@@ -577,7 +577,7 @@ export function renderBlock(model: BlockModel, config: Config, options: RenderOp
     if (label.width > 0) {
       const x = routes[i].lx + ox;
       const y = routes[i].ly + oy;
-      labels += edgeLabelSvg(id, label, x, y, '', icons);
+      labels += edgeLabelSvg(edge.id, label, x, y, '', icons);
     }
   }
 

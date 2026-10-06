@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, marker } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS } from '../../svg/theme.js';
@@ -200,7 +200,7 @@ export function renderIshikawa(model: IshikawaModel, _config: Config, options: R
       minY = Math.min(minY, boxY - category.boxH / 2);
       maxY = Math.max(maxY, boxY + category.boxH / 2);
       groups +=
-        `<g class="pele-ishikawa-category" data-id="${esc(category.node.text)}">` +
+        `<g class="pele-ishikawa-category" data-id="${escText(category.node.text)}">` +
         `<path class="pele-ishikawa-bones" d="${d}" fill="none" stroke="var(--_l)"/>` +
         marker('arrow_point', ax, 0, SLANT / LENGTH, -sign / LENGTH, 'var(--_l)') +
         `<rect x="${num(endX - category.boxW / 2)}" y="${num(boxY - category.boxH / 2)}" width="${num(category.boxW)}" height="${num(
@@ -216,7 +216,7 @@ export function renderIshikawa(model: IshikawaModel, _config: Config, options: R
       `<path class="pele-ishikawa-spine" d="M${num(tail)},0H${num(-(ARROW - 1))}" fill="none" stroke="var(--_l)"/>` +
       marker('arrow_point', 0, 0, 1, 0, 'var(--_l)') +
       groups +
-      `<g class="pele-ishikawa-head" data-id="${esc(root.text)}">` +
+      `<g class="pele-ishikawa-head" data-id="${escText(root.text)}">` +
       `<path d="M0,${num(-r)}H${num(headW - r)}A${num(r)},${num(r)} 0 0 1 ${num(headW - r)},${num(r)}H0Z" fill="var(--_s)" stroke="var(--_b)" stroke-linejoin="round"/>` +
       labelSvg(head, 12 + head.width / 2, 0, ' class="pele-label" font-weight="bold"') +
       '</g>';

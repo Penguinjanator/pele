@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num, spanStyle } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num, spanStyle } from '../../svg/builder.js';
 import { marker, markerTrim } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS } from '../../svg/theme.js';
@@ -150,7 +150,7 @@ export function renderWardley(model: WardleyModel, config: Config, options: Rend
     }
     grow(left - PIPELINE_PAD, top, right + PIPELINE_PAD, top + 4 * R);
     pipelines +=
-      `<g class="pele-wardley-pipeline" data-id="${esc(pipeline.nodeId)}">` +
+      `<g class="pele-wardley-pipeline" data-id="${escText(pipeline.nodeId)}">` +
       `<rect x="${num(left - PIPELINE_PAD)}" y="${num(top)}" width="${num(right - left + 2 * PIPELINE_PAD)}" height="${num(
         4 * R
       )}" rx="${RADIUS}" fill="var(--_s)" stroke="var(--_b)"/>` +
@@ -222,7 +222,7 @@ export function renderWardley(model: WardleyModel, config: Config, options: Rend
       caption = centered(label, (from.x + to.x) / 2 + px * away, (from.y + to.y) / 2 + py * away, ` class="pele-edge-label" font-size="${tiny + 1}" fill="var(--_m)"`);
     }
     links +=
-      `<g class="pele-edge${link.dashed ? ' pele-wardley-dashed' : ''}" data-id="${esc(link.source)}-${esc(link.target)}">` +
+      `<g class="pele-edge${link.dashed ? ' pele-wardley-dashed' : ''}" data-id="${escText(link.source)}-${escText(link.target)}">` +
       `<path d="M${num(x1)},${num(y1)}L${num(x2)},${num(y2)}" stroke="${LINE}"${link.dashed ? ' stroke-dasharray="6 6"' : ''}/>` +
       heads +
       caption +
@@ -253,7 +253,7 @@ export function renderWardley(model: WardleyModel, config: Config, options: Rend
     }
     grow(tx - R, ty - R, tx + R, ty + R);
     trends +=
-      `<g class="pele-wardley-trend" data-id="${esc(trend.nodeId)}">${arrow}` +
+      `<g class="pele-wardley-trend" data-id="${escText(trend.nodeId)}">${arrow}` +
       `<circle cx="${num(tx)}" cy="${num(ty)}" r="${R}" fill="var(--_bg)" stroke="${ACCENT}"/></g>`;
   }
 
@@ -310,7 +310,7 @@ export function renderWardley(model: WardleyModel, config: Config, options: Rend
       }
     }
     grow(x - 2 * R, y - 2 * R, x + 2 * R + 20, y + 2 * R);
-    nodes += `<g class="pele-node pele-wardley-${anchor ? 'anchor' : node.isPipelineParent ? 'pipeline-parent' : node.inPipeline ? 'pipeline-component' : 'component'}" data-id="${esc(
+    nodes += `<g class="pele-node pele-wardley-${anchor ? 'anchor' : node.isPipelineParent ? 'pipeline-parent' : node.inPipeline ? 'pipeline-component' : 'component'}" data-id="${escText(
       node.id
     )}">${shape}${caption}</g>`;
   }
@@ -326,7 +326,7 @@ export function renderWardley(model: WardleyModel, config: Config, options: Rend
       grow(x - r, y - r, x + r, y + r);
       marks += `<circle cx="${num(x)}" cy="${num(y)}" r="${num(r)}" fill="var(--_bg)" stroke="${LINE}"/>` + labelSvg(label, x, y, ` font-size="${tiny}"`);
     }
-    annotations += `<g class="pele-wardley-annotation" data-id="${esc(String(annotation.number))}">${marks}</g>`;
+    annotations += `<g class="pele-wardley-annotation" data-id="${escText(String(annotation.number))}">${marks}</g>`;
   }
   const listed = model.annotations.filter((a) => a.text).sort((a, b) => a.number - b.number);
   if (listed.length > 0) {
@@ -374,7 +374,7 @@ export function renderWardley(model: WardleyModel, config: Config, options: Rend
       `M${num(tail)},${num(y - half)}H${num(neck)}V${num(y - half - 8)}L${num(tip)},${num(y)}L${num(neck)},${num(y + half + 8)}V${num(y + half)}H${num(tail)}Z`;
     grow(x, y - half - 8, x + FORCE_WIDTH, y + half + 8);
     forces +=
-      `<g class="pele-wardley-${forward ? 'accelerator' : 'deaccelerator'}" data-id="${esc(name)}">` +
+      `<g class="pele-wardley-${forward ? 'accelerator' : 'deaccelerator'}" data-id="${escText(name)}">` +
       `<path d="${d}" fill="var(--_s)" stroke="${LINE}"/>` +
       centered(text(name, tiny + 1, 160, Style.Bold), x + FORCE_WIDTH / 2, y + half + 8 + 12, ` font-size="${tiny + 1}"`) +
       '</g>';

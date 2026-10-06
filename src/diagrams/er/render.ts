@@ -1,6 +1,6 @@
 import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num, spanStyle, type IconResolver } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num, spanStyle, type IconResolver } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, routePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
@@ -88,7 +88,7 @@ function textLeft(label: Label, x: number, y: number, attrs: string, icons: Icon
     for (const span of line) {
       if (span.icon !== undefined) {
         const side = label.size * 1.1;
-        extra += `<svg class="pele-icon" data-icon="${esc(span.icon)}" x="${num(sx)}" y="${num(
+        extra += `<svg class="pele-icon" data-icon="${escText(span.icon)}" x="${num(sx)}" y="${num(
           y - label.size * 0.35 - side / 2
         )}" width="${num(side)}" height="${num(side)}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${
           icons?.(span.icon) ?? ''
@@ -311,7 +311,7 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
       const y = c.y - c.h / 2;
       const titleX = clusterTitleX(c, view.label.width, crossings, GROUP_PAD);
       clusters +=
-        `<g class="pele-cluster${classes}" data-id="${esc(node.id)}">` +
+        `<g class="pele-cluster${classes}" data-id="${escText(node.id)}">` +
         `<rect x="${num(x)}" y="${num(y)}" width="${num(c.w)}" height="${num(c.h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${view.style.shape}/>` +
         labelSvg(view.label, titleX, y + 8 + view.label.height / 2, ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`, icons) +
         '</g>';
@@ -376,7 +376,7 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
         name +
         `<g class="pele-er-attributes" font-size="${view.rowSize}">${cells}</g>`;
     }
-    nodesOut += `<g class="pele-node pele-entity${classes}" data-id="${esc(node.label)}" transform="translate(${num(
+    nodesOut += `<g class="pele-node pele-entity${classes}" data-id="${escText(node.label)}" transform="translate(${num(
       c.x
     )},${num(c.y)})">${body}</g>`;
   }
@@ -448,7 +448,7 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
     }
     const dashed = edge.pattern === 'dashed';
     edgesOut +=
-      `<g class="pele-edge pele-er-${dashed ? 'non-identifying' : 'identifying'}" data-id="${esc(edge.id)}">` +
+      `<g class="pele-edge pele-er-${dashed ? 'non-identifying' : 'identifying'}" data-id="${escText(edge.id)}">` +
       `<path d="${d}"${dashed ? ' stroke-dasharray="4 3"' : ''}/>` +
       start +
       end +
@@ -456,7 +456,7 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
     if (label.width > 0) {
       const x = ce.labelX;
       const y = ce.labelY;
-      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, '', icons);
+      labelsOut += edgeLabelSvg(edge.id, label, x, y, '', icons);
     }
   }
 

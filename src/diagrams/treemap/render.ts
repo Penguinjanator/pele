@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle, seriesColor } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
@@ -55,7 +55,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
     const y = top + b.y;
     const name = decodeEntities(node.name).trim();
     const value = showValues ? format(b.value) : '';
-    const group = `data-id="${esc(node.name)}">`;
+    const group = `data-id="${escText(node.name)}">`;
     const rect = `<rect x="${num(x)}" y="${num(y)}" width="${num(b.w)}" height="${num(b.h)}" rx="${RADIUS}" fill="${color}"`;
 
     if (node.children !== undefined) {

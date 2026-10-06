@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -98,7 +98,7 @@ export function renderRadar(model: RadarModel, config: Config, options: RenderOp
     // Each label hangs off its axis on the side away from the center.
     const cx = u.x * at + (u.x > 0.01 ? label.width / 2 : u.x < -0.01 ? -label.width / 2 : 0);
     const cy = u.y * at + (u.y > 0.01 ? label.height / 2 : u.y < -0.01 ? -label.height / 2 : 0);
-    labels += `<g class="pele-axis-label" data-id="${esc(axes[i].name)}">${labelSvg(label, cx, cy, '')}</g>`;
+    labels += `<g class="pele-axis-label" data-id="${escText(axes[i].name)}">${labelSvg(label, cx, cy, '')}</g>`;
     x0 = Math.min(x0, cx - label.width / 2);
     x1 = Math.max(x1, cx + label.width / 2);
     y0 = Math.min(y0, cy - label.height / 2);
@@ -115,7 +115,7 @@ export function renderRadar(model: RadarModel, config: Config, options: RenderOp
       return { x: unit[i].x * safe, y: unit[i].y * safe };
     });
     const color = seriesColor(index);
-    const attrs = ` class="pele-curve" data-id="${esc(curve.name)}" fill="${color}" stroke="${color}"`;
+    const attrs = ` class="pele-curve" data-id="${escText(curve.name)}" fill="${color}" stroke="${color}"`;
     shapes +=
       graticule === 'circle'
         ? `<path${attrs} d="${closedRoundCurve(points, tension)}"/>`
@@ -139,7 +139,7 @@ export function renderRadar(model: RadarModel, config: Config, options: RenderOp
     const y = -legendHeight / 2 + index * ROW + ROW / 2;
     const color = seriesColor(index);
     legendOut +=
-      `<g class="pele-legend-item" data-id="${esc(curves[index].name)}">` +
+      `<g class="pele-legend-item" data-id="${escText(curves[index].name)}">` +
       `<rect x="${num(legendX)}" y="${num(y - SWATCH / 2)}" width="${SWATCH}" height="${SWATCH}" rx="2" fill="${color}" fill-opacity="0.4" stroke="${color}"/>` +
       labelSvg(label, legendX + SWATCH + 8 + label.width / 2, y, '') +
       '</g>';

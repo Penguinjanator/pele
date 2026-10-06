@@ -1,6 +1,6 @@
 import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
@@ -439,7 +439,7 @@ export function renderClass(db: ClassDb, config: Config, options: RenderOptions)
     const node = view.node;
     const x = c.x + ox;
     const y = c.y + oy;
-    const id = esc(node.id);
+    const id = escText(node.id);
     const w = c.isGroup ? c.w : view.w;
     const h = c.isGroup ? c.h : view.h;
     if (node.isGroup) {
@@ -513,7 +513,7 @@ export function renderClass(db: ClassDb, config: Config, options: RenderOptions)
     if (view.attributes.length > 0 || view.methods.length > 0) {
       body += `<g class="pele-members" font-size="${memberSize}">${lines(view.attributes, 'attribute', first)}${lines(view.methods, 'method', second)}</g>`;
     }
-    if (cls.tooltip) body = `<title>${esc(decodeEntities(cls.tooltip))}</title>` + body;
+    if (cls.tooltip) body = `<title>${escText(cls.tooltip)}</title>` + body;
     if (cls.link) {
       const target = cls.linkTarget && TARGETS.has(cls.linkTarget) ? ` target="${cls.linkTarget}"` : '';
       body = `<a href="${esc(cls.link)}"${target} rel="noopener">${body}</a>`;
@@ -566,7 +566,7 @@ export function renderClass(db: ClassDb, config: Config, options: RenderOptions)
     }
     const attrs = edge.pattern === 'dashed' ? ' stroke-dasharray="6 4"' : edge.pattern === 'dotted' ? ' stroke-dasharray="2 4"' : '';
     edgesOut +=
-      `<g class="pele-edge${edge.pattern === 'dotted' ? ' pele-note-edge' : ' pele-relation'}" data-id="${esc(edge.id)}">` +
+      `<g class="pele-edge${edge.pattern === 'dotted' ? ' pele-note-edge' : ' pele-relation'}" data-id="${escText(edge.id)}">` +
       `<path d="${path.d}"${attrs}/>` +
       classMarker(startType, path.sx, path.sy, path.sdx, path.sdy, LINE) +
       classMarker(endType, path.ex, path.ey, path.edx, path.edy, LINE) +
@@ -574,7 +574,7 @@ export function renderClass(db: ClassDb, config: Config, options: RenderOptions)
     if (label.width > 0) {
       const x = ce.labelX + ox;
       const y = ce.labelY + oy;
-      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, '', options.icons);
+      labelsOut += edgeLabelSvg(edge.id, label, x, y, '', options.icons);
     }
   }
 

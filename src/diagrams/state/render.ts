@@ -1,6 +1,6 @@
 import { cnode, compoundLayout, direction, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { withTitle } from '../../svg/title.js';
@@ -524,7 +524,7 @@ export function renderState(db: StateDb, config: Config, options: RenderOptions)
       body = `<a href="${esc(href)}" target="_blank" rel="noopener">${tooltip ? `<title>${esc(tooltip)}</title>` : ''}${body}</a>`;
       links.push({ id: node.id, href, internal: false });
     }
-    const open = `<g class="${CLASSES[view.kind]}${classNames(node.cssClasses.replace(MERMAID_CLASSES, ''))}" data-id="${esc(node.id)}"`;
+    const open = `<g class="${CLASSES[view.kind]}${classNames(node.cssClasses.replace(MERMAID_CLASSES, ''))}" data-id="${escText(node.id)}"`;
     if (view.kind === K.Composite) clusters += `${open}>${body}</g>`;
     else if (view.kind === K.Note) notesOut += `${open} transform="translate(${num(x)},${num(y)})">${body}</g>`;
     else nodesOut += `${open} transform="translate(${num(x)},${num(y)})">${body}</g>`;
@@ -623,14 +623,14 @@ export function renderState(db: StateDb, config: Config, options: RenderOptions)
       path = routePath(route, undefined, 0, markerTrim(endType));
     }
     edgesOut +=
-      `<g class="pele-edge ${note ? 'pele-note-edge" stroke="var(--_b)" stroke-dasharray="3 4' : 'pele-transition'}" data-id="${esc(edge.id)}">` +
+      `<g class="pele-edge ${note ? 'pele-note-edge" stroke="var(--_b)" stroke-dasharray="3 4' : 'pele-transition'}" data-id="${escText(edge.id)}">` +
       `<path d="${path.d}"/>` +
       marker(endType, path.ex, path.ey, path.edx, path.edy, 'var(--_l)') +
       '</g>';
     if (label.width > 0) {
       const x = ce.labelX + pad;
       const y = ce.labelY + pad;
-      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, '', icons);
+      labelsOut += edgeLabelSvg(edge.id, label, x, y, '', icons);
     }
   }
 

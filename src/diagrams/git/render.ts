@@ -1,8 +1,7 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, seriesColor } from '../../svg/theme.js';
-import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
@@ -221,7 +220,7 @@ export function renderGit(model: GitModel, config: Config, options: RenderOption
       grow(px(-LABEL_GAP, c), py(-LABEL_GAP, c), px(-LABEL_GAP, c), py(-LABEL_GAP, c));
       grow(px(end + TAIL, c), py(end + TAIL, c), px(end + TAIL, c), py(end + TAIL, c));
       branches +=
-        `<g class="pele-branch" data-id="${esc(decodeEntities(model.lanes[i]))}">` +
+        `<g class="pele-branch" data-id="${escText(model.lanes[i])}">` +
         `<path class="pele-lane" d="M${point(-LABEL_GAP, c)}L${point(end + TAIL, c)}" stroke="${color}" stroke-dasharray="2 4"/>`;
       if (name.lines.length > 0) {
         grow(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2);
@@ -304,7 +303,7 @@ export function renderGit(model: GitModel, config: Config, options: RenderOption
     grow(x - DOT - 1, y - DOT - 1, x + DOT + 1, y + DOT + 1);
     // Merges and cherry-picks carry a message Mermaid makes up; only a written one is worth showing.
     const written = commit.type < commitType.MERGE && commit.message !== '';
-    let body = written ? `<title>${esc(decodeEntities(commit.message))}</title>` : '';
+    let body = written ? `<title>${escText(commit.message)}</title>` : '';
     body += symbol(type, x, y, seriesColor(view.lane));
 
     if (label !== undefined && label.lines.length > 0) {
@@ -351,7 +350,7 @@ export function renderGit(model: GitModel, config: Config, options: RenderOption
     }
 
     const merge = commit.type === commitType.MERGE && type !== commitType.MERGE ? ' pele-commit-merge' : '';
-    commits += `<g class="pele-commit pele-commit-${CLASSES[type] ?? CLASSES[0]}${merge}" data-id="${esc(decodeEntities(commit.id))}">${body}</g>`;
+    commits += `<g class="pele-commit pele-commit-${CLASSES[type] ?? CLASSES[0]}${merge}" data-id="${escText(commit.id)}">${body}</g>`;
   }
 
   if (minX > maxX) grow(0, 0, 0, 0);

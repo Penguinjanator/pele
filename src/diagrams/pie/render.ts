@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -102,7 +102,7 @@ export function renderPie(model: PieModel, config: Config, options: RenderOption
     const share = shares[index];
     if (share === 0) return;
     const end = angle + share * Math.PI * 2;
-    slices += `<path class="pele-slice" data-id="${esc(label)}" d="${slice(angle, end, RADIUS, inner)}" fill="${seriesColor(index)}"/>`;
+    slices += `<path class="pele-slice" data-id="${escText(label)}" d="${slice(angle, end, RADIUS, inner)}" fill="${seriesColor(index)}"/>`;
     const mid = (angle + end) / 2;
     const text = (share * 100).toFixed(0) + '%';
     if (narrow[index]) {
@@ -137,7 +137,7 @@ export function renderPie(model: PieModel, config: Config, options: RenderOption
   legend.forEach((label, index) => {
     const y = ly + index * ROW + ROW / 2;
     legendOut +=
-      `<g class="pele-legend-item" data-id="${esc(entries[index][0])}">` +
+      `<g class="pele-legend-item" data-id="${escText(entries[index][0])}">` +
       `<rect x="${num(lx)}" y="${num(y - SWATCH / 2)}" width="${SWATCH}" height="${SWATCH}" rx="2" fill="${seriesColor(index)}"/>` +
       labelSvg(label, lx + SWATCH + 8 + label.width / 2, y, '') +
       '</g>';

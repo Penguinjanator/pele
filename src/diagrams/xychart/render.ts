@@ -1,6 +1,6 @@
 import { PeleError } from '../../errors.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -264,7 +264,7 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
   let bar = 0;
   plots.forEach((plot, index) => {
     const color = seriesColor(index);
-    const id = plot.title ? ` data-id="${esc(plot.title)}"` : '';
+    const id = plot.title ? ` data-id="${escText(plot.title)}"` : '';
     // A series declared before the categories can hold more values than there are categories.
     const n = x.type === 'band' ? Math.min(plot.data.length, count) : plot.data.length;
     if (plot.type === 'bar') {
@@ -388,7 +388,7 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
     const y = ly + row / 2;
     const color = seriesColor(index);
     legendOut +=
-      `<g class="pele-legend-item" data-id="${esc(plots[index].title)}">` +
+      `<g class="pele-legend-item" data-id="${escText(plots[index].title)}">` +
       (plots[index].type === 'bar'
         ? `<rect x="${num(lx)}" y="${num(y - SWATCH / 2)}" width="${SWATCH}" height="${SWATCH}" rx="2" fill="${color}"/>`
         : `<path d="M${num(lx)},${num(y)}h${SWATCH}" stroke="${color}" stroke-width="2" stroke-linecap="round"/>`) +

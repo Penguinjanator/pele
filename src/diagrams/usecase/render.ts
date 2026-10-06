@@ -1,6 +1,6 @@
 import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num, type IconResolver } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num, type IconResolver } from '../../svg/builder.js';
 import { markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
@@ -181,7 +181,7 @@ function figure(view: View, icons: IconResolver | undefined): string {
     radius = 12;
     out =
       `<rect x="-22" y="-26" width="44" height="44" rx="${RADIUS}"${SHAPE_ATTRS}${shape}/>` +
-      `<svg class="pele-icon" data-icon="${esc(node.icon ?? '')}" x="-14" y="-18" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${
+      `<svg class="pele-icon" data-icon="${escText(node.icon ?? '')}" x="-14" y="-18" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${
         icons?.(node.icon ?? '') ?? ''
       }</svg>`;
   } else {
@@ -337,7 +337,7 @@ export function renderUsecase(model: UsecaseModel, config: Config, options: Rend
     const c = cnodes[i];
     const node = view.node;
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
-    const id = esc(node.id);
+    const id = escText(node.id);
     const textAttrs = view.style.text;
     const shape = view.style.shape;
     const w = view.w;
@@ -497,7 +497,7 @@ export function renderUsecase(model: UsecaseModel, config: Config, options: Rend
     // Mermaid animates these dashes. A still picture keeps the dashes.
     const dashes = edge.internal ? '2 3' : edge.pattern === 'dotted' ? '5 4' : edge.animate ? '9 5' : '';
     edgesOut +=
-      `<g class="pele-edge pele-${edge.relationshipType}${classNames(edge.classes.replace(/^default relationship relationship-\S+\s?/, ''))}" data-id="${esc(edge.id)}"${style?.line ?? ''}>` +
+      `<g class="pele-edge pele-${edge.relationshipType}${classNames(edge.classes.replace(/^default relationship relationship-\S+\s?/, ''))}" data-id="${escText(edge.id)}"${style?.line ?? ''}>` +
       `<path d="${path.d}"${dashes ? ` stroke-dasharray="${dashes}"` : ''}/>` +
       mark(startType, path.sx, path.sy, path.sdx, path.sdy, color) +
       mark(endType, path.ex, path.ey, path.edx, path.edy, color) +
@@ -506,7 +506,7 @@ export function renderUsecase(model: UsecaseModel, config: Config, options: Rend
       const x = ce.labelX;
       const y = ce.labelY;
       const semantic = edge.relationshipType === 'include' || edge.relationshipType === 'extend';
-      labelsOut += edgeLabelSvg(esc(edge.id), label, x, y, (semantic ? ' fill="var(--_m)"' : '') + (style?.text ?? ''), icons);
+      labelsOut += edgeLabelSvg(edge.id, label, x, y, (semantic ? ' fill="var(--_m)"' : '') + (style?.text ?? ''), icons);
     }
   }
 

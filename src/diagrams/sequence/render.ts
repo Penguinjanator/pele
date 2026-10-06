@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, marker } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle } from '../../svg/theme.js';
@@ -518,7 +518,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
     const x = col.x - ACT_W / 2 + col.activations.length * ACT_STEP;
     extend(x, x + ACT_W);
     activationsOut.push(
-      `<rect class="pele-activation" data-id="${esc(col.id)}" x="${num(x)}" y="${num(start)}" width="${ACT_W}" height="${num(
+      `<rect class="pele-activation" data-id="${escText(col.id)}" x="${num(x)}" y="${num(start)}" width="${ACT_W}" height="${num(
         bottom - start
       )}" rx="2"/>`
     );
@@ -529,7 +529,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
     const cx = col.x;
     const cy = lineY + 16;
     col.lifeEnd = cy;
-    crossesOut += `<path class="pele-destroy" data-id="${esc(col.id)}" d="M${num(cx - 6)},${num(cy - 6)}L${num(cx + 6)},${num(
+    crossesOut += `<path class="pele-destroy" data-id="${escText(col.id)}" d="M${num(cx - 6)},${num(cy - 6)}L${num(cx + 6)},${num(
       cy + 6
     )}M${num(cx + 6)},${num(cy - 6)}L${num(cx - 6)},${num(cy + 6)}"/>`;
     return cy + 6;
@@ -539,7 +539,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
     return (
       `<g class="pele-node pele-actor pele-actor-${col.kind}${footer ? ' pele-actor-footer' : ''}${
         typeof cls === 'string' ? classNames(cls) : ''
-      }" data-id="${esc(col.id)}">` +
+      }" data-id="${escText(col.id)}">` +
       drawActor(col.kind, col.x, top, col.size, col.label, icons) +
       '</g>'
     );
@@ -623,7 +623,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
       else if (m.placement === PLACEMENT.LEFTOF) x += leftEdge(a) - a.x;
       extend(x, x + view.w);
       notesOut +=
-        `<g class="pele-note" data-id="i${esc(m.id)}">` +
+        `<g class="pele-note" data-id="i${escText(m.id)}">` +
         `<rect x="${num(x)}" y="${num(top)}" width="${num(view.w)}" height="${num(h)}" rx="${RADIUS}"/>` +
         labelSvg(view.label, x + view.w / 2, top + h / 2, ' class="pele-label" stroke="none" fill="var(--_fg)"', icons) +
         '</g>';
@@ -679,7 +679,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
         inner = `<path d="${d}"${attrs}/>` + heads + inner;
         extend(a.x, out + 8 + label.width);
         if (label.width > 0) {
-          labelsOut += `<g class="pele-edge-label" data-id="i${esc(m.id)}">${labelSvg(
+          labelsOut += `<g class="pele-edge-label" data-id="i${escText(m.id)}">${labelSvg(
             label,
             out + 8 + label.width / 2,
             (top + bottom) / 2,
@@ -729,11 +729,11 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
           const r = Math.max(x0, x1);
           const cx = align < 0 ? l + MSG_PAD + label.width / 2 : align > 0 ? r - MSG_PAD - label.width / 2 : (l + r) / 2;
           extend(cx - label.width / 2, cx + label.width / 2);
-          labelsOut += `<g class="pele-edge-label" data-id="i${esc(m.id)}">${backed(label, cx, lineY - 4 - label.height / 2, '')}</g>`;
+          labelsOut += `<g class="pele-edge-label" data-id="i${escText(m.id)}">${backed(label, cx, lineY - 4 - label.height / 2, '')}</g>`;
         }
         if (creating) y = lineY + b.size.h / 2 - 6;
       }
-      edgesOut += `<g class="pele-edge pele-message" data-id="i${esc(m.id)}">${inner}</g>`;
+      edgesOut += `<g class="pele-edge pele-message" data-id="i${escText(m.id)}">${inner}</g>`;
       y = Math.max(y, lineY);
       if (a.destroyAt === i) y = Math.max(y, destroy(a, lineY));
       if (b.destroyAt === i && b !== a) y = Math.max(y, destroy(b, lineY));
@@ -757,7 +757,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
     actorsOut += actorSvg(col, col.top, false);
     const end = col.lifeEnd >= 0 ? col.lifeEnd : y;
     if (end > col.lifeStart) {
-      lifelines += `<path class="pele-lifeline" data-id="${esc(col.id)}" d="M${num(col.x)},${num(col.lifeStart)}V${num(end)}"/>`;
+      lifelines += `<path class="pele-lifeline" data-id="${escText(col.id)}" d="M${num(col.x)},${num(col.lifeStart)}V${num(end)}"/>`;
     }
   }
 
@@ -767,7 +767,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
     const x1 = cols[run.last].x + cols[run.last].size.w / 2 + boxPad + run.grow;
     const fill = run.box.fill === 'transparent' ? '' : resolveStyle([`fill:${run.box.fill}`]).shape;
     boxesOut +=
-      `<g class="pele-cluster pele-box"${run.box.name ? ` data-id="${esc(run.box.name)}"` : ''}>` +
+      `<g class="pele-cluster pele-box"${run.box.name ? ` data-id="${escText(run.box.name)}"` : ''}>` +
       `<rect x="${num(x0)}" y="0" width="${num(x1 - x0)}" height="${num(bottom + boxPad)}" rx="${RADIUS}" fill="var(--_a)" stroke="var(--_b)"${
         fill ? '' : ' fill-opacity="0.5"'
       }${fill}/>` +

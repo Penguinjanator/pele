@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { resolveStyle, seriesColor, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -157,13 +157,13 @@ export function renderVenn(model: VennModel, _config: Config, options: RenderOpt
   placed.forEach((c, i) => {
     const color = seriesColor(i);
     const style = regions.get(c.id)?.style ?? NO_STYLE;
-    sets += `<circle class="pele-venn-set" data-id="${esc(c.id)}" cx="${num(c.x)}" cy="${num(c.y)}" r="${num(c.r)}" fill="${color}" fill-opacity="0.2" stroke="${color}"${style.shape}/>`;
+    sets += `<circle class="pele-venn-set" data-id="${escText(c.id)}" cx="${num(c.x)}" cy="${num(c.y)}" r="${num(c.r)}" fill="${color}" fill-opacity="0.2" stroke="${color}"${style.shape}/>`;
   });
 
   let overlaps = '';
   let labels = '';
   for (const region of regions.values()) {
-    const id = esc(region.sets.join('|'));
+    const id = escText(region.sets.join('|'));
     // An overlap is only drawn when a style gives it a look of its own; otherwise the circles show it.
     if (region.sets.length > 1 && region.style.shape !== '') {
       const d = regionPath(region.inside.map((i) => placed[i]), num);
@@ -179,7 +179,7 @@ export function renderVenn(model: VennModel, _config: Config, options: RenderOpt
       const attrs =
         line.id === undefined
           ? ` class="pele-label"${line.size === size ? '' : ` font-size="${line.size}"`}${region.style.text}`
-          : ` class="pele-venn-text" data-id="${esc(line.id)}" font-size="${tiny}" fill="var(--_m)"${styleOf(line.id).text}`;
+          : ` class="pele-venn-text" data-id="${escText(line.id)}" font-size="${tiny}" fill="var(--_m)"${styleOf(line.id).text}`;
       content += labelSvg(line.label, x, y + line.label.height / 2, attrs);
       y += line.label.height;
     }

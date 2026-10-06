@@ -1,5 +1,5 @@
 import type { RenderOptions } from '../types.js';
-import { esc } from './builder.js';
+import { esc, escText } from './builder.js';
 import { FONT, ROOT_STYLE } from './theme.js';
 
 export interface Accessible {
@@ -21,11 +21,11 @@ export function svgDocument(
   let head = '';
   let aria = '';
   if (acc.accTitle) {
-    head += `<title id="${prefix}-title">${esc(acc.accTitle)}</title>`;
+    head += `<title id="${prefix}-title">${escText(acc.accTitle)}</title>`;
     aria += ` aria-labelledby="${prefix}-title"`;
   }
   if (acc.accDescr) {
-    head += `<desc id="${prefix}-desc">${esc(acc.accDescr)}</desc>`;
+    head += `<desc id="${prefix}-desc">${escText(acc.accDescr)}</desc>`;
     aria += ` aria-describedby="${prefix}-desc"`;
   }
   const fit = options.responsive === false ? '' : 'max-width:100%;height:auto;';

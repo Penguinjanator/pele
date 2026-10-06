@@ -1,5 +1,6 @@
 import { detect, type DiagramType } from './detect.js';
 import { PeleError } from './errors.js';
+import { decodeEntities } from './text/entities.js';
 import { encodeEntities, preprocess, type Config } from './preprocess.js';
 import type { DiagramModel } from './models.js';
 import type { Diagram, RenderOptions, RenderResult } from './types.js';
@@ -85,6 +86,12 @@ export function render(text: string, options: RenderOptions = {}): RenderResult 
     const section = config[diagram.section ?? type];
     const fixed = typeof section === 'object' && section !== null && !Array.isArray(section) && section.useMaxWidth === false;
     const responsive = options.responsive ?? !fixed;
-    return { type, ...diagram.render(model, config, { ...options, responsive }) };
+    // The host's icon resolver and the ids in `links` see names as the author meant them, with
+    // entity codes turned into their characters, as `data-icon` and `data-id` in the SVG do.
+    const resolve = options.icons;
+    const icons = resolve && ((name: string) => resolve(decodeEntities(name)));
+    const rendered = diagram.render(model, config, { ...options, responsive, icons });
+    for (const link of rendered.links) link.id = decodeEntities(link.id);
+    return { type, ...rendered };
   });
 }

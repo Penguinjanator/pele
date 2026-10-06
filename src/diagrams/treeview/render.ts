@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
@@ -128,7 +128,7 @@ export function renderTreeView(model: TreeViewModel, config: Config, options: Re
       const name = row.icon.startsWith(BUILTIN_PACK + ':') ? row.icon.slice(BUILTIN_PACK.length + 1) : '';
       const glyph = GLYPHS.get(name) ?? GLYPHS.get(directory ? 'folder' : 'file')!;
       const drawn = options.icons?.(row.icon) ?? `<path d="${glyph}" stroke="var(--_m)" stroke-width="1.5"/>`;
-      inner += `<svg class="pele-icon" data-icon="${esc(row.icon)}" x="${num(inset + row.x)}" y="${num(
+      inner += `<svg class="pele-icon" data-icon="${escText(row.icon)}" x="${num(inset + row.x)}" y="${num(
         cy - iconSize / 2
       )}" width="${num(iconSize)}" height="${num(
         iconSize
@@ -144,7 +144,7 @@ export function renderTreeView(model: TreeViewModel, config: Config, options: Re
         cy + baseline
       )}" font-style="italic" fill="var(--_m)" xml:space="preserve">${esc(decodeEntities(node.description))}</text>`;
     }
-    body += `<g class="pele-node pele-tree-${directory ? 'dir' : 'file'}${classNames(node.cssClass ?? '')}" data-id="${esc(
+    body += `<g class="pele-node pele-tree-${directory ? 'dir' : 'file'}${classNames(node.cssClass ?? '')}" data-id="${escText(
       node.name
     )}">${inner}</g>`;
   }

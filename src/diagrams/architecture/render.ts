@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { edgeLabelSvg, marker, markerTrim } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS } from '../../svg/theme.js';
@@ -32,7 +32,7 @@ function rank(values: number[]): Map<number, number> {
 
 function iconSlot(name: string, x: number, y: number, side: number, icons: IconResolver | undefined): string {
   return (
-    `<svg class="pele-icon" data-icon="${esc(name)}" x="${num(x)}" y="${num(y)}" width="${num(side)}" height="${num(side)}"` +
+    `<svg class="pele-icon" data-icon="${escText(name)}" x="${num(x)}" y="${num(y)}" width="${num(side)}" height="${num(side)}"` +
     ` viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${
       icons?.(name) ?? builtinIcon(name)
     }</svg>`
@@ -429,7 +429,7 @@ export function renderArchitecture(model: ArchitectureModel, config: Config, opt
     if (e.wire) routed.push(centerX(b), Y[nodeRow[b]] + half);
     const points = simplify(routed);
     if (points.length < 4) continue;
-    const id = esc(`${edge.lhsId}-${edge.rhsId}`);
+    const id = escText(`${edge.lhsId}-${edge.rhsId}`);
     edgesOut +=
       `<g class="pele-edge" data-id="${id}">` +
       `<path d="${pathData(points, edge.lhsInto && !s.wire ? trimLength + s.gap : 0, edge.rhsInto && !e.wire ? trimLength + e.gap : 0)}"/>` +
@@ -476,7 +476,7 @@ export function renderArchitecture(model: ArchitectureModel, config: Config, opt
       maxX = Math.max(maxX, x + w / 2);
       minY = Math.min(minY, y - label.height / 2);
       maxY = Math.max(maxY, y + label.height / 2);
-      labelsOut += edgeLabelSvg(id, label, x, y, '', icons);
+      labelsOut += edgeLabelSvg(`${edge.lhsId}-${edge.rhsId}`, label, x, y, '', icons);
     }
   }
 
@@ -512,7 +512,7 @@ export function renderArchitecture(model: ArchitectureModel, config: Config, opt
       head += labelSvg(label, textX + label.width / 2, cy, ' class="pele-cluster-label" fill="var(--_m)"', icons);
     }
     clusters +=
-      `<g class="pele-cluster" data-id="${esc(group.id)}">` +
+      `<g class="pele-cluster" data-id="${escText(group.id)}">` +
       `<rect x="${num(x)}" y="${num(y)}" width="${num(w)}" height="${num(bottom(g) - y)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"/>` +
       head +
       '</g>';
@@ -523,7 +523,7 @@ export function renderArchitecture(model: ArchitectureModel, config: Config, opt
   const textSize = Math.max(6, Math.round(size * 0.75));
   for (let i = 0; i < N; i++) {
     const node = nodes[i];
-    const at = `data-id="${esc(node.id)}" transform="translate(${num(centerX(i))},${num(Y[nodeRow[i]])})"`;
+    const at = `data-id="${escText(node.id)}" transform="translate(${num(centerX(i))},${num(Y[nodeRow[i]])})"`;
     if (node.type === 'junction') {
       nodesOut += `<g class="pele-node pele-junction" ${at}><circle cy="${num(half)}" r="${DOT}" fill="var(--_l)"/></g>`;
       continue;

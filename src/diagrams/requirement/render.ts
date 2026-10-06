@@ -1,6 +1,6 @@
 import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { edgeLabelSvg, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
@@ -286,7 +286,7 @@ export function renderRequirement(model: RequirementModel, _config: Config, opti
     }
     nodesOut += `<g class="pele-node ${view.node.requirement ? 'pele-requirement' : 'pele-element'}${classNames(
       view.node.cssClasses.replace(/^default\s?/, '')
-    )}" data-id="${esc(view.node.id)}" transform="translate(${num(cnodes[i].x + ox)},${num(cnodes[i].y + oy)})">${body}</g>`;
+    )}" data-id="${escText(view.node.id)}" transform="translate(${num(cnodes[i].x + ox)},${num(cnodes[i].y + oy)})">${body}</g>`;
   }
 
   let edgesOut = '';
@@ -341,13 +341,13 @@ export function renderRequirement(model: RequirementModel, _config: Config, opti
       path = routePath(route, undefined, startTrim, 0);
     }
     edgesOut +=
-      `<g class="pele-edge pele-relationship-${edge.contains ? 'contains' : 'arrow'}" data-id="${esc(edge.id)}">` +
+      `<g class="pele-edge pele-relationship-${edge.contains ? 'contains' : 'arrow'}" data-id="${escText(edge.id)}">` +
       `<path d="${path.d}"${edge.contains ? '' : ' stroke-dasharray="5 4"'}/>` +
       (edge.contains
         ? containsMarker(path.sx, path.sy, path.sdx, path.sdy)
         : arrowMarker(path.ex, path.ey, path.edx, path.edy)) +
       '</g>';
-    labelsOut += edgeLabelSvg(esc(edge.id), label, labelX, labelY, '');
+    labelsOut += edgeLabelSvg(edge.id, label, labelX, labelY, '');
   }
 
   const svg = svgDocument(

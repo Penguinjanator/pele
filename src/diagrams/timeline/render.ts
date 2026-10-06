@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, marker } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, seriesColor } from '../../svg/theme.js';
@@ -105,8 +105,8 @@ export function renderTimeline(model: TimelineModel, config: Config, options: Re
   const dot = (x: number, y: number, color: string): string =>
     `<circle class="pele-dot" cx="${num(x)}" cy="${num(y)}" r="4" fill="${color}" stroke="var(--_bg)" stroke-width="2"/>`;
   const open = (group: Group): string =>
-    group.section >= 0 ? `<g class="pele-cluster pele-section" data-id="${esc(model.sections[group.section].trim())}">` : '';
-  const openPeriod = (i: number): string => `<g class="pele-node pele-period" data-id="${esc(periods[i].text.trim())}">`;
+    group.section >= 0 ? `<g class="pele-cluster pele-section" data-id="${escText(model.sections[group.section].trim())}">` : '';
+  const openPeriod = (i: number): string => `<g class="pele-node pele-period" data-id="${escText(periods[i].text.trim())}">`;
 
   let body = '';
   let height: number;
