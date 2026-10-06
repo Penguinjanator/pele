@@ -5,6 +5,7 @@ import { classDiagram } from './class/index.js';
 import { er } from './er/index.js';
 import { flowchart } from './flowchart/index.js';
 import { gantt } from './gantt/index.js';
+import { gitGraph } from './git/index.js';
 import { info } from './info/index.js';
 import { journey } from './journey/index.js';
 import { kanban } from './kanban/index.js';
@@ -44,6 +45,7 @@ const all = [
   treemap,
   info,
   sequence,
+  gitGraph,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));

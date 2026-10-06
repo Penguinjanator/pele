@@ -24,6 +24,7 @@ const DIAGRAMS = [
   ['treemap', 'treemap', 'TreemapModel', 'model'],
   ['info', 'info', 'InfoModel', 'model'],
   ['sequence', 'sequence', 'SequenceModel', 'types'],
+  ['gitGraph', 'git', 'GitModel', 'db'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();

@@ -4,6 +4,7 @@ import type { ClassModel } from './diagrams/class/types.js';
 import type { ErModel } from './diagrams/er/types.js';
 import type { FlowchartModel } from './diagrams/flowchart/types.js';
 import type { GanttModel } from './diagrams/gantt/types.js';
+import type { GitModel } from './diagrams/git/db.js';
 import type { InfoModel } from './diagrams/info/model.js';
 import type { JourneyModel } from './diagrams/journey/db.js';
 import type { KanbanModel } from './diagrams/kanban/db.js';
@@ -41,6 +42,7 @@ export type {
   TreemapModel,
   InfoModel,
   SequenceModel,
+  GitModel,
 };
 
 // The union of every implemented diagram's model; narrow it with its `type` field.
@@ -64,4 +66,5 @@ export type DiagramModel =
   | RadarModel
   | TreemapModel
   | InfoModel
-  | SequenceModel;
+  | SequenceModel
+  | GitModel;
