@@ -19,8 +19,8 @@ const headings = [
   { depth: 2, slug: 'pele-in-use', text: 'Pele in use' },
 ];
 
-// Rendered at build time so the diagrams are in the page before any script runs.
-// The client renders them again with the fonts the browser actually uses.
+// Rendered at build time. Drawing them again in the browser, with its own font measurements,
+// moves everything by a pixel or two as the page loads.
 const draw = (source: string, idPrefix: string): string => {
   try {
     return render(source, { idPrefix }).svg;
@@ -63,7 +63,7 @@ document.querySelector('#diagram').innerHTML = svg;`;
             </div>
             <div class="home-example-block">
               <div class="home-example-label"><span>Pele</span><span class="doc-code-actions"><PlaygroundLink source={homeExample} /></span></div>
-              <figure class="home-example-figure" data-pele-theme="dark" data-pele-example={homeExample} data-pele-prefix="home-" aria-label="Flowchart rendered by Pele" set:html={draw(homeExample, 'home-')} />
+              <figure class="home-example-figure" data-pele-theme="dark" aria-label="Flowchart rendered by Pele" set:html={draw(homeExample, 'home-')} />
             </div>
           </div>
           <p class="home-example-description">The SVG has no colors of its own. Set a few CSS variables and every diagram follows your theme, without being rendered again.</p>
@@ -74,7 +74,7 @@ document.querySelector('#diagram').innerHTML = svg;`;
             </div>
             <div class="home-example-block home-example-light" data-pele-theme="light">
               <div class="home-example-label"><span>Pele</span></div>
-              <figure class="home-example-figure" data-pele-example={themeExample} data-pele-prefix="theme-" aria-label="Flowchart rendered by Pele in a light theme" set:html={draw(themeExample, 'theme-')} />
+              <figure class="home-example-figure" aria-label="Flowchart rendered by Pele in a light theme" set:html={draw(themeExample, 'theme-')} />
             </div>
           </div>
         </section>
@@ -120,6 +120,3 @@ document.querySelector('#diagram').innerHTML = svg;`;
   </main>
 </BaseLayout>
 
-<script>
-  import '../scripts/home';
-</script>
