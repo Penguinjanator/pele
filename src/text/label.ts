@@ -1,5 +1,6 @@
 import { decodeEntities } from './entities.js';
 import { Style, type TextMeasurer } from './measurer.js';
+import { iconMarkup } from './icons.js';
 
 export interface Span {
   text: string;
@@ -55,9 +56,18 @@ function pushIcons(line: Span[], text: string, style: number): void {
   RE_ICON.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = RE_ICON.exec(text)) !== null) {
+    const icon = `${m[1]}:fa-${m[2]}`;
     pushText(line, text.slice(last, m.index), style);
-    line.push({ text: '', style, icon: `${m[1]}:fa-${m[2]}`, width: 0 });
     last = m.index + m[0].length;
+    if (iconMarkup(icon) !== '') {
+      line.push({ text: '', style, icon, width: 0 });
+    } else if (text[last] === ' ') {
+      // An icon the host does not have leaves no gap, nor the space that set it off from the text.
+      last++;
+    } else if (last === text.length) {
+      const before = line[line.length - 1];
+      if (before && before.icon === undefined) before.text = before.text.trimEnd();
+    }
   }
   pushText(line, text.slice(last), style);
 }

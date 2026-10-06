@@ -102,7 +102,7 @@ All options are optional.
 | `outputLimit` | `number` | Maximum length of the SVG in characters. The default is 4,000,000. A larger diagram throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
 | `linkSchemes` | `string[]` | URL schemes a link may use. The default is `['http', 'https', 'mailto', 'tel']`. Relative addresses are always kept. See [Security](/security#links-and-images). |
 | `imageSchemes` | `string[]` | URL schemes an image may use. The default is `['http', 'https']`. |
-| `icons` | `(name: string) => string \| null \| undefined` | Returns the inner SVG markup for an icon name such as `fa:fa-car`. Without a resolver, the icon's space is left empty. The markup is inserted as it is, so return only markup you trust. |
+| `icons` | `(name: string) => string \| null \| undefined` | Returns the inner SVG markup for an icon name such as `fa:fa-car`. Icons without markup are omitted. The markup is inserted without filtering, so return only markup you trust. |
 | `config` | `object` | Mermaid configuration. Frontmatter and directives in the text take precedence over it. |
 
 ### RenderResult

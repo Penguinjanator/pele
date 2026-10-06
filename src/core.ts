@@ -1,6 +1,7 @@
 import { detect, type DiagramType } from './detect.js';
 import { PeleError } from './errors.js';
 import { decodeEntities } from './text/entities.js';
+import { withIcons } from './text/icons.js';
 import { encodeEntities, preprocess, type Config } from './preprocess.js';
 import type { DiagramModel } from './models.js';
 import { mountWith, type MountOptions, type Mounted } from './mount.js';
@@ -95,7 +96,7 @@ export function render(text: string, options: RenderOptions = {}): RenderResult 
     // entity codes turned into their characters, as `data-icon` and `data-id` in the SVG do.
     const resolve = options.icons;
     const icons = resolve && ((name: string) => resolve(decodeEntities(name)));
-    const rendered = diagram.render(model, config, { ...options, responsive, icons });
+    const rendered = withIcons(icons, () => diagram.render(model, config, { ...options, responsive, icons }));
     const outputLimit = options.outputLimit ?? DEFAULT_OUTPUT_LIMIT;
     if (rendered.svg.length > outputLimit) {
       throw new PeleError(`Diagram output is longer than the limit of ${outputLimit} characters.`, 'limit', { type });

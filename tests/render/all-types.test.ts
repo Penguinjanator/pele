@@ -245,6 +245,28 @@ describe('every diagram type', () => {
     assertInert(quoted.svg, 'quoted id');
   });
 
+  it('leaves room for an icon only when the host has it', () => {
+    const cases: [string, string, string][] = [
+      ['flowchart', 'flowchart LR\n  A[fa:fa-car Car] --> B[Stop fa:fa-ban]', 'flowchart LR\n  A[Car] --> B[Stop]'],
+      ['mindmap', 'mindmap\n  root\n    Read\n    ::icon(fa fa-book)\n    Write', 'mindmap\n  root\n    Read\n    Write'],
+      ['kanban', 'kanban\n  todo[Todo]\n    a[Call]@{ icon: phone }', 'kanban\n  todo[Todo]\n    a[Call]'],
+    ];
+    for (const [name, withIcon, without] of cases) {
+      // No icons from the host: the drawing is the one the diagram would have without them.
+      const plain = render(withIcon, options);
+      expect(plain.svg, name).not.toContain('pele-icon');
+      expect(plain.svg, name).toBe(render(without, options).svg);
+      // An icon the host does not know is treated the same way.
+      expect(render(withIcon, { ...options, icons: () => null }).svg, name).toBe(plain.svg);
+      expect(render(withIcon, { ...options, icons: () => '' }).svg, name).toBe(plain.svg);
+      // With the icon, there is a slot for it, holding what the host gave.
+      const drawn = render(withIcon, { ...options, icons: () => '<path d="M1,1H9"/>' });
+      expect(drawn.svg, name).toMatch(/<svg class="pele-icon" data-icon="[^"]+"[^>]*><path d="M1,1H9"\/><\/svg>/);
+      expect(drawn.width, name).toBeGreaterThanOrEqual(plain.width);
+      assertInert(drawn.svg.replace(/<svg class="pele-icon"[^>]*>.*?<\/svg>/g, ''), name);
+    }
+  });
+
   it('gives the icon resolver and the returned links the names as written', () => {
     const asked: string[] = [];
     const icons = (icon: string): string => {

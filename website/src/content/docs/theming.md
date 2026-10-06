@@ -115,7 +115,7 @@ Elements in the SVG have class names. Use them to style one kind of element with
 | `pele-cluster-label` | The title of a subgraph |
 | `pele-label` | The text of a node label |
 | `pele-marker` | An arrowhead or other edge marker |
-| `pele-icon` | The slot for an icon in a label |
+| `pele-icon` | An icon supplied by the `icons` resolver |
 
 Nodes, edges, and subgraphs also have a `data-id` attribute with their id from the diagram source, and class names assigned in the source with `class` or `:::` are added to the element.
 

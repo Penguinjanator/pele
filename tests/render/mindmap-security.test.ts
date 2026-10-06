@@ -4,7 +4,8 @@ import { metricsMeasurer } from '../../src/text/measurer.js';
 import { loadCorpus, mutator, random } from '../support/corpus.js';
 import { PAYLOADS, assertInert } from '../support/inert.js';
 
-const options = { measurer: metricsMeasurer };
+// A host with an icon for every name, so that each name a diagram gives reaches the output.
+const options = { measurer: metricsMeasurer, icons: () => '<path d="M0,0"/>' };
 
 function check(src: string, extra: object = {}): boolean {
   let svg: string;

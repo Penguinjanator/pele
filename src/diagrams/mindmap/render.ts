@@ -7,6 +7,7 @@ import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
 import { titleRoom, turnToFit } from '../common/fit-width.js';
+import { iconMarkup } from '../../text/icons.js';
 import { iconSvg } from '../common/icon.js';
 import type { MindmapModel, MindmapNode } from './db.js';
 
@@ -72,12 +73,15 @@ function draw(model: MindmapModel, config: Config, options: RenderOptions, down:
   const dy = new Float64Array(n);
   // Where links meet the node, measured down from its top: the middle of a shape, the line under plain text.
   const anchor = new Float64Array(n);
+  // Whether the host has the node's icon. One it does not have takes no room.
+  const drawn = new Uint8Array(n);
 
   for (let i = 0; i < n; i++) {
     const node = nodes[i];
-    const fit = Math.min(wrap, Math.max(72, room - depth[i] * INDENT - 2 * TEXT_PAD - (node.icon ? glyph + ICON_GAP : 0)));
+    drawn[i] = node.icon !== undefined && iconMarkup(node.icon) !== '' ? 1 : 0;
+    const fit = Math.min(wrap, Math.max(72, room - depth[i] * INDENT - 2 * TEXT_PAD - (drawn[i] ? glyph + ICON_GAP : 0)));
     const label = (labels[i] = layoutLabel(node.descr, true, measurer, size, fit));
-    const tw = label.width + (node.icon ? glyph + (label.width > 0 ? ICON_GAP : 0) : 0);
+    const tw = label.width + (drawn[i] ? glyph + (label.width > 0 ? ICON_GAP : 0) : 0);
     const th = Math.max(label.height, Math.round(size * 1.5));
     const shape = (shapes[i] = SHAPES[node.type] || (i === 0 ? ROOT_SHAPE : ''));
     if (shape === '') {
@@ -257,7 +261,7 @@ function draw(model: MindmapModel, config: Config, options: RenderOptions, down:
     const stroke = i > 0 ? color : 'var(--_b)';
     let inner = shape ? drawShape(shape, w[i], h[i], ` fill="var(--_s)" stroke="${stroke}"`, ` stroke="${stroke}"`) : '';
     let shift = 0;
-    if (node.icon) {
+    if (node.icon && drawn[i]) {
       shift = (glyph + (label.width > 0 ? ICON_GAP : 0)) / 2;
       inner += iconSvg(node.icon, -shift - label.width / 2, dy[i] - glyph / 2, glyph, icons);
     }

@@ -91,7 +91,7 @@ Links and images are filtered by URL scheme. See [Security](/security#links-and-
 
 ### Icons
 
-An icon reference in a label, such as `fa:fa-car`, reserves space for the icon. Pele does not include icons. Pass an [`icons`](/api#renderoptions) resolver to `render()` to supply them.
+Pele does not include icons. Pass an [`icons`](/api#renderoptions) resolver to supply them. An icon reference such as `fa:fa-car` is drawn only when the resolver returns markup for it. Otherwise it is omitted and takes no space.
 
 ## Reporting differences
 

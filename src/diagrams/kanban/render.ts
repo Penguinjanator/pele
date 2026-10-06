@@ -7,6 +7,7 @@ import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.j
 import { linkUrl, safeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { titleRoom } from '../common/fit-width.js';
+import { iconMarkup } from '../../text/icons.js';
 import { iconSvg } from '../common/icon.js';
 import type { KanbanModel, KanbanNode } from './db.js';
 
@@ -114,6 +115,9 @@ interface Card {
   height: number;
 }
 
+// An icon takes room only when the host has it.
+const has = (name: string | undefined): boolean => !!name && iconMarkup(name) !== '';
+
 export function renderKanban(model: KanbanModel, config: Config, options: RenderOptions): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
@@ -146,7 +150,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
   const bodyHeights: number[] = [];
   for (const section of sections) {
     const countWidth = measurer.width(String(section.items.length), small, 0);
-    const reserved = countWidth + 12 + (section.icon ? glyph + ICON_GAP : 0);
+    const reserved = countWidth + 12 + (has(section.icon) ? glyph + ICON_GAP : 0);
     const title = fitLabel(section.label, true, measurer, size, cardWidth - 8 - reserved, Style.Bold);
     headHeight = Math.max(headHeight, title.height);
     countWidths.push(countWidth);
@@ -155,7 +159,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
     const list: Card[] = [];
     let height = 0;
     for (const item of section.items) {
-      const label = fitLabel(item.label, true, measurer, small, textWidth - (item.icon ? glyph + ICON_GAP : 0));
+      const label = fitLabel(item.label, true, measurer, small, textWidth - (has(item.icon) ? glyph + ICON_GAP : 0));
       const ticket = fitLabel(item.ticket, false, measurer, small, textWidth);
       const assigned = fitLabel(item.assigned, false, measurer, small, textWidth);
       // Ticket and assignee share a row when they fit side by side.
@@ -200,8 +204,8 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
       `<text class="pele-count" x="${edge}" y="${num(
         COLUMN_PAD + line / 2 + small * 0.35
       )}" text-anchor="end" font-size="${small}" fill="var(--_m)">${section.items.length}</text>`;
-    if (section.icon) {
-      body += iconSvg(section.icon, edge - countWidths[index] - ICON_GAP - glyph, COLUMN_PAD + (line - glyph) / 2, glyph, icons);
+    if (has(section.icon)) {
+      body += iconSvg(section.icon!, edge - countWidths[index] - ICON_GAP - glyph, COLUMN_PAD + (line - glyph) / 2, glyph, icons);
     }
 
     let y = headHeight;
@@ -216,8 +220,8 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
         )}" stroke-width="3" stroke-linecap="round"/>`;
       }
       inner += textBlock(card.label, CARD_PAD, CARD_PAD, ' class="pele-label"', icons);
-      if (item.icon) {
-        inner += iconSvg(item.icon, cardWidth - CARD_PAD - glyph, CARD_PAD + (smallLine - glyph) / 2, glyph, icons);
+      if (has(item.icon)) {
+        inner += iconSvg(item.icon!, cardWidth - CARD_PAD - glyph, CARD_PAD + (smallLine - glyph) / 2, glyph, icons);
       }
       const bottom = card.height - CARD_PAD;
       if (item.ticket) {

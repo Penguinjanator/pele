@@ -129,12 +129,15 @@ describe('mindmap rendering', () => {
 
   it('draws icons and applies classes', () => {
     const src = 'mindmap\n  root\n    A\n    ::icon(fa fa-book)\n    :::urgent large\n    B';
-    const plain = render(src, options).svg;
-    expect(plain).toContain('class="pele-node pele-shape-text urgent large" data-id="A"');
-    expect(plain).toContain('<svg class="pele-icon" data-icon="fa fa-book"');
-    const drawn = render(src, { ...options, icons: (name) => (name === 'fa fa-book' ? '<path d="M0,0H24"/>' : null) }).svg;
-    expect(drawn).toContain('stroke-linejoin="round"><path d="M0,0H24"/></svg>');
-    expect(render('mindmap\n  root\n    A\n    B', options).width).toBeLessThan(render(src, options).width);
+    const plain = render(src, options);
+    expect(plain.svg).toContain('class="pele-node pele-shape-text urgent large" data-id="A"');
+    // An icon the host does not have takes no room and leaves no empty slot.
+    expect(plain.svg).not.toContain('pele-icon');
+    expect(plain.width).toBe(render('mindmap\n  root\n    A\n    B', options).width);
+    const drawn = render(src, { ...options, icons: (name) => (name === 'fa fa-book' ? '<path d="M0,0H24"/>' : null) });
+    expect(drawn.svg).toContain('<svg class="pele-icon" data-icon="fa fa-book"');
+    expect(drawn.svg).toContain('stroke-linejoin="round"><path d="M0,0H24"/></svg>');
+    expect(drawn.width).toBeGreaterThan(plain.width);
   });
 
   it('formats markdown and breaks lines', () => {
