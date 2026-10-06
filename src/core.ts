@@ -14,6 +14,8 @@ export type { TextMeasurer } from './text/measurer.js';
 export type { IconResolver, LinkInfo, RenderOptions, RenderResult } from './types.js';
 export type { Diagram } from './types.js';
 export type { MountOptions, Mounted } from './mount.js';
+export { enableZoom } from './zoom.js';
+export type { Zoom, ZoomOptions } from './zoom.js';
 
 const diagrams = new Map<DiagramType, Diagram<unknown>>();
 

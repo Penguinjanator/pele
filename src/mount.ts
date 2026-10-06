@@ -1,14 +1,22 @@
 import { forgetWidths } from './text/measurer.js';
 import type { RenderOptions, RenderResult } from './types.js';
+import { room, windowOf } from './window.js';
+import { enableZoom, type Zoom, type ZoomOptions } from './zoom.js';
 
 export interface MountOptions extends RenderOptions {
   // Called after the diagram is put in the element, and again each time it is drawn anew.
   onRender?: (result: RenderResult) => void;
+  // Whether the diagram can be enlarged and moved about in its box. By default, 'auto', one
+  // that was shrunk to fit can be. `true` lets any diagram be, and `false` none. Options for
+  // the zoom can be given in place of these.
+  zoom?: boolean | 'auto' | ZoomOptions;
 }
 
 export interface Mounted {
   // What the element shows now.
   readonly result: RenderResult;
+  // The diagram's zoom, unless the `zoom` option is false.
+  readonly zoom: Zoom | undefined;
   // Draws other text, or the same text with other options, in the same element. Call it too
   // after moving the element to another window.
   update(text: string, options?: MountOptions): RenderResult;
@@ -17,18 +25,6 @@ export interface Mounted {
 }
 
 type Render = (text: string, options: RenderOptions) => RenderResult;
-
-// The window an element is in, which is not the script's own when the element is in a popup.
-// Styles and resizes are asked of that window: another window's answers can be late or absent.
-function windowOf(element: HTMLElement): typeof globalThis {
-  return element.ownerDocument?.defaultView ?? globalThis;
-}
-
-// The width inside the element's padding, or 0 when it has none yet.
-function room(element: HTMLElement, style: CSSStyleDeclaration): number {
-  const width = element.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
-  return width > 0 ? width : 0;
-}
 
 interface Fonts {
   family?: string;
@@ -98,10 +94,23 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
       }
     }
     shown = next;
+    zoomer?.refresh();
     settings.onRender?.(next);
   };
 
+  // Made after the first drawing, and again when the option changes.
+  let zoomer: Zoom | undefined;
+  let zooming: MountOptions['zoom'] = false;
+  const zoom = (): void => {
+    const wanted = settings.zoom ?? 'auto';
+    if (wanted === zooming) return;
+    zoomer?.destroy();
+    zooming = wanted;
+    zoomer = wanted === false ? undefined : enableZoom(element, typeof wanted === 'object' ? wanted : { always: wanted === true });
+  };
+
   draw(true);
+  zoom();
 
   const resized = (): void => {
     if (adapts === false || settings.maxWidth !== undefined) return;
@@ -151,15 +160,20 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
     get result() {
       return shown;
     },
+    get zoom() {
+      return zoomer;
+    },
     update(next, nextOptions) {
       source = next;
       if (nextOptions !== undefined) settings = nextOptions;
       draw(true);
       watch();
+      zoom();
       return shown;
     },
     destroy() {
       unwatch();
+      zoomer?.destroy();
     },
   };
 }

@@ -1,4 +1,4 @@
-import { PeleError, render } from 'pele';
+import { PeleError, enableZoom, render } from 'pele';
 import { editorHighlighting } from '../lib/editor-highlighting';
 import { formatSvg } from '../lib/format-svg';
 import { siteIcon } from '../lib/icons';
@@ -38,6 +38,7 @@ const root = document.querySelector<HTMLElement>('.playground')!;
 const outputPanel = document.getElementById('output-panel')!;
 const preview = document.getElementById('playground-preview')!;
 const peleOutput = document.getElementById('pele-output')!;
+const zoom = enableZoom(peleOutput);
 const mermaidOutput = document.getElementById('mermaid-output')!;
 const peleTime = document.getElementById('pele-time')!;
 const mermaidTime = document.getElementById('mermaid-time')!;
@@ -138,6 +139,7 @@ function renderPele() {
     const { result, time } = timed(() => render(source, options));
 
     peleOutput.innerHTML = result.svg;
+    zoom.refresh();
     delete peleOutput.dataset.stale;
     output.setValue(formatSvg(result.svg), { reset: false, notify: false });
     input.element.setAttribute('aria-invalid', 'false');

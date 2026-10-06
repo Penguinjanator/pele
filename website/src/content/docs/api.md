@@ -167,20 +167,74 @@ const diagram = mount(container, source);
 - Measures labels using `--pele-font` and `--pele-font-mono`, or the container font if they are not set. The `fontFamily` and `fontFamilyMono` options override this.
 - Uses the container width as [`maxWidth`](#narrow-screens), unless a value is supplied.
 - Re-renders when a width change affects the layout, and when a web font finishes loading.
+- Lets a diagram that was shrunk to fit be zoomed and panned. See [Zoom](#zoom).
 
 Call `update()` after a CSS change that affects fonts, such as a theme or font setting.
 
 Use a container with a width independent of its content, such as a block element. `mount()` throws a [`PeleError`](#peleerror) as `render()` does.
 
-`MountOptions` extends [`RenderOptions`](#renderoptions) with an `onRender` callback. It receives the [`RenderResult`](#renderresult) after each render. Use it to attach link handlers or other SVG interactions.
+`MountOptions` extends [`RenderOptions`](#renderoptions) with:
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `onRender` | `(result: RenderResult) => void` | Called after each render. Use it to attach link handlers or other SVG interactions. |
+| `zoom` | `boolean \| 'auto' \| ZoomOptions` | Whether the diagram can be zoomed and panned. `'auto'`, the default, allows it for a diagram that was shrunk to fit. `true` allows it for every diagram. `false` turns it off. Pass [`ZoomOptions`](#zoom) to configure it. |
 
 | Member | Description |
 | --- | --- |
 | `result` | Current `RenderResult`. |
-| `update(text, options?)` | Updates the source or options and returns the new result. |
+| `zoom` | The diagram's [`Zoom`](#zoom), or `undefined` if the `zoom` option is `false`. |
+| `update(text, options?)` | Updates the source or options and returns the new result. Call it after moving the container to another window. |
 | `destroy()` | Stops observing the container and font loading. Leaves the diagram in place. |
 
 With [`pele/lazy`](#imports), `mountAsync()` takes the same arguments, fetches the diagram type first, and returns a promise.
+
+### Zoom
+
+A zoomed diagram keeps the size of its box. The SVG shows part of the diagram at a larger scale, so nothing around it moves.
+
+A diagram that can be zoomed has buttons to zoom in, zoom out, and reset.
+
+| Input | Action |
+| --- | --- |
+| Pinch, or `Ctrl`/`⌘` + wheel | Zoom at the pointer |
+| Drag | Pan a zoomed diagram |
+| Double-click | Zoom in, or reset |
+| `+` `-` `0` and arrow keys | Zoom, reset, and pan when the diagram has focus |
+
+The wheel without a modifier key scrolls the page. On touch screens, one finger scrolls the page until the diagram is zoomed.
+
+`enableZoom()` adds the same behavior to an SVG already in the page, such as one from `render()`.
+
+```ts
+function enableZoom(element: HTMLElement, options?: ZoomOptions): Zoom
+```
+
+```ts
+import { enableZoom, render } from 'pele';
+
+container.innerHTML = render(source).svg;
+const zoom = enableZoom(container);
+```
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `always` | `boolean` | Allows zoom for a diagram that fits its container. Defaults to `false`. |
+| `maxScale` | `number` | Largest scale, where `1` is the diagram's natural size. Defaults to `3`. |
+| `controls` | `boolean` | Shows the zoom buttons. Defaults to `true`. |
+| `labels` | `{ zoomIn?, zoomOut?, reset? }` | Accessible names of the buttons. Defaults to English. |
+
+| Member | Description |
+| --- | --- |
+| `scale` | Current scale, where `1` is the diagram's natural size. |
+| `fit` | Scale at which the whole diagram is shown. |
+| `zoomBy(factor)` | Multiplies the scale. |
+| `zoomTo(scale)` | Sets the scale. |
+| `reset()` | Returns to the scale that fits. |
+| `refresh()` | Call after replacing the SVG in the container. |
+| `destroy()` | Removes the behavior and resets the diagram. |
+
+The buttons are in a `<div class="pele pele-zoom">` after the SVG, with the classes `pele-zoom-in`, `pele-zoom-out`, and `pele-zoom-reset`. They use the diagram's color variables. Move them with `--pele-zoom-top`, `--pele-zoom-right`, `--pele-zoom-bottom`, and `--pele-zoom-left`. The container is given `position: relative` if it is not positioned.
 
 ## parse
 

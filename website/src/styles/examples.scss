@@ -47,13 +47,19 @@
   svg { display: block; }
 }
 
-// The drawing itself stays the grid item, so it is centered and shrinks as a lone one does.
-.example-wide { display: contents; }
+// A box of its own for each drawing, as wide as the figure, so that its zoom has a width to
+// follow. The drawing is centered in it and shrinks as a lone one does.
+.example-wide, .example-narrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  width: 100%;
+}
 .example-narrow { display: none; }
 
 @media (max-width: 520px) {
   .example-wide { display: none; }
-  .example-narrow { display: contents; }
+  .example-narrow { display: grid; }
 }
 
 @media (max-width: 760px) {

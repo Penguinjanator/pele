@@ -28,7 +28,8 @@ afterEach(() => {
   delete globals.ResizeObserver;
 });
 
-const element = (clientWidth: number): HTMLElement => ({ clientWidth, innerHTML: '' }) as unknown as HTMLElement;
+const element = (clientWidth: number): HTMLElement =>
+  ({ clientWidth, innerHTML: '', firstElementChild: null, addEventListener() {}, removeEventListener() {} }) as unknown as HTMLElement;
 const resize = (target: HTMLElement, clientWidth: number): void => {
   (target as unknown as FakeElement).clientWidth = clientWidth;
   for (const observer of observers) if (observer.connected && observer.element === (target as unknown)) observer.fire();
@@ -136,6 +137,8 @@ describe('mount', () => {
         this.html = value;
         this.firstElementChild = drawing ? child : null;
       },
+      addEventListener() {},
+      removeEventListener() {},
       ownerDocument: {
         fonts: {
           addEventListener: (_: string, listener: (event: unknown) => void) => listeners.add(listener),
@@ -193,6 +196,19 @@ describe('mount', () => {
     expect(renders).toBe(1);
     handle.destroy();
     expect(listeners.size).toBe(0);
+  });
+
+  it('makes a zoom for the diagram unless told not to', () => {
+    expect(mount(element(500), FLOW, options).zoom).toBeDefined();
+    expect(mount(element(500), FLOW, { ...options, zoom: true }).zoom).toBeDefined();
+    expect(mount(element(500), FLOW, { ...options, zoom: { controls: false, labels: { zoomIn: 'Agrandir' } } }).zoom).toBeDefined();
+    const handle = mount(element(500), FLOW, { ...options, zoom: false });
+    expect(handle.zoom).toBeUndefined();
+    handle.update(FLOW, options);
+    expect(handle.zoom).toBeDefined();
+    // Nothing has been shrunk here, so there is nothing to enlarge.
+    expect(handle.zoom!.fit).toBe(1);
+    expect(handle.zoom!.scale).toBe(1);
   });
 
   it('keeps to a width the host sets', () => {
