@@ -133,12 +133,13 @@ function every(unit: TickUnit, step: number, weekStart: number): Calendar {
   return {
     ...base,
     floor(d) {
-      for (base.floor(d); !test(d); base.floor(d)) d.setTime(+d - 1);
+      // Date overflow makes field(d) NaN, which can never match the interval.
+      for (base.floor(d); Number.isFinite(+d) && !test(d); base.floor(d)) d.setTime(+d - 1);
     },
     offset(d, n) {
-      for (let i = 0; i < n; i++) {
+      for (let i = 0; i < n && Number.isFinite(+d); i++) {
         do base.offset(d, 1);
-        while (!test(d));
+        while (Number.isFinite(+d) && !test(d));
       }
     },
   };

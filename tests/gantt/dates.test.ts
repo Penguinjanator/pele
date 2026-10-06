@@ -243,4 +243,10 @@ describe('axis ticks', () => {
     expect(intervalTicks('99999999second', 'sunday', start, stop, 1000)).toBeUndefined();
     expect(intervalTicks('1day', 'nonsense', start, stop, 100)!.length).toBe(31);
   });
+
+  it('stops filtered tick searches when dates overflow', () => {
+    const limit = 8.64e15;
+    expect(autoTicks(-limit, -limit + 120_000, 4)).toEqual([]);
+    expect(intervalTicks('2second', 'sunday', limit - 1000, limit, 10)).toEqual([limit]);
+  });
 });
