@@ -263,6 +263,9 @@ describe('every diagram type', () => {
       const drawn = render(withIcon, { ...options, icons: () => '<path d="M1,1H9"/>' });
       expect(drawn.svg, name).toMatch(/<svg class="pele-icon" data-icon="[^"]+"[^>]*><path d="M1,1H9"\/><\/svg>/);
       expect(drawn.width, name).toBeGreaterThanOrEqual(plain.width);
+      // It is drawn in the diagram's text color, not in whatever color the page gives the container.
+      expect(drawn.svg, name).toMatch(/^<svg[^>]* style="[^"]*color:var\(--_fg\)"/);
+      expect(drawn.svg, name).toMatch(/<svg class="pele-icon"[^>]* stroke="currentColor"/);
       assertInert(drawn.svg.replace(/<svg class="pele-icon"[^>]*>.*?<\/svg>/g, ''), name);
     }
   });

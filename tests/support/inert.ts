@@ -53,7 +53,7 @@ export function inertProblem(svg: string): string | undefined {
           const trimmed = decl.trim();
           if (trimmed === '') continue;
           const prop = decl.slice(0, decl.indexOf(':')).trim();
-          const sizing = el.name === 'svg' && trimmed === 'height:auto';
+          const sizing = el.name === 'svg' && (trimmed === 'height:auto' || trimmed === 'color:var(--_fg)');
           if (!sizing && !STYLE_PROPERTIES.has(prop) && !prop.startsWith('--_')) return `style property ${prop}`;
         }
       } else if (name === 'fill' || name === 'stroke' || name === 'font-family' || name === 'rx') {
