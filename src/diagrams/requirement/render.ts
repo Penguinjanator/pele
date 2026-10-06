@@ -7,6 +7,7 @@ import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { runsAcross, turnToFit } from '../common/fit-width.js';
 import { buildRequirementGraph, type GraphEdge, type GraphNode } from './graph.js';
 import type { RequirementModel } from './types.js';
 
@@ -147,6 +148,12 @@ function spreadEnds(cnodes: CNode[], cedges: CEdge[], views: NodeView[]): void {
 }
 
 export function renderRequirement(model: RequirementModel, _config: Config, options: RenderOptions): Rendered {
+  if (!runsAcross(model.direction)) return draw(model, _config, options, false);
+  return turnToFit(options, (down) => draw(model, _config, options, down));
+}
+
+// `turned` draws a diagram that runs across as one that runs down.
+function draw(model: RequirementModel, _config: Config, options: RenderOptions, turned: boolean): Rendered {
   const graph = buildRequirementGraph(model);
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
@@ -205,7 +212,7 @@ export function renderRequirement(model: RequirementModel, _config: Config, opti
     cnodes.push(c);
   }
 
-  const rootDir = direction(graph.direction);
+  const rootDir = turned ? 'TB' : direction(graph.direction);
   const sideways = rootDir === 'LR' || rootDir === 'RL';
   const cedges: CEdge[] = [];
   const edgeLabels: Label[] = [];

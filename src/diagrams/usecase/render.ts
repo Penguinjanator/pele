@@ -8,6 +8,7 @@ import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { runsAcross, turnToFit } from '../common/fit-width.js';
 import { buildUsecaseGraph, type UsecaseGraphEdge, type UsecaseGraphNode } from './graph.js';
 import type { UsecaseModel } from './types.js';
 
@@ -197,6 +198,12 @@ function figure(view: View, icons: IconResolver | undefined): string {
 }
 
 export function renderUsecase(model: UsecaseModel, config: Config, options: RenderOptions): Rendered {
+  if (!runsAcross(model.direction)) return draw(model, config, options, false);
+  return turnToFit(options, (down) => draw(model, config, options, down));
+}
+
+// `turned` draws a diagram that runs across as one that runs down.
+function draw(model: UsecaseModel, config: Config, options: RenderOptions, turned: boolean): Rendered {
   const graph = buildUsecaseGraph(model);
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
@@ -204,7 +211,7 @@ export function renderUsecase(model: UsecaseModel, config: Config, options: Rend
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
   const pad = options.padding ?? 8;
   const icons = options.icons;
-  const rootDir = direction(model.direction);
+  const rootDir = turned ? 'TB' : direction(model.direction);
   const sideways = rootDir === 'LR' || rootDir === 'RL';
 
   const index = new Map<string, number>();

@@ -10,6 +10,7 @@ import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { linkUrl, safeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
+import { runsAcross, turnToFit } from '../common/fit-width.js';
 import type { StateDb } from './db.js';
 import type { StateEdge, StateNode } from './graph.js';
 
@@ -115,6 +116,12 @@ function group(dir: Dir, padX: number, padTop: number, padBottom: number): CNode
 }
 
 export function renderState(db: StateDb, config: Config, options: RenderOptions): Rendered {
+  if (!runsAcross(db.direction)) return draw(db, config, options, false);
+  return turnToFit(options, (down) => draw(db, config, options, down));
+}
+
+// `turned` draws a diagram that runs across as one that runs down.
+function draw(db: StateDb, config: Config, options: RenderOptions, turned: boolean): Rendered {
   const graph = db.graph;
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
@@ -122,7 +129,7 @@ export function renderState(db: StateDb, config: Config, options: RenderOptions)
   const wrapWidth = numberOption(config, 'wrappingWidth', 200);
   const pad = options.padding ?? 8;
   const icons = options.icons;
-  const rootDir = direction(db.direction);
+  const rootDir = turned ? 'TB' : direction(db.direction);
   const noLabel = layoutLabel(undefined, false, measurer, size, 0);
   const text = (raw: string | undefined, fontSize: number, wrap: number, style = 0): Label =>
     layoutLabel(raw, true, measurer, fontSize, wrap, style);

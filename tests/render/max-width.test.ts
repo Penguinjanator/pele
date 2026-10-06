@@ -89,6 +89,42 @@ describe('the maxWidth option', () => {
     expect(new Set(tops(tablet.svg)).size).toBe(2);
   });
 
+  const ACROSS: [string, string, string][] = [
+    ['flowchart', 'flowchart LR\n  A[First step] --> B[Second step] --> C[Third step] --> D[Fourth step] --> E[Fifth step]', 'flowchart TB'],
+    ['flowchart RL', 'flowchart RL\n  A[First step] --> B[Second step] --> C[Third step] --> D[Fourth step] --> E[Fifth step]', 'flowchart TB'],
+    ['state', 'stateDiagram-v2\n  direction LR\n  [*] --> Drafting\n  Drafting --> Reviewing\n  Reviewing --> Publishing\n  Publishing --> Archiving\n  Archiving --> [*]', 'direction TB'],
+    ['class', 'classDiagram\n  direction LR\n  Animal <|-- Mammal\n  Mammal <|-- Primate\n  Primate <|-- Hominid\n  Hominid <|-- Human', 'direction TB'],
+    ['er', 'erDiagram\n  direction LR\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ LINE_ITEM : contains\n  LINE_ITEM }|--|| PRODUCT : is', 'direction TB'],
+  ];
+
+  it('turns a diagram that runs across to run down when it does not fit a narrow width', () => {
+    for (const [name, source, down] of ACROSS) {
+      const across = render(source, options);
+      expect(across.width, name).toBeGreaterThan(PHONE);
+      const turned = render(source, { ...options, maxWidth: PHONE });
+      expect(turned.width, name).toBeLessThan(across.width);
+      expect(turned.height, name).toBeGreaterThan(across.height);
+      // The same drawing as the diagram written to run down.
+      expect(turned.svg, name).toBe(render(source.replace(/flowchart (?:LR|RL)|direction LR/, down), options).svg);
+    }
+  });
+
+  it('keeps the direction when told to, at a width over the breakpoint, and when across fits', () => {
+    for (const [name, source] of ACROSS) {
+      const { svg: across, width } = render(source, options);
+      expect(render(source, { ...options, maxWidth: PHONE, autoDirection: false }).svg, name).toBe(across);
+      expect(render(source, { ...options, maxWidth: 640 }).svg, name).toBe(across);
+      expect(render(source, { ...options, maxWidth: PHONE, directionBreakpoint: 300 }).svg, name).toBe(across);
+      // With the breakpoint raised, a diagram a little too wide for a wide container turns too.
+      expect(render(source, { ...options, maxWidth: width - 1, directionBreakpoint: width + 500 }).svg, name).not.toBe(across);
+    }
+    const small = 'flowchart LR\n  A --> B';
+    expect(render(small, { ...options, maxWidth: PHONE }).svg).toBe(render(small, options).svg);
+    // Lanes are not turned: across and down are different diagrams there.
+    const lanes = 'swimlane-beta LR\n  subgraph One\n    A[First step] --> B[Second step]\n  end\n  subgraph Two\n    C[Third step] --> D[Fourth step]\n  end\n  B --> C';
+    expect(render(lanes, { ...options, maxWidth: 100 }).svg).toBe(render(lanes, options).svg);
+  });
+
   it('ignores a width that is not a positive number, and survives a tiny one', { timeout: 120000 }, () => {
     for (const { name, sources } of corpora) {
       const source = sources[0];

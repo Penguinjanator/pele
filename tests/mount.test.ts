@@ -42,16 +42,16 @@ describe('mount', () => {
     const natural = render(SANKEY, options);
     const el = element(1000);
     const drawn: RenderResult[] = [];
-    const mounted = mount(el, SANKEY, { ...options, onRender: (result) => drawn.push(result) });
+    const handle = mount(el, SANKEY, { ...options, onRender: (result) => drawn.push(result) });
     expect(el.innerHTML).toBe(natural.svg);
-    expect(mounted.result.width).toBe(natural.width);
+    expect(handle.result.width).toBe(natural.width);
 
     resize(el, 420);
-    expect(mounted.result.width).toBe(400);
+    expect(handle.result.width).toBe(400);
     expect(el.innerHTML).toBe(render(SANKEY, { ...options, maxWidth: 400 }).svg);
 
     resize(el, 340);
-    expect(mounted.result.width).toBe(320);
+    expect(handle.result.width).toBe(320);
     resize(el, 1000);
     expect(el.innerHTML).toBe(natural.svg);
     expect(drawn.map((result) => result.width)).toEqual([natural.width, 400, 320, natural.width]);
@@ -65,31 +65,44 @@ describe('mount', () => {
   it('draws once when the diagram cannot use the room differently', () => {
     const el = element(1000);
     let count = 0;
-    const mounted = mount(el, FLOW, { ...options, onRender: () => count++ });
+    const handle = mount(el, FLOW.replace('LR', 'TB'), { ...options, onRender: () => count++ });
     const natural = el.innerHTML;
     resize(el, 300);
-    resize(el, 200);
+    resize(el, 30);
     resize(el, 900);
     expect(count).toBe(1);
     expect(el.innerHTML).toBe(natural);
-    expect(mounted.result.type).toBe('flowchart');
+    expect(handle.result.type).toBe('flowchart');
+  });
+
+  it('turns a flowchart that runs across when the element gets narrow, and back', () => {
+    const el = element(1000);
+    const handle = mount(el, FLOW, options);
+    const across = handle.result;
+    resize(el, 700);
+    expect(handle.result.svg).toBe(across.svg);
+    resize(el, 340);
+    expect(handle.result.height).toBeGreaterThan(across.height);
+    expect(handle.result.width).toBeLessThan(across.width);
+    resize(el, 1000);
+    expect(handle.result.svg).toBe(across.svg);
   });
 
   it('does not chase an element that takes the width of its drawing', () => {
     const el = element(340);
     let count = 0;
-    const mounted = mount(el, SANKEY, { ...options, onRender: () => count++ });
-    resize(el, mounted.result.width + 20);
-    resize(el, mounted.result.width + 20);
+    const handle = mount(el, SANKEY, { ...options, onRender: () => count++ });
+    resize(el, handle.result.width + 20);
+    resize(el, handle.result.width + 20);
     expect(count).toBe(1);
   });
 
   it('waits for an element that has no width yet', () => {
     const el = element(0);
-    const mounted = mount(el, SANKEY, options);
-    expect(mounted.result.width).toBe(render(SANKEY, options).width);
+    const handle = mount(el, SANKEY, options);
+    expect(handle.result.width).toBe(render(SANKEY, options).width);
     resize(el, 340);
-    expect(mounted.result.width).toBe(320);
+    expect(handle.result.width).toBe(320);
   });
 
   it('measures with the font of the element unless one is given', () => {
@@ -109,23 +122,23 @@ describe('mount', () => {
 
   it('keeps to a width the host sets', () => {
     const el = element(1000);
-    const mounted = mount(el, SANKEY, { ...options, maxWidth: 320 });
-    expect(mounted.result.width).toBe(320);
+    const handle = mount(el, SANKEY, { ...options, maxWidth: 320 });
+    expect(handle.result.width).toBe(320);
     resize(el, 600);
-    expect(mounted.result.width).toBe(320);
+    expect(handle.result.width).toBe(320);
   });
 
   it('updates, reports errors as render does, and stops when destroyed', () => {
     const el = element(340);
-    const mounted = mount(el, SANKEY, options);
-    expect(mounted.update(FLOW).type).toBe('flowchart');
-    expect(el.innerHTML).toBe(render(FLOW, options).svg);
-    expect(() => mounted.update('flowchart LR\n  A -->')).toThrow(PeleError);
-    expect(el.innerHTML).toBe(render(FLOW, options).svg);
+    const handle = mount(el, SANKEY, options);
+    expect(handle.update(FLOW).type).toBe('flowchart');
+    expect(el.innerHTML).toBe(render(FLOW, { ...options, maxWidth: 320 }).svg);
+    expect(() => handle.update('flowchart LR\n  A -->')).toThrow(PeleError);
+    expect(el.innerHTML).toBe(render(FLOW, { ...options, maxWidth: 320 }).svg);
     expect(() => mount(element(300), 'not a diagram', options)).toThrow(PeleError);
 
-    mounted.update(SANKEY);
-    mounted.destroy();
+    handle.update(SANKEY);
+    handle.destroy();
     const before = el.innerHTML;
     resize(el, 1000);
     expect(el.innerHTML).toBe(before);
@@ -134,8 +147,8 @@ describe('mount', () => {
   it('works where there is nothing to watch with', () => {
     delete globals.ResizeObserver;
     const el = element(340);
-    const mounted = mount(el, SANKEY, options);
-    expect(mounted.result.width).toBe(320);
-    mounted.destroy();
+    const handle = mount(el, SANKEY, options);
+    expect(handle.result.width).toBe(320);
+    handle.destroy();
   });
 });

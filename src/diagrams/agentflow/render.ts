@@ -11,6 +11,7 @@ import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
 import { linkUrl, sanitizeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
+import { runsAcross, turnToFit } from '../common/fit-width.js';
 import { canonicalShape } from '../flowchart/shapes.js';
 import { KIND_SLOT } from './colorSlots.js';
 import type { AgentflowDb } from './db.js';
@@ -68,6 +69,12 @@ interface NodeView {
 }
 
 export function renderAgentflow(db: AgentflowDb, config: Config, options: RenderOptions): Rendered {
+  if (!runsAcross(db.direction)) return draw(db, config, options, false);
+  return turnToFit(options, (down) => draw(db, config, options, down));
+}
+
+// `turned` draws a diagram that runs across as one that runs down.
+function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: boolean): Rendered {
   const graph = agentGraph(db, config);
   const size = options.fontSize ?? 16;
   const edgeSize = Math.round(size * 0.875);
@@ -122,7 +129,7 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
     cnodes[i].parent = node.parentId !== undefined ? (index.get(node.parentId) ?? -1) : -1;
   });
 
-  const rootDir = direction(db.direction);
+  const rootDir = turned ? 'TB' : direction(db.direction);
   // The direction of the level a node sits in.
   const flowOf = (i: number): Dir => {
     let dir: Dir | undefined;

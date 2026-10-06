@@ -37,12 +37,20 @@ export function capWidth(options: RenderOptions, natural: number, least: number,
   return Math.max(Math.min(least, natural), Math.min(natural, available - around));
 }
 
-// For a diagram that can run across or down: draws it across, and down instead when across
-// does not fit the width the host has and down is narrower.
+const BREAKPOINT = 640;
+
+// For a diagram that can run across or down: draws it across, and down instead when the host
+// allows it, the width it has is under the breakpoint, across does not fit, and down is narrower.
 export function turnToFit(options: RenderOptions, draw: (down: boolean) => Rendered): Rendered {
   const across = draw(false);
   const available = options.maxWidth;
-  if (available === undefined || !(available > 0) || across.width <= available) return across;
+  if (options.autoDirection === false || available === undefined || !(available > 0) || across.width <= available) return across;
+  const breakpoint = options.directionBreakpoint;
+  if (available >= (breakpoint !== undefined && breakpoint > 0 ? breakpoint : BREAKPOINT)) return across;
   const down = draw(true);
   return down.width < across.width ? down : across;
+}
+
+export function runsAcross(direction: string | undefined): boolean {
+  return direction === 'LR' || direction === 'RL';
 }

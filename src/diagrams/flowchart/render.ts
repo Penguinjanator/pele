@@ -12,6 +12,7 @@ import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
 import { imageUrl, linkUrl, safeUrl, sanitizeUrl } from '../../util/url.js';
 import type { IconResolver, LinkInfo, RenderOptions, Rendered } from '../../types.js';
+import { runsAcross, turnToFit } from '../common/fit-width.js';
 import type { FlowDb } from './db.js';
 import { buildFlowGraph, type FlowGraph, type GraphEdge, type GraphNode } from './graph.js';
 import { canonicalShape } from './shapes.js';
@@ -53,6 +54,12 @@ interface NodeView {
 }
 
 export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptions, variant?: FlowVariant): Rendered {
+  if (variant !== undefined || !runsAcross(db.direction)) return draw(db, config, options, variant, false);
+  return turnToFit(options, (down) => draw(db, config, options, undefined, down));
+}
+
+// `turned` draws a flowchart that runs across as one that runs down.
+function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowVariant | undefined, turned: boolean): Rendered {
   const own = variant ? config[variant.type] : undefined;
   const flow = (typeof own === 'object' && own !== null && !Array.isArray(own) ? own : (config.flowchart ?? {})) as Config;
   const graph = buildFlowGraph(db, typeof flow.curve === 'string' ? flow.curve : undefined);
@@ -120,7 +127,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     cnodes[i].parent = node.parentId !== undefined ? (index.get(node.parentId) ?? -1) : -1;
   });
 
-  const rootDir = direction(db.direction);
+  const rootDir = turned ? 'TB' : direction(db.direction);
   const flowsSideways = (i: number): boolean => {
     let dir: Dir | undefined;
     for (let p = cnodes[i].parent, hops = 0; p >= 0 && dir === undefined && hops < 10000; p = cnodes[p].parent, hops++) {

@@ -29,8 +29,8 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
   let settings = options;
   let natural: RenderResult;
   let shown: RenderResult;
-  // False once a narrower width is seen to make no difference to this diagram.
-  let adapts = true;
+  // Whether the width there is can change how this diagram is drawn. Not known until asked.
+  let adapts: boolean | undefined;
   let drawnFor = -1;
 
   const draw = (fresh: boolean): void => {
@@ -39,15 +39,15 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
     const base: RenderOptions = { ...rest, fontFamily: rest.fontFamily ?? style.fontFamily, maxWidth: undefined };
     if (fresh) {
       natural = render(source, base);
-      adapts = true;
+      adapts = undefined;
     }
     const available = settings.maxWidth ?? room(element, style);
     drawnFor = available;
     let next = natural;
-    if (adapts && available > 0 && available < natural.width) {
-      const fitted = render(source, { ...base, maxWidth: available });
-      if (fitted.svg === natural.svg) adapts = false;
-      else next = fitted;
+    if (available > 0 && available < natural.width) {
+      // Drawn for no room at all, a diagram that the width can change comes out differently.
+      adapts ??= render(source, { ...base, maxWidth: 1 }).svg !== natural.svg;
+      if (adapts) next = render(source, { ...base, maxWidth: available });
     }
     if (!fresh && next.svg === shown.svg) return;
     shown = next;
@@ -61,7 +61,7 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
     typeof ResizeObserver === 'undefined'
       ? undefined
       : new ResizeObserver(() => {
-          if (!adapts || settings.maxWidth !== undefined) return;
+          if (adapts === false || settings.maxWidth !== undefined) return;
           const available = room(element, getComputedStyle(element));
           // An element that wraps the drawing follows its width, which is not a change of room.
           if (available === drawnFor || available === shown.width) return;

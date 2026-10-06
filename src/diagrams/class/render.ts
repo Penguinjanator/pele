@@ -10,6 +10,7 @@ import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
+import { runsAcross, turnToFit } from '../common/fit-width.js';
 import { linkUrl } from '../../util/url.js';
 import type { ClassDb } from './db.js';
 import { buildClassGraph, type GraphEdge, type GraphNode } from './graph.js';
@@ -87,6 +88,12 @@ function sideOf(x: number, y: number, c: CNode): number {
 }
 
 export function renderClass(db: ClassDb, config: Config, options: RenderOptions): Rendered {
+  if (!runsAcross(db.direction)) return draw(db, config, options, false);
+  return turnToFit(options, (down) => draw(db, config, options, down));
+}
+
+// `turned` draws a diagram that runs across as one that runs down.
+function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boolean): Rendered {
   const conf = (config.class ?? {}) as Config;
   const graph = buildClassGraph(db, conf.hierarchicalNamespaces !== false);
   const hideEmpty = conf.hideEmptyMembersBox === true;
@@ -96,7 +103,7 @@ export function renderClass(db: ClassDb, config: Config, options: RenderOptions)
   const tinyHeight = Math.round(tiny * 1.4);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
   const pad = options.padding ?? 8;
-  const rootDir = direction(db.direction);
+  const rootDir = turned ? 'TB' : direction(db.direction);
 
   // A class may carry the declarations of many classDefs many times over. Each distinct declaration
   // is checked once, and only the last value of each property that has an effect is resolved.

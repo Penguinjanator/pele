@@ -10,6 +10,7 @@ import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
 import { linkUrl, sanitizeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
+import { runsAcross, turnToFit } from '../common/fit-width.js';
 import type { ErDb } from './db.js';
 import { parseGenericTypes } from '../common/generics.js';
 import { buildErGraph, type ErGraphEdge, type ErGraphNode } from './graph.js';
@@ -113,6 +114,12 @@ function cellText(raw: string): string {
 }
 
 export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rendered {
+  if (!runsAcross(db.direction)) return draw(db, config, options, false);
+  return turnToFit(options, (down) => draw(db, config, options, down));
+}
+
+// `turned` draws a diagram that runs across as one that runs down.
+function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean): Rendered {
   const graph = buildErGraph(db);
   const size = options.fontSize ?? 16;
   const smallSize = Math.round(size * 0.875);
@@ -259,7 +266,7 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
     cnodes[i].parent = node.parentId !== undefined ? (index.get(node.parentId) ?? -1) : -1;
   });
 
-  const layout = compoundLayout(cnodes, cedges, direction(db.direction), {
+  const layout = compoundLayout(cnodes, cedges, turned ? 'TB' : direction(db.direction), {
     nodeSep: numberOption(config, 'nodeSpacing', NODE_SEP),
     edgeSep: EDGE_SEP,
     rankSep: numberOption(config, 'rankSpacing', RANK_SEP),
