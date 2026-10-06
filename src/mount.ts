@@ -9,13 +9,20 @@ export interface MountOptions extends RenderOptions {
 export interface Mounted {
   // What the element shows now.
   readonly result: RenderResult;
-  // Draws other text, or the same text with other options, in the same element.
+  // Draws other text, or the same text with other options, in the same element. Call it too
+  // after moving the element to another window.
   update(text: string, options?: MountOptions): RenderResult;
   // Stops watching the element and the page's fonts. What it shows stays.
   destroy(): void;
 }
 
 type Render = (text: string, options: RenderOptions) => RenderResult;
+
+// The window an element is in, which is not the script's own when the element is in a popup.
+// Styles and resizes are asked of that window: another window's answers can be late or absent.
+function windowOf(element: HTMLElement): typeof globalThis {
+  return element.ownerDocument?.defaultView ?? globalThis;
+}
 
 // The width inside the element's padding, or 0 when it has none yet.
 function room(element: HTMLElement, style: CSSStyleDeclaration): number {
@@ -30,8 +37,8 @@ interface Fonts {
 
 // The fonts CSS gives the diagram. A variable may be set on the drawing itself, which the
 // element that holds it does not inherit, so a drawing that is there is the one asked.
-function fontsFor(style: CSSStyleDeclaration, drawing: Element | null): Fonts {
-  const own = drawing ? getComputedStyle(drawing) : style;
+function fontsFor(style: CSSStyleDeclaration, drawing: HTMLElement | null): Fonts {
+  const own = drawing ? windowOf(drawing).getComputedStyle(drawing) : style;
   return {
     family: own.getPropertyValue('--pele-font').trim() || style.fontFamily || undefined,
     mono: own.getPropertyValue('--pele-font-mono').trim() || undefined,
@@ -76,14 +83,14 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
 
   // A quiet draw leaves the element alone when it would show the same thing.
   const draw = (fresh: boolean, quiet = !fresh): void => {
-    const style = getComputedStyle(element);
-    const drawing = element.firstElementChild ?? null;
+    const style = windowOf(element).getComputedStyle(element);
+    const drawing = (element.firstElementChild as HTMLElement | null) ?? null;
     if (fresh) fonts = fontsFor(style, drawing);
     let next = fit(style, fresh);
     if (quiet && next.svg === shown.svg) return;
     element.innerHTML = next.svg;
     if (fresh && !drawing && element.firstElementChild) {
-      const seen = fontsFor(style, element.firstElementChild);
+      const seen = fontsFor(style, element.firstElementChild as HTMLElement);
       if (seen.family !== fonts.family || seen.mono !== fonts.mono) {
         fonts = seen;
         next = fit(style, true);
@@ -96,24 +103,18 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
 
   draw(true);
 
-  const observer =
-    typeof ResizeObserver === 'undefined'
-      ? undefined
-      : new ResizeObserver(() => {
-          if (adapts === false || settings.maxWidth !== undefined) return;
-          const available = room(element, getComputedStyle(element));
-          // An element that wraps the drawing follows its width, which is not a change of room.
-          if (available === drawnFor || available === shown.width) return;
-          try {
-            draw(false);
-          } catch {
-            // The text drew before. Whatever stops it now, what is shown stays.
-          }
-        });
-  observer?.observe(element);
-
+  const resized = (): void => {
+    if (adapts === false || settings.maxWidth !== undefined) return;
+    const available = room(element, windowOf(element).getComputedStyle(element));
+    // An element that wraps the drawing follows its width, which is not a change of room.
+    if (available === drawnFor || available === shown.width) return;
+    try {
+      draw(false);
+    } catch {
+      // The text drew before. Whatever stops it now, what is shown stays.
+    }
+  };
   // A font that was still loading was measured as its fallback.
-  const loaded = element.ownerDocument?.fonts;
   const remeasure = (event: Event): void => {
     if (event !== forgotten) {
       forgotten = event;
@@ -125,7 +126,26 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
       // As above.
     }
   };
-  loaded?.addEventListener('loadingdone', remeasure);
+
+  let view: typeof globalThis | undefined;
+  let observer: ResizeObserver | undefined;
+  let loaded: FontFaceSet | undefined;
+  const unwatch = (): void => {
+    observer?.disconnect();
+    loaded?.removeEventListener('loadingdone', remeasure);
+  };
+  // Watches from the window the element is in now, which changes if a host moves it to another.
+  const watch = (): void => {
+    const next = windowOf(element);
+    if (next === view) return;
+    unwatch();
+    view = next;
+    observer = next.ResizeObserver ? new next.ResizeObserver(resized) : undefined;
+    observer?.observe(element);
+    loaded = element.ownerDocument?.fonts;
+    loaded?.addEventListener('loadingdone', remeasure);
+  };
+  watch();
 
   return {
     get result() {
@@ -135,11 +155,11 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
       source = next;
       if (nextOptions !== undefined) settings = nextOptions;
       draw(true);
+      watch();
       return shown;
     },
     destroy() {
-      observer?.disconnect();
-      loaded?.removeEventListener('loadingdone', remeasure);
+      unwatch();
     },
   };
 }
