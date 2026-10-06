@@ -145,10 +145,10 @@ describe('mindmap rendering', () => {
 
   it('formats markdown and breaks lines', () => {
     const { svg } = render('mindmap\n  id1["`**Root** with\na second line`"]\n    id2[One<br/>Two]\n    id3[*emphasis*]', options);
-    expect(svg).toContain(' font-weight="bold">Root</tspan><tspan> with</tspan>');
+    expect(svg).toContain(' font-weight="var(--_w)">Root</tspan><tspan> with</tspan>');
     expect(svg).toContain('a second line');
     expect(svg).toMatch(/>One<\/tspan><tspan[^>]*>Two</);
-    expect(svg).toContain('font-style="italic">emphasis<');
+    expect(svg).toMatch(/<text[^>]* font-style="italic"[^>]*><tspan[^>]*>emphasis</);
   });
 
   it('wraps long text at maxNodeWidth', () => {
@@ -168,7 +168,7 @@ describe('mindmap rendering', () => {
   it('draws the front matter title', () => {
     const plain = render('mindmap\n  root\n    A', options);
     const titled = render('---\ntitle: Plans\n---\nmindmap\n  root\n    A', options);
-    expect(titled.svg).toContain('class="pele-title" font-weight="bold"');
+    expect(titled.svg).toContain('class="pele-title" font-weight="var(--_tw)"');
     expect(titled.svg).toContain('>Plans<');
     expect(titled.height).toBeGreaterThan(plain.height);
   });

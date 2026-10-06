@@ -287,7 +287,7 @@ describe('agentflow rendering', () => {
   it('draws a front matter title above the diagram', () => {
     const plain = render('agentflow-beta TB\n  a --> b', options);
     const titled = render('---\ntitle: Release pipeline\n---\nagentflow-beta TB\n  a --> b', options);
-    expect(titled.svg).toMatch(/<text class="pele-title" font-weight="bold"[^>]*>(?:<tspan[^>]*>)?Release pipeline</);
+    expect(titled.svg).toMatch(/<text class="pele-title" font-weight="var\(--_tw\)"[^>]*>(?:<tspan[^>]*>)?Release pipeline</);
     expect(titled.height).toBeGreaterThan(plain.height);
   });
 

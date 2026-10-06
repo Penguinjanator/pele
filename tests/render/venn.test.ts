@@ -246,7 +246,7 @@ describe('venn diagram rendering', () => {
 
   it('draws the title above, without the quotes it may be written in', () => {
     const quoted = render('venn-beta\ntitle "Team overlap"\nset A', options).svg;
-    expect(quoted).toContain('<text class="pele-title" font-weight="bold"');
+    expect(quoted).toContain('<text class="pele-title" font-weight="var(--_tw)"');
     expect(quoted).toContain('>Team overlap</tspan>');
     const front = render('---\ntitle: From the front matter\n---\nvenn-beta\nset A', options).svg;
     expect(front).toContain('>From the front matter</tspan>');

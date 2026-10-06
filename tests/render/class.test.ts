@@ -102,7 +102,7 @@ describe('class diagram rendering', () => {
     const duck = group(svg, 'Duck');
     expect(duck).toContain('class="pele-node pele-class"');
     expect(count(duck, '<rect')).toBe(1);
-    expect(duck).toMatch(/<tspan[^>]* font-weight="bold">Duck<\/tspan>/);
+    expect(duck).toMatch(/<text class="pele-label" font-weight="var\(--_hw\)"[^>]*><tspan[^>]*>Duck<\/tspan>/);
     expect(duck).toMatch(/<path class="pele-divider" d="M[-\d.]+,[-\d.]+H[-\d.]+M[-\d.]+,[-\d.]+H[-\d.]+"/);
     const texts = [...duck.matchAll(/<text class="pele-member pele-(attribute|method)"[^>]* y="([-\d.]+)">([^<]*)<\/text>/g)];
     expect(texts.map((m) => [m[1], m[3]])).toEqual([
@@ -308,7 +308,7 @@ describe('class diagram rendering', () => {
     const svg = draw('class MyClass\nnote "General<br>note"\nnote for MyClass "About **it**"');
     expect(group(svg, 'note0')).toContain('pele-note');
     expect(group(svg, 'note0')).toMatch(/>General<\/tspan><tspan[^>]*>note</);
-    expect(group(svg, 'note1')).toMatch(/<tspan font-weight="bold">it<\/tspan>/);
+    expect(group(svg, 'note1')).toMatch(/<tspan font-weight="var\(--_w\)">it<\/tspan>/);
     const edge = group(svg, 'edgeNote1');
     expect(edge).toContain('pele-note-edge');
     expect(edge).toContain('stroke-dasharray="2 4"');
@@ -389,7 +389,7 @@ describe('class diagram rendering', () => {
     expect(group(svg, 'A')).toMatch(/pele-divider"[^>]* style="stroke:#333"/);
     expect(group(svg, 'B')).toContain('class="pele-node pele-class hot"');
     expect(group(svg, 'B')).toMatch(/<rect[^>]* style="stroke:#00f;fill:#fdd;"/);
-    expect(group(svg, 'B')).toMatch(/<text class="pele-label" style="fill:#900;"/);
+    expect(group(svg, 'B')).toMatch(/<text class="pele-label" font-weight="var\(--_hw\)" style="fill:#900;"/);
     expect(group(svg, 'C')).toContain('class="pele-node pele-class cold"');
     expect(group(svg, 'C')).toMatch(/<rect[^>]* style="stroke:#00f;fill:#ddf;"/);
     expect(group(svg, 'D')).toContain('pele-static" style="fill:#090;text-decoration:underline"');

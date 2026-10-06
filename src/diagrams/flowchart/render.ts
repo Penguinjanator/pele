@@ -329,7 +329,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     size,
     options,
     db,
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (struckTitles ? `<g class="pele-cluster-titles">${struckTitles}</g>` : '') +

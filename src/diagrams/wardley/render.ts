@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, escText, labelSvg, num, spanStyle } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num, sharedStyle, spanStyle, textStyle } from '../../svg/builder.js';
 import { marker, markerTrim } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS } from '../../svg/theme.js';
@@ -40,19 +40,20 @@ function clamp(value: number, min: number, max: number): number {
 
 // Writes a label with its lines starting at x and its first baseline at y.
 function startLabel(label: Label, x: number, y: number, attrs: string): string {
+  const shared = sharedStyle(label);
   let body = '';
   let baseline = y;
   for (const line of label.lines) {
     let first = true;
     for (const span of line) {
       if (span.icon !== undefined) continue;
-      const style = spanStyle(span.style);
+      const style = spanStyle(span.style & ~shared);
       body += `<tspan${first ? ` x="${num(x)}" y="${num(baseline)}"` : ''}${style}>${esc(span.text)}</tspan>`;
       first = false;
     }
     baseline += label.lineHeight;
   }
-  return body === '' ? '' : `<text${attrs} xml:space="preserve">${body}</text>`;
+  return body === '' ? '' : `<text${textStyle(attrs, shared)} xml:space="preserve">${body}</text>`;
 }
 
 function dimension(config: Config, given: number | undefined, key: string, fallback: number): number {
@@ -125,7 +126,7 @@ function draw(model: WardleyModel, config: Config, options: RenderOptions, plotW
   frame += `<path class="pele-wardley-axis" d="M0,0V${num(plotH)}H${num(plotW)}" stroke="${LINE}"/>`;
   const xTitle = text(model.axes.xLabel ?? 'Evolution', small);
   const yTitle = text(model.axes.yLabel ?? 'Visibility', small);
-  const axisAttrs = ` class="pele-wardley-axis-label" font-size="${small}" font-weight="bold"`;
+  const axisAttrs = ` class="pele-wardley-axis-label" font-size="${small}" font-weight="var(--_hw)"`;
   const axisLabels =
     centered(xTitle, plotW / 2, stageBottom + 6 + xTitle.height / 2, axisAttrs) +
     labelSvg(yTitle, -16, plotH / 2, `${axisAttrs} transform="rotate(-90 -16 ${num(plotH / 2)})"`);
@@ -299,7 +300,7 @@ function draw(model: WardleyModel, config: Config, options: RenderOptions, plotW
     let caption: string;
     if (anchor) {
       const label = anchorLabels.get(node) ?? text(node.label, small, 4000, Style.Bold);
-      caption = centered(label, x + (ox ?? 0), y + (oy ?? -3), ` class="pele-label" font-size="${small}"`);
+      caption = centered(label, x + (ox ?? 0), y + (oy ?? -3), ` class="pele-label" font-size="${small}" font-weight="var(--_hw)"`);
     } else {
       const label = text(node.label, small);
       const attrs = ` class="pele-label" font-size="${small}"`;
@@ -332,7 +333,7 @@ function draw(model: WardleyModel, config: Config, options: RenderOptions, plotW
       const y = projectY(coordinate.y);
       const r = Math.max(10, label.width / 2 + 4);
       grow(x - r, y - r, x + r, y + r);
-      marks += `<circle cx="${num(x)}" cy="${num(y)}" r="${num(r)}" fill="var(--_bg)" stroke="${LINE}"/>` + labelSvg(label, x, y, ` font-size="${tiny}"`);
+      marks += `<circle cx="${num(x)}" cy="${num(y)}" r="${num(r)}" fill="var(--_bg)" stroke="${LINE}"/>` + labelSvg(label, x, y, ` font-size="${tiny}" font-weight="var(--_hw)"`);
     }
     annotations += `<g class="pele-wardley-annotation" data-id="${escText(String(annotation.number))}">${marks}</g>`;
   }
@@ -366,7 +367,7 @@ function draw(model: WardleyModel, config: Config, options: RenderOptions, plotW
 
   let notes = '';
   for (const note of model.notes) {
-    notes += starting(text(note.text, small, Math.min(360, plotW * 0.6)), projectX(note.x), projectY(note.y), ` class="pele-wardley-note" font-size="${small}" font-weight="bold"`);
+    notes += starting(text(note.text, small, Math.min(360, plotW * 0.6)), projectX(note.x), projectY(note.y), ` class="pele-wardley-note" font-size="${small}" font-weight="var(--_hw)"`);
   }
 
   // Accelerators point right, deaccelerators left.
@@ -384,7 +385,7 @@ function draw(model: WardleyModel, config: Config, options: RenderOptions, plotW
     forces +=
       `<g class="pele-wardley-${forward ? 'accelerator' : 'deaccelerator'}" data-id="${escText(name)}">` +
       `<path d="${d}" fill="var(--_s)" stroke="${LINE}"/>` +
-      centered(text(name, tiny + 1, 160, Style.Bold), x + FORCE_WIDTH / 2, y + half + 8 + 12, ` font-size="${tiny + 1}"`) +
+      centered(text(name, tiny + 1, 160, Style.Bold), x + FORCE_WIDTH / 2, y + half + 8 + 12, ` font-size="${tiny + 1}" font-weight="var(--_hw)"`) +
       '</g>';
   };
   for (const a of model.accelerators) force(a.name, a.x, a.y, true);
@@ -399,7 +400,7 @@ function draw(model: WardleyModel, config: Config, options: RenderOptions, plotW
   const totalWidth = Math.ceil(right - left + 2 * pad);
   const totalHeight = Math.ceil(maxY - minY + titleHeight + 2 * pad);
   const content =
-    labelSvg(title, tx + plotW / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, tx + plotW / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     `<g transform="translate(${num(tx)},${num(ty)})">` +
     `<g class="pele-wardley-frame" fill="none">${frame}</g>` +
     stageLabels +

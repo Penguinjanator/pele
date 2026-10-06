@@ -405,7 +405,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
     size,
     options,
     db,
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${edgeSize}">${labelsOut}</g>` : '') +

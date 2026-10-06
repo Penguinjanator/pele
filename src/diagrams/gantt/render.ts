@@ -128,7 +128,7 @@ export function renderGantt(model: GanttDb, config: Config, options: RenderOptio
   if (!hasPlot) {
     const width = Math.ceil(Math.max(title.width, 1) + 2 * pad);
     const height = Math.ceil(Math.max(title.height, 1) + 2 * pad);
-    const content = labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"');
+    const content = labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"');
     return { svg: svgDocument('gantt', width, height, size, options, model, content), width, height, links: [] };
   }
 
@@ -355,7 +355,7 @@ export function renderGantt(model: GanttDb, config: Config, options: RenderOptio
 
   const axisLine = `M${num(left)},${num(plotBottom)}H${num(right)}` + (topAxis ? `M${num(left)},${num(plotTop - gridLead)}H${num(right)}` : '');
   const content =
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     (bands ? `<g class="pele-sections">${bands}</g>` : '') +
     (excluded ? `<g class="pele-excluded" fill="var(--_a)">${excluded}</g>` : '') +
     `<g class="pele-grid" fill="none"><path d="${grid}" stroke="var(--_b)" stroke-dasharray="1 3"/><path d="${axisLine}" stroke="var(--_b)"/></g>` +

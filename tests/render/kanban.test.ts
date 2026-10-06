@@ -118,7 +118,7 @@ describe('kanban rendering', () => {
   it('uses a label from metadata and formats markdown', () => {
     const { svg } = render('kanban\n  todo\n    a[Old]@{ label: "New **bold** text" }', options);
     expect(svg).not.toContain('Old');
-    expect(svg).toContain('font-weight="bold">bold</tspan>');
+    expect(svg).toContain('font-weight="var(--_w)">bold</tspan>');
   });
 
   it('reports metadata that is not valid YAML, and ignores metadata that is not a mapping', () => {
@@ -142,7 +142,7 @@ describe('kanban rendering', () => {
   it('draws the front matter title', () => {
     const plain = render('kanban\n  todo\n    a', options);
     const titled = render('---\ntitle: Sprint 12\n---\nkanban\n  todo\n    a', options);
-    expect(titled.svg).toContain('class="pele-title" font-weight="bold"');
+    expect(titled.svg).toContain('class="pele-title" font-weight="var(--_tw)"');
     expect(titled.svg).toContain('>Sprint 12<');
     expect(titled.height).toBeGreaterThan(plain.height);
   });

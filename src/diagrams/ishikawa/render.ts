@@ -218,7 +218,7 @@ export function renderIshikawa(model: IshikawaModel, _config: Config, options: R
       groups +
       `<g class="pele-ishikawa-head" data-id="${escText(root.text)}">` +
       `<path d="M0,${num(-r)}H${num(headW - r)}A${num(r)},${num(r)} 0 0 1 ${num(headW - r)},${num(r)}H0Z" fill="var(--_s)" stroke="var(--_b)" stroke-linejoin="round"/>` +
-      labelSvg(head, 12 + head.width / 2, 0, ' class="pele-label" font-weight="bold"') +
+      labelSvg(head, 12 + head.width / 2, 0, ' class="pele-label" font-weight="var(--_hw)"') +
       '</g>';
   }
 
@@ -234,7 +234,7 @@ export function renderIshikawa(model: IshikawaModel, _config: Config, options: R
     size,
     options,
     {},
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (body ? `<g transform="translate(${num(ox)},${num(oy)})">${body}</g>` : '')
   );
   return { svg, width, height, links: [] };

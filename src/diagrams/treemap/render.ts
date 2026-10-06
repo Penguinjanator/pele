@@ -68,7 +68,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
         const label = fitText(name, withValue ? room - valueWidth - 12 : room, small, small, measurer, Style.Bold);
         const baseline = y + HEADER / 2 + 1;
         if (label) {
-          text += `<text x="${num(x + SIDE + 2)}" y="${num(baseline + small * 0.35)}" font-weight="bold"${style.text}>${esc(label.text)}</text>`;
+          text += `<text x="${num(x + SIDE + 2)}" y="${num(baseline + small * 0.35)}" font-weight="var(--_hw)"${style.text}>${esc(label.text)}</text>`;
         }
         if (withValue) {
           text += `<text class="pele-value" x="${num(x + b.w - SIDE - 2)}" y="${num(baseline + tiny * 0.35)}" font-size="${tiny}" text-anchor="end" fill="var(--_m)"${style.text}>${esc(value)}</text>`;
@@ -107,7 +107,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
   const totalWidth = Math.ceil(Math.max(width, title.width) + 2 * pad);
   const totalHeight = Math.ceil(height + titleHeight + 2 * pad);
   const content =
-    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     (sections ? `<g class="pele-sections" font-size="${small}">${sections}</g>` : '') +
     (leaves ? `<g class="pele-leaves" text-anchor="middle" fill="var(--_bg)">${leaves}</g>` : '');
 

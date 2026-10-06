@@ -155,7 +155,7 @@ describe('quadrant chart rendering', () => {
   it('reads markdown strings and line breaks in labels', () => {
     const { svg } = render('quadrantChart\n quadrant-1 "`**Bold** text`"\n "two<br>lines": [0.5, 0.5]', options);
     expect(svg).toContain('<tspan x=');
-    expect(svg).toContain('font-weight="bold">Bold</tspan>');
+    expect(svg).toContain('font-weight="var(--_w)">Bold</tspan>');
     expect(svg).toMatch(/>two<\/tspan><tspan[^>]*>lines</);
   });
 

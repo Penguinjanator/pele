@@ -292,7 +292,7 @@ function draw(model: MindmapModel, config: Config, options: RenderOptions, down:
   const totalWidth = Math.ceil(width + 2 * pad);
   const totalHeight = Math.ceil(maxY - minY + titleHeight + 2 * pad);
   const content =
-    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     `<g transform="translate(${num(pad - minX + (width - maxX + minX) / 2)},${num(pad + titleHeight - minY)})">${out}</g>`;
 
   return {

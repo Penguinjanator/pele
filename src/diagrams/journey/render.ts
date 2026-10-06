@@ -175,7 +175,7 @@ export function renderJourney(model: JourneyModel, _config: Config, options: Ren
       body +=
         `<g class="pele-cluster pele-section" data-id="${escText(tasks[run.start].section.trim())}">` +
         `<rect x="${num(x)}" y="${num(top)}" width="${num(w)}" height="${num(bandH)}" rx="${RADIUS}" fill="var(--_a)"/>` +
-        labelSvg(run.label, x + w / 2, top + bandH / 2, ` font-size="${small}" font-weight="bold"`) +
+        labelSvg(run.label, x + w / 2, top + bandH / 2, ` font-size="${small}" font-weight="var(--_hw)"`) +
         members +
         '</g>';
     }
@@ -201,7 +201,7 @@ export function renderJourney(model: JourneyModel, _config: Config, options: Ren
   const totalWidth = Math.ceil(width + 2 * pad);
   const totalHeight = Math.ceil(Math.max(bottom, pad) + pad);
   const content =
-    labelSvg(title, pad + width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') + body;
+    labelSvg(title, pad + width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') + body;
   return {
     svg: svgDocument('journey', totalWidth, totalHeight, size, options, model, content),
     width: totalWidth,

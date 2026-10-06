@@ -84,7 +84,7 @@ export function renderPacket(model: PacketModel, config: Config, options: Render
     (fields ? `<g class="pele-packet-fields" font-size="${labelSize}" text-anchor="middle">${fields}</g>` : '') +
     (bits ? `<g class="pele-packet-bits" font-size="${bitSize}" fill="var(--_m)">${bits}</g>` : '') +
     // Mermaid puts a packet's title under it.
-    labelSvg(title, totalWidth / 2, totalHeight - pad - title.height / 2, ' class="pele-title" font-weight="bold"');
+    labelSvg(title, totalWidth / 2, totalHeight - pad - title.height / 2, ' class="pele-title" font-weight="var(--_tw)"');
 
   return {
     svg: svgDocument('packet', totalWidth, totalHeight, size, options, model, content),

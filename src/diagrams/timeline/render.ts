@@ -104,7 +104,7 @@ function draw(model: TimelineModel, config: Config, options: RenderOptions, vert
     fitLabel(model.sections[group.section], measurer, size, w - 2 * PAD_X, Style.Bold);
   const header = (group: Group, label: Label, x: number, y: number, w: number, h: number): string =>
     box(x, y, w, h, ` fill="${seriesColor(group.section)}"`) +
-    labelSvg(label, x + w / 2, y + h / 2, ' font-weight="bold"' + ON_COLOR);
+    labelSvg(label, x + w / 2, y + h / 2, ' font-weight="var(--_hw)"' + ON_COLOR);
   const period = (i: number, color: string, x: number, y: number, h: number): string =>
     box(x, y, colW, h, ` fill="${color}"`) + labelSvg(periodLabels[i], x + colW / 2, y + h / 2, ON_COLOR);
   const event = (label: Label, color: string, x: number, y: number, h: number): string =>
@@ -231,7 +231,7 @@ function draw(model: TimelineModel, config: Config, options: RenderOptions, vert
   const totalWidth = Math.ceil(width + 2 * pad);
   const totalHeight = Math.ceil(Math.max(height, pad * 2));
   const content =
-    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') + body;
+    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') + body;
   return {
     svg: svgDocument('timeline', totalWidth, totalHeight, size, options, model, content),
     width: totalWidth,

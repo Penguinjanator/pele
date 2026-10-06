@@ -504,7 +504,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
       y += tinyHeight;
     }
     const titleSize = view.fontSize === size ? '' : ` font-size="${num(view.fontSize)}"`;
-    body += labelSvg(view.label, 0, (y + first - TITLE_PAD) / 2, ` class="pele-label"${titleSize}${style.text}`, options.icons);
+    body += labelSvg(view.label, 0, (y + first - TITLE_PAD) / 2, ` class="pele-label"${titleSize} font-weight="var(--_hw)"${style.text}`, options.icons);
     const lines = (list: Line[], kind: string, from: number): string => {
       let out = '';
       let baseline = from + SECTION_PAD + lineHeight / 2 + memberSize * 0.35;

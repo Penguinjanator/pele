@@ -153,7 +153,7 @@ function draw(model: PieModel, config: Config, options: RenderOptions, radius: n
   const totalWidth = Math.ceil(width + 2 * pad);
   const totalHeight = Math.ceil(height + titleHeight + 2 * pad);
   const content =
-    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     `<g class="pele-slices" transform="translate(${num(cx)},${num(cy)})" stroke="var(--_bg)" stroke-width="1.5" stroke-linejoin="round">${slices}</g>` +
     (labels
       ? `<g class="pele-slice-labels" transform="translate(${num(cx)},${num(cy)})" font-size="${small}" text-anchor="middle" fill="var(--_bg)">${labels}</g>`

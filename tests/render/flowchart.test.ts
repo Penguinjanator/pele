@@ -81,7 +81,7 @@ describe('flowchart rendering', () => {
 
   it('renders markdown emphasis', () => {
     const { svg } = render('flowchart TD\n  A["`This **is** _Markdown_`"]', options);
-    expect(svg).toContain('<tspan font-weight="bold">is</tspan>');
+    expect(svg).toContain('<tspan font-weight="var(--_w)">is</tspan>');
     expect(svg).toContain('<tspan font-style="italic">Markdown</tspan>');
   });
 

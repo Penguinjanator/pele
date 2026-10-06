@@ -167,7 +167,7 @@ export function renderCynefin(model: CynefinModel, config: Config, options: Rend
 
   const drawBlock = (b: Block): string => {
     let y = b.cy - b.h / 2;
-    let out = labelSvg(b.title, b.cx, y + b.title.height / 2, ' class="pele-label" font-weight="bold"');
+    let out = labelSvg(b.title, b.cx, y + b.title.height / 2, ' class="pele-label" font-weight="var(--_hw)"');
     y += b.title.height;
     for (const s of b.subtitles) {
       out += labelSvg(s, b.cx, y + s.height / 2, ` class="pele-cynefin-subtitle" font-size="${small}" font-style="italic" fill="var(--_m)"`);
@@ -283,7 +283,7 @@ export function renderCynefin(model: CynefinModel, config: Config, options: Rend
   const totalWidth = Math.ceil(Math.max(width, title.width) + 2 * pad);
   const totalHeight = Math.ceil(height + titleHeight + 2 * pad);
   const content =
-    labelSvg(title, x0 + width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, x0 + width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     `<g class="pele-cynefin-regions">${fills}</g>` +
     boundaries +
     ellipse +

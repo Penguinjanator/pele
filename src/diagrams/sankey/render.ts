@@ -157,7 +157,7 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
     size,
     options,
     model,
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       `<g transform="translate(${num(ox)},${num(oy)})">` +
       `<g class="pele-sankey-links" fill-opacity="0.4">${linksOut}</g>` +
       `<g class="pele-sankey-nodes">${nodesOut}</g>` +

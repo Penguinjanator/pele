@@ -317,7 +317,7 @@ describe('block rendering', () => {
   it('draws the front matter title', () => {
     const plain = render('block\n  a', options);
     const titled = render('---\ntitle: Systems\n---\nblock\n  a', options);
-    expect(titled.svg).toContain('class="pele-title" font-weight="bold"');
+    expect(titled.svg).toContain('class="pele-title" font-weight="var(--_tw)"');
     expect(titled.svg).toContain('>Systems<');
     expect(titled.height).toBeGreaterThan(plain.height);
   });
@@ -326,7 +326,7 @@ describe('block rendering', () => {
     const { svg } = render('block\n  a["<b>bold</b> & #quot;q#quot; #9829;"]\n  b["<img src=x onerror=alert(1)>"]', options);
     expect(svg).not.toContain('<img');
     expect(svg).toContain('&quot;q&quot; ♥');
-    expect(svg).toContain('font-weight="bold"');
+    expect(svg).toContain('font-weight="var(--_w)"');
   });
 
   it('uses the id as the label and merges later statements into the first', () => {

@@ -255,10 +255,10 @@ describe('ER diagram rendering', () => {
 
   it('formats markdown and keeps unicode in names, attributes and labels', () => {
     const svg = svgOf('erDiagram\n "This **is** _Markdown_" ||--o{ "Ünïcödé ❤ 日本語" : "**bold** label"\n T {\n string x "a *b* c"\n }');
-    expect(svg).toContain('<tspan font-weight="bold">is</tspan>');
+    expect(svg).toContain('<tspan font-weight="var(--_w)">is</tspan>');
     expect(svg).toContain('<tspan font-style="italic">Markdown</tspan>');
     expect(svg).toContain('Ünïcödé ❤ 日本語');
-    expect(svg).toMatch(/<tspan[^>]* font-weight="bold">bold<\/tspan><tspan> label<\/tspan>/);
+    expect(svg).toMatch(/<tspan[^>]* font-weight="var\(--_w\)">bold<\/tspan><tspan> label<\/tspan>/);
     expect(svg).toContain('<tspan font-style="italic">b</tspan>');
   });
 
@@ -309,7 +309,7 @@ describe('ER diagram rendering', () => {
 
   it('writes the title and the accessible title and description', () => {
     const svg = svgOf('---\ntitle: Order example\n---\nerDiagram\n accTitle: Orders\n accDescr: How orders relate\n A ||--o{ B : x');
-    expect(svg).toContain('<text class="pele-title" font-weight="bold"');
+    expect(svg).toContain('<text class="pele-title" font-weight="var(--_tw)"');
     expect(svg).toContain('>Order example</tspan></text>');
     expect(svg).toContain('<title id="pele-title">Orders</title>');
     expect(svg).toContain('<desc id="pele-desc">How orders relate</desc>');

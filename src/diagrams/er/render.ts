@@ -1,6 +1,6 @@
 import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
-import { esc, escText, labelSvg, num, spanStyle, type IconResolver } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num, sharedStyle, spanStyle, textStyle, type IconResolver } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, routePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
@@ -79,6 +79,7 @@ function textLeft(label: Label, x: number, y: number, attrs: string, icons: Icon
   if (lines.length === 1 && lines[0].length === 1 && lines[0][0].icon === undefined && lines[0][0].style === 0) {
     return `<text${attrs} x="${num(x)}" y="${num(y)}">${esc(lines[0][0].text)}</text>`;
   }
+  const shared = sharedStyle(label);
   let body = '';
   let extra = '';
   for (const line of lines) {
@@ -96,14 +97,14 @@ function textLeft(label: Label, x: number, y: number, attrs: string, icons: Icon
         }</svg>`;
       } else if (span.text !== '') {
         const pos = hasIcon || !placed ? ` x="${num(sx)}" y="${num(y)}"` : '';
-        body += `<tspan${pos}${spanStyle(span.style)}>${esc(span.text)}</tspan>`;
+        body += `<tspan${pos}${spanStyle(span.style & ~shared)}>${esc(span.text)}</tspan>`;
         placed = true;
       }
       sx += span.width;
     }
     y += label.lineHeight;
   }
-  return `<text${attrs} xml:space="preserve">${body}</text>${extra}`;
+  return `<text${textStyle(attrs, shared)} xml:space="preserve">${body}</text>${extra}`;
 }
 
 // Mermaid reads `~` pairs as angle brackets. They are written as entities so the label parser
@@ -474,7 +475,7 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
     size,
     options,
     db,
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${smallSize}">${labelsOut}</g>` : '') +

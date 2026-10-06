@@ -1,6 +1,6 @@
 import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
-import { esc, escText, labelSvg, num } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num, sharedStyle, spanStyle, textStyle } from '../../svg/builder.js';
 import { edgeLabelSvg, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
@@ -70,20 +70,18 @@ function restyle(label: Label, bits: number, measurer: TextMeasurer): Label {
 // Writes a measured label with its lines starting at x, the first line's box starting at top.
 function startText(label: Label, x: number, top: number, attrs: string): string {
   let y = top + label.lineHeight / 2 + label.size * 0.35;
+  const shared = sharedStyle(label);
   let body = '';
   for (const line of label.lines) {
     let first = true;
     for (const span of line) {
       if (span.icon !== undefined || span.text === '') continue;
-      body +=
-        `<tspan${first ? ` x="${num(x)}" y="${num(y)}"` : ''}${span.style & Style.Bold ? ' font-weight="bold"' : ''}${
-          span.style & Style.Italic ? ' font-style="italic"' : ''
-        }>${esc(span.text)}</tspan>`;
+      body += `<tspan${first ? ` x="${num(x)}" y="${num(y)}"` : ''}${spanStyle(span.style & ~shared)}>${esc(span.text)}</tspan>`;
       first = false;
     }
     y += label.lineHeight;
   }
-  return body === '' ? '' : `<text${attrs} text-anchor="start" xml:space="preserve">${body}</text>`;
+  return body === '' ? '' : `<text${textStyle(attrs, shared)} text-anchor="start" xml:space="preserve">${body}</text>`;
 }
 
 // The containment mark: a circled plus whose rim touches (x, y), where (dx, dy) points at the node.
@@ -276,7 +274,7 @@ function draw(model: RequirementModel, _config: Config, options: RenderOptions, 
         view.name,
         0,
         top + PAD_Y + view.kind.height + view.name.height / 2,
-        ` class="pele-label" font-size="${view.name.size}" font-weight="bold"${style.text}`
+        ` class="pele-label" font-size="${view.name.size}" font-weight="var(--_hw)"${style.text}`
       );
     if (view.rows.length > 0) {
       const divider = top + view.headHeight;
@@ -364,7 +362,7 @@ function draw(model: RequirementModel, _config: Config, options: RenderOptions, 
     size,
     options,
     model,
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${small}" fill="var(--_m)">${labelsOut}</g>` : '') +
       `<g class="pele-nodes">${nodesOut}</g>`

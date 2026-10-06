@@ -451,7 +451,7 @@ describe('sequence rendering', () => {
     expect(model('sequenceDiagram\n  title: Legacy title\n  A->>B: x').title).toBe('Legacy title');
     expect(model('---\ntitle: From front matter\n---\nsequenceDiagram\n  A->>B: x').title).toBe('From front matter');
     const svg = svgOf('sequenceDiagram\n  title My title\n  A->>B: x');
-    expect(svg).toMatch(/<text class="pele-title"[^>]*><tspan[^>]* font-weight="bold">My title<\/tspan><\/text>/);
+    expect(svg).toMatch(/<text class="pele-title" font-weight="var\(--_tw\)"[^>]*><tspan[^>]*>My title<\/tspan><\/text>/);
     expect(render('sequenceDiagram\n  title My title\n  A->>B: x', options).height).toBeGreaterThan(render('sequenceDiagram\n  A->>B: x', options).height);
   });
 

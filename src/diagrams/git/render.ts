@@ -369,7 +369,7 @@ function draw(model: GitModel, config: Config, options: RenderOptions, direction
   const dy = pad + titleHeight - minY;
 
   const content =
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     `<g transform="translate(${num(dx)},${num(dy)})">` +
     (branches ? `<g class="pele-branches" fill="none" font-size="${medium}">${branches}</g>` : '') +
     (curves || lines ? `<g class="pele-edges" fill="none" stroke-width="2" stroke-linecap="round">${curves}${lines}</g>` : '') +

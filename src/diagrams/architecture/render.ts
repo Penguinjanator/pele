@@ -562,7 +562,7 @@ export function renderArchitecture(model: ArchitectureModel, config: Config, opt
     size,
     options,
     model,
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (body ? `<g transform="translate(${ox},${oy})">${body}</g>` : '')
   );
   return { svg, width, height, links: [] };

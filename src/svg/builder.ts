@@ -56,6 +56,8 @@ export function labelSvg(label: Label, cx: number, cy: number, attrs: string, ic
     return `<text${attrs} x="${num(cx)}" y="${num(y)}" text-anchor="middle">${esc(lines[0][0].text)}</text>`;
   }
 
+  const shared = sharedStyle(label);
+  attrs = textStyle(attrs, shared);
   let body = '';
   let extra = '';
   for (let i = 0; i < lines.length; i++) {
@@ -72,7 +74,7 @@ export function labelSvg(label: Label, cx: number, cy: number, attrs: string, ic
             y - shift - side / 2
           )}" width="${num(side)}" height="${num(side)}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
         } else if (span.text !== '') {
-          body += `<tspan x="${num(x)}" y="${num(y)}" text-anchor="start"${spanStyle(span.style)}>${esc(span.text)}</tspan>`;
+          body += `<tspan x="${num(x)}" y="${num(y)}" text-anchor="start"${spanStyle(span.style & ~shared)}>${esc(span.text)}</tspan>`;
         }
         x += span.width;
       }
@@ -80,7 +82,7 @@ export function labelSvg(label: Label, cx: number, cy: number, attrs: string, ic
       for (let j = 0; j < line.length; j++) {
         const span = line[j];
         const pos = j === 0 ? ` x="${num(cx)}" y="${num(y)}"` : '';
-        body += `<tspan${pos}${spanStyle(span.style)}>${esc(span.text)}</tspan>`;
+        body += `<tspan${pos}${spanStyle(span.style & ~shared)}>${esc(span.text)}</tspan>`;
       }
       if (line.length === 0) body += `<tspan x="${num(cx)}" y="${num(y)}"> </tspan>`;
     }
@@ -89,6 +91,33 @@ export function labelSvg(label: Label, cx: number, cy: number, attrs: string, ic
   return `<text${attrs} text-anchor="middle" xml:space="preserve">${body}</text>${extra}`;
 }
 
+const BOLD = ' font-weight="var(--_w)"';
+const ITALIC = ' font-style="italic"';
+
 export function spanStyle(style: number): string {
-  return (style & Style.Bold ? ' font-weight="bold"' : '') + (style & Style.Italic ? ' font-style="italic"' : '');
+  return (style & Style.Bold ? BOLD : '') + (style & Style.Italic ? ITALIC : '');
+}
+
+// The emphasis every span of a label has. It is written once, on the text element, where a
+// CSS rule for the label reaches it.
+export function sharedStyle(label: Label): number {
+  let shared = Style.Bold | Style.Italic;
+  let any = false;
+  for (const line of label.lines) {
+    for (const span of line) {
+      if (span.icon !== undefined || span.text === '') continue;
+      shared &= span.style;
+      any = true;
+    }
+  }
+  return any ? shared : 0;
+}
+
+// Adds that emphasis to a text element's attributes, unless they give a weight of their own.
+export function textStyle(attrs: string, shared: number): string {
+  return (
+    attrs +
+    (shared & Style.Bold && !attrs.includes(' font-weight="') ? BOLD : '') +
+    (shared & Style.Italic && !attrs.includes(' font-style="') ? ITALIC : '')
+  );
 }

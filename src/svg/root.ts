@@ -2,6 +2,13 @@ import type { RenderOptions } from '../types.js';
 import { esc, escText } from './builder.js';
 import { ROOT_STYLE, fontStyle } from './theme.js';
 
+// The weights of bold text, each set only in a diagram that has such text.
+const WEIGHTS = [
+  ['--_tw', 'title'],
+  ['--_hw', 'heading'],
+  ['--_w', 'bold'],
+];
+
 export interface Accessible {
   accTitle?: string;
   accDescr?: string;
@@ -29,8 +36,12 @@ export function svgDocument(
     aria += ` aria-describedby="${prefix}-desc"`;
   }
   const fit = options.responsive === false ? '' : 'max-width:100%;height:auto;';
+  let weights = '';
+  for (const [alias, name] of WEIGHTS) {
+    if (content.includes(`var(${alias})`)) weights += `;${alias}:var(--pele-${name}-weight,bold)`;
+  }
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-${type}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="${fit}${ROOT_STYLE}${esc(fontStyle(fontSize, options.fontFamily, options.fontFamilyMono))}" fill="var(--_fg)" role="graphics-document document" aria-roledescription="${type}"${aria}>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-${type}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="${fit}${ROOT_STYLE}${weights}${esc(fontStyle(fontSize, options.fontFamily, options.fontFamilyMono))}" fill="var(--_fg)" role="graphics-document document" aria-roledescription="${type}"${aria}>` +
     head +
     content +
     '</svg>'

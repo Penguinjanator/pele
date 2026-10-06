@@ -182,7 +182,7 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
 
   // Mermaid puts each new point under the ones before it.
   const content =
-    labelSvg(title, width / 2, titlePad / 2 + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, titlePad / 2 + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     `<g class="pele-quadrants" fill="var(--_s)" stroke="var(--_b)">${quadrants}</g>` +
     (axes ? `<g class="pele-axis-labels" font-size="${axisSize}" fill="var(--_m)">${axes}</g>` : '') +
     (dots.length > 0

@@ -193,7 +193,7 @@ export function renderVenn(model: VennModel, _config: Config, options: RenderOpt
     size,
     options,
     {},
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       `<g class="pele-venn-sets">${sets}</g>` +
       (overlaps ? `<g class="pele-venn-overlaps">${overlaps}</g>` : '') +
       (labels ? `<g class="pele-venn-labels">${labels}</g>` : '')

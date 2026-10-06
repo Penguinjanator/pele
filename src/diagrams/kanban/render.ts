@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, escText, labelSvg, num, spanStyle, type IconResolver } from '../../svg/builder.js';
+import { esc, escText, labelSvg, num, textStyle, type IconResolver } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label, type Span } from '../../text/label.js';
@@ -91,9 +91,7 @@ function textBlock(label: Label, x: number, y: number, attrs: string, icons: Ico
     const line = label.lines[i];
     const cy = y + (i + 0.5) * label.lineHeight;
     if (line.length === 1 && line[0].icon === undefined) {
-      const style = line[0].style;
-      const emphasis = spanStyle(style);
-      out += `<text${attrs}${emphasis} x="${num(x)}" y="${num(cy + label.size * 0.35)}"${end ? ' text-anchor="end"' : ''}>${esc(
+      out += `<text${textStyle(attrs, line[0].style)} x="${num(x)}" y="${num(cy + label.size * 0.35)}"${end ? ' text-anchor="end"' : ''}>${esc(
         line[0].text
       )}</text>`;
     } else {
@@ -200,7 +198,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
     const row = Math.floor(index / perRow);
     let body =
       `<rect width="${columnWidth}" height="${num(rowHeights[row])}" rx="${RADIUS}" fill="var(--_s)"/>` +
-      textBlock(titles[index], COLUMN_PAD + 4, COLUMN_PAD, ' class="pele-cluster-label"', icons) +
+      textBlock(titles[index], COLUMN_PAD + 4, COLUMN_PAD, ' class="pele-cluster-label" font-weight="var(--_hw)"', icons) +
       `<text class="pele-count" x="${edge}" y="${num(
         COLUMN_PAD + line / 2 + small * 0.35
       )}" text-anchor="end" font-size="${small}" fill="var(--_m)">${section.items.length}</text>`;
@@ -262,7 +260,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
 
   const totalWidth = Math.ceil(width + 2 * pad);
   const totalHeight = Math.ceil(boardHeight + titleHeight + 2 * pad);
-  const content = labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') + out;
+  const content = labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') + out;
 
   return {
     svg: svgDocument('kanban', totalWidth, totalHeight, size, options, {}, content),

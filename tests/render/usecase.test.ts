@@ -343,7 +343,7 @@ describe('use case diagram rendering', () => {
     const svg = svgOf('actor User\nnote for User "Starts the workflow"\nnote for Login "`Needs a **session**`"\nUser --> Login');
     expect(count(svg, 'class="pele-node pele-note usecase-note"')).toBe(2);
     expect(svg).toContain('>Starts the workflow</text>');
-    expect(svg).toContain('<tspan font-weight="bold">session</tspan>');
+    expect(svg).toContain('<tspan font-weight="var(--_w)">session</tspan>');
     const connectors = edges(svg).filter((e) => e.classes === 'pele-note');
     expect(connectors.map((e) => e.id)).toEqual(['note-0-edge', 'note-1-edge']);
     for (const connector of connectors) {
@@ -356,7 +356,7 @@ describe('use case diagram rendering', () => {
     const svg = svgOf('json Payload@{\n  "2": "second",\n  "1": "first",\n  "colors": ["Red", "Green"],\n  "address": { "city": "Oslo" },\n  "none": null,\n  "empty": {}\n}');
     const table = nodeGroup(svg, 'Payload');
     expect(table).toContain('class="pele-node pele-json usecase-json-table"');
-    expect(table).toContain('<tspan x="0" y="-95.9" font-weight="bold">Payload</tspan>');
+    expect(table).toMatch(/<text class="pele-label" font-weight="var\(--_hw\)"[^>]*><tspan x="0" y="-95.9">Payload<\/tspan>/);
     const keys = [...table.matchAll(/<text class="pele-json-key"[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
     const values = [...table.matchAll(/<text class="pele-json-value"[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
     // The second value of an array has no key of its own.
@@ -374,7 +374,7 @@ describe('use case diagram rendering', () => {
     expect(nodeGroup(svg, 'A')).toContain('>*n* &lt;b&gt;x&lt;/b&gt; \\n &amp;amp;</text>');
     expect(nodeGroup(svg, 'Q')).toContain('>a &quot;q&quot; (b)</text>');
     const formatted = nodeGroup(svg, 'B');
-    expect(formatted).toContain(' font-weight="bold">bold</tspan>');
+    expect(formatted).toContain(' font-weight="var(--_w)">bold</tspan>');
     expect(formatted).toContain('<tspan font-style="italic">italic</tspan>');
     expect(nodeGroup(svg, 'C')).toContain('>*literal*</text>');
   });
@@ -413,7 +413,7 @@ describe('use case diagram rendering', () => {
 
   it('draws the front matter title and the accessible names', () => {
     const { svg } = render('---\ntitle: Ordering\n---\nusecase-beta\naccTitle: Online ordering\naccDescr {\n  A customer orders.\n   Staff review.\n}\nactor A', options);
-    expect(svg).toContain('<text class="pele-title" font-weight="bold"');
+    expect(svg).toContain('<text class="pele-title" font-weight="var(--_tw)"');
     expect(svg).toContain('>Ordering</tspan>');
     expect(svg).toContain('<title id="pele-title">Online ordering</title>');
     expect(svg).toContain('<desc id="pele-desc">A customer orders.\nStaff review.</desc>');

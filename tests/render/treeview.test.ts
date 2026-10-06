@@ -14,7 +14,7 @@ describe('treeView rendering', () => {
     expect(supports(TREE)).toBe(true);
     expect(count(svg, /class="pele-node pele-tree-(dir|file)"/g)).toBe(5);
     expect(count(svg, /class="pele-node pele-tree-dir"/g)).toBe(2);
-    expect(svg).toContain('font-weight="bold" xml:space="preserve">my-project</text>');
+    expect(svg).toContain('font-weight="var(--_hw)" xml:space="preserve">my-project</text>');
     expect(svg).toContain('xml:space="preserve">index.js</text>');
     expect(count(svg, /<path d="M/g)).toBe(2);
     expect(svg).not.toContain('>/<');

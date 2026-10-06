@@ -132,7 +132,7 @@ export function renderEventModel(model: EventModelingModel, _config: Config, opt
     lanes +=
       `<g class="pele-cluster pele-em-lane" data-id="${escText(band.lane.label)}">` +
       `<rect x="${num(left)}" y="${num(y)}" width="${num(laneWidth)}" height="${num(band.h)}" rx="${RADIUS}" fill="var(--_s)"/>` +
-      labelSvg(band.label, left + LANE_PAD + band.label.width / 2, y + band.h / 2, ` class="pele-cluster-label" font-size="${small}" fill="var(--_m)"`) +
+      labelSvg(band.label, left + LANE_PAD + band.label.width / 2, y + band.h / 2, ` class="pele-cluster-label" font-size="${small}" font-weight="var(--_hw)" fill="var(--_m)"`) +
       '</g>';
     y += band.h + LANE_GAP;
   }
@@ -151,7 +151,7 @@ export function renderEventModel(model: EventModelingModel, _config: Config, opt
         : `<rect ${frame} fill="var(--_bg)"/><rect ${frame} fill="${seriesColor(series)}" fill-opacity="0.22" stroke="${seriesColor(series)}"/>`;
     const nameY = item.y + BOX_PAD_Y + item.name.height / 2;
     const text =
-      labelSvg(item.name, item.x + item.w / 2, nameY, ` class="pele-label" font-size="${nameSize}"`) +
+      labelSvg(item.name, item.x + item.w / 2, nameY, ` class="pele-label" font-size="${nameSize}" font-weight="var(--_hw)"`) +
       lines(
         item.data,
         item.x + BOX_PAD_X,
@@ -212,7 +212,7 @@ export function renderEventModel(model: EventModelingModel, _config: Config, opt
     cards +=
       `<g class="pele-em-${kind}" data-id="${escText(frame)}">` +
       `<rect x="${num(left)}" y="${num(cy)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}" fill="var(--_bg)" stroke="var(--_b)"/>` +
-      labelSvg(head, left + BOX_PAD_X + head.width / 2, cy + BOX_PAD_Y + head.height / 2, ` font-size="${small}"`) +
+      labelSvg(head, left + BOX_PAD_X + head.width / 2, cy + BOX_PAD_Y + head.height / 2, ` font-size="${small}" font-weight="var(--_hw)"`) +
       lines(rows, left + BOX_PAD_X, cy + BOX_PAD_Y + head.height + smallStep / 2 + small * 0.35, smallStep, ` font-size="${small}"`) +
       '</g>';
     bottom = cy + h;
@@ -230,7 +230,7 @@ export function renderEventModel(model: EventModelingModel, _config: Config, opt
   const totalWidth = Math.ceil(width + 2 * pad);
   const totalHeight = Math.ceil(bottom + pad);
   const content =
-    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') + lanes + edges + nodes + cards;
+    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') + lanes + edges + nodes + cards;
 
   return {
     svg: svgDocument('eventmodeling', totalWidth, totalHeight, size, options, model, content),

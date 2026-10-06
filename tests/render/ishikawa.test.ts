@@ -80,7 +80,7 @@ describe('Ishikawa diagram rendering', () => {
     const s = spine(svg);
     expect(s.to).toBeGreaterThan(s.from);
     expect(svg).toContain('<g class="pele-ishikawa-head" data-id="Late delivery">');
-    expect(svg).toContain('font-weight="bold">Late delivery</tspan>');
+    expect(svg).toMatch(/<text class="pele-label" font-weight="var\(--_hw\)"[^>]*><tspan[^>]*>Late delivery<\/tspan>/);
     // The head starts where the spine's arrowhead ends, and every category is to its left.
     const head = /<g class="pele-ishikawa-head"[^>]*><path d="M([-\d.]+),/.exec(svg)!;
     expect(Number(head[1])).toBeCloseTo(s.to + 7, 1);
@@ -218,7 +218,7 @@ describe('Ishikawa diagram rendering', () => {
 
   it('draws the front matter title above the diagram', () => {
     const { svg } = render('---\ntitle: Root causes\n---\nishikawa-beta\n  Effect\n    Cause\n', options);
-    expect(svg).toContain('<text class="pele-title" font-weight="bold"');
+    expect(svg).toContain('<text class="pele-title" font-weight="var(--_tw)"');
     expect(svg).toContain('>Root causes</tspan>');
   });
 

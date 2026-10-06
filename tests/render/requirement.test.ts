@@ -174,9 +174,9 @@ style c stroke:#0a0
   it('reads markdown emphasis in names and text', () => {
     const { svg } = render('requirementDiagram\nrequirement "__name__" {\ntext: "*slanted* and **heavy** words"\n}\n', options);
     expect(svg).toContain('data-id="__name__"');
-    expect(svg).toMatch(/<tspan[^>]*font-weight="bold"[^>]*>name<\/tspan>/);
+    expect(svg).toMatch(/<text[^>]* font-weight="var\(--_hw\)"[^>]*><tspan[^>]*>name<\/tspan>/);
     expect(svg).toMatch(/<tspan[^>]*font-style="italic">slanted<\/tspan>/);
-    expect(svg).toMatch(/<tspan[^>]*font-weight="bold">heavy<\/tspan>/);
+    expect(svg).toMatch(/<tspan[^>]*font-weight="var\(--_w\)">heavy<\/tspan>/);
     expect(svg).not.toContain('*');
     expect(svg).not.toContain('__name__<');
   });

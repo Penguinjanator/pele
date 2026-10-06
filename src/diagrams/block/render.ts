@@ -588,7 +588,7 @@ export function renderBlock(model: BlockModel, config: Config, options: RenderOp
     size,
     options,
     model,
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (edges ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edges}</g>` : '') +
       `<g class="pele-nodes">${nodes}</g>` +

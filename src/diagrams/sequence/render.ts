@@ -597,7 +597,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
           `<rect x="${x}" y="${num(frame.top)}" width="${num(frame.tabW)}" height="${TAB_H}" rx="${RADIUS}" fill="var(--_s)"/>` +
           `<text class="pele-frame-kind" x="${num(frame.x0 + frame.tabW / 2)}" y="${num(
             frame.top + TAB_H / 2 + tiny * 0.35
-          )}" text-anchor="middle" font-size="${tiny}" font-weight="bold" fill="var(--_m)" stroke="none">${frame.kind}</text>` +
+          )}" text-anchor="middle" font-size="${tiny}" font-weight="var(--_hw)" fill="var(--_m)" stroke="none">${frame.kind}</text>` +
           backed(
             frame.title,
             frame.x0 + frame.tabW + 8 + frame.title.width / 2,
@@ -784,7 +784,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
     const cx = (minX + maxX) / 2;
     extend(cx - title.width / 2, cx + title.width / 2);
     minY = -title.height - 12;
-    titleOut = labelSvg(title, cx, minY + title.height / 2, ' class="pele-title"', icons);
+    titleOut = labelSvg(title, cx, minY + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"', icons);
   }
 
   const width = Math.ceil(maxX - minX + 2 * pad);

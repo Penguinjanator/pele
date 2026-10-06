@@ -136,7 +136,7 @@ export function renderTreeView(model: TreeViewModel, config: Config, options: Re
     }
     if (row.text !== '') {
       inner += `<text class="pele-label" x="${num(inset + row.labelX)}" y="${num(cy + baseline)}"${
-        directory ? ' font-weight="bold"' : ''
+        directory ? ' font-weight="var(--_hw)"' : ''
       } xml:space="preserve">${esc(row.text)}</text>`;
     }
     if (node.description) {
@@ -150,7 +150,7 @@ export function renderTreeView(model: TreeViewModel, config: Config, options: Re
   }
 
   const content =
-    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     (guides ? `<g class="pele-tree-guides" fill="none" stroke="var(--_b)" stroke-width="${num(lineThickness)}">${guides}</g>` : '') +
     body;
 

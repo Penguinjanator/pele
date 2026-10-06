@@ -341,7 +341,7 @@ export function renderRailroad(model: RailroadModel, config: Config, options: Re
         : '';
     rules +=
       `<g class="pele-rule" data-id="${escText(rule.name)}">` +
-      `<text class="pele-rule-name" x="${num(pad)}" y="${num(top + headHeight / 2 + headSize * 0.35)}" font-size="${num(headSize)}" font-weight="bold" text-anchor="start">${esc(name)}</text>` +
+      `<text class="pele-rule-name" x="${num(pad)}" y="${num(top + headHeight / 2 + headSize * 0.35)}" font-size="${num(headSize)}" font-weight="var(--_hw)" text-anchor="start">${esc(name)}</text>` +
       `<path class="pele-edge pele-track" d="${track}" fill="none" stroke="var(--_l)"${stroke}/>` +
       (arrows ? `<path class="pele-marker" d="${arrows}" fill="var(--_l)"/>` : '') +
       markers +
@@ -355,7 +355,7 @@ export function renderRailroad(model: RailroadModel, config: Config, options: Re
   const totalWidth = Math.ceil(width + 2 * pad);
   const totalHeight = Math.ceil(bottom + pad);
   const content =
-    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     (rules ? `<g class="pele-rules" transform="translate(0.5,0.5)" font-size="${num(size)}" text-anchor="middle">${rules}</g>` : '');
 
   return {

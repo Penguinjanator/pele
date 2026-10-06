@@ -219,7 +219,7 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
       const style = userStyle(boundary.bgColor, boundary.borderColor, boundary.fontColor);
       const x = group.x + group.headX;
       let y = group.y + HEAD_TOP;
-      let text = leftLabel(group.labels[0], x, y, ` class="pele-cluster-label" font-weight="bold"${style.text}`);
+      let text = leftLabel(group.labels[0], x, y, ` class="pele-cluster-label" font-weight="var(--_hw)"${style.text}`);
       y += group.labels[0].height;
       text += leftLabel(group.labels[1], x, y, ` class="pele-c4-type" font-size="${small}" fill="var(--_m)"${style.text}`);
       y += group.labels[1].height;
@@ -244,7 +244,7 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
       let y = dy - node.textH / 2;
       let text = labelSvg(labels[0], dx, y + labels[0].height / 2, ` class="pele-c4-type" font-size="${small - 1}"${muted}`);
       y += labels[0].height;
-      text += labelSvg(labels[1], dx, y + labels[1].height / 2, ` class="pele-label" font-weight="bold"${style.text}`);
+      text += labelSvg(labels[1], dx, y + labels[1].height / 2, ` class="pele-label" font-weight="var(--_hw)"${style.text}`);
       y += labels[1].height;
       text += labelSvg(labels[2], dx, y + labels[2].height / 2, ` class="pele-c4-techn" font-size="${small}"${muted}`);
       y += labels[2].height + 4;
@@ -279,7 +279,7 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
     size,
     options,
     db,
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       `<g transform="translate(${num(ox)},${num(oy)})">` +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +

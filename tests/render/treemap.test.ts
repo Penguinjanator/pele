@@ -125,7 +125,7 @@ describe('treemap rendering', () => {
     expect([width, height]).toEqual([656, 416]);
     expect(svg.match(/class="pele-node pele-section"/g)?.length).toBe(2);
     expect(svg.match(/class="pele-node pele-leaf"/g)?.length).toBe(4);
-    expect(svg).toContain('font-weight="bold">Category A<');
+    expect(svg).toContain('font-weight="var(--_hw)">Category A<');
     expect(svg).toContain('>Item B2<');
     expect(svg).toContain('>25<');
     // The value of a section is the sum of its leaves.
@@ -212,7 +212,7 @@ describe('treemap rendering', () => {
       'treemap\n"A section with a very long name indeed"\n  "big": 1000\n  "A leaf with quite a long name": 60\n  "tiny": 12\n"other": 3000',
       options
     );
-    expect(svg).toMatch(/font-weight="bold">A sect[^<]*…</);
+    expect(svg).toMatch(/font-weight="var\(--_hw\)">A sect[^<]*…</);
     expect(svg).toMatch(/font-size="(9|1[0-5])">A leaf with[^<]*</);
     expect(svg).not.toContain('>tiny<');
     expect(rects(svg).some((r) => r.id === 'tiny')).toBe(true);

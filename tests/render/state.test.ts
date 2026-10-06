@@ -265,7 +265,7 @@ describe('state diagram rendering', () => {
 
   it('reads labels as markdown with entities and line breaks', () => {
     const svg = draw('a : **bold** and *italic*\n a --> b : one<br>two\n b : x #35; y');
-    expect(svg).toContain('font-weight="bold">bold</tspan>');
+    expect(svg).toContain('font-weight="var(--_w)">bold</tspan>');
     expect(svg).toContain('font-style="italic">italic</tspan>');
     expect(svg).toContain('>one</tspan>');
     expect(svg).toContain('>x # y</text>');

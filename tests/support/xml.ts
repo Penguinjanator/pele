@@ -18,6 +18,11 @@ export function assertWellFormed(xml: string): void {
     if (/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)/.test(attrs)) {
       throw new Error(`Unescaped "&" in attributes of <${name}>`);
     }
+    const seen = new Set<string>();
+    for (const a of attrs.matchAll(/([^\s=]+)="[^"]*"/g)) {
+      if (seen.has(a[1])) throw new Error(`<${name}> has ${a[1]} twice`);
+      seen.add(a[1]);
+    }
     if (closing) {
       const open = stack.pop();
       if (open !== name) throw new Error(`</${name}> closes <${open}>`);

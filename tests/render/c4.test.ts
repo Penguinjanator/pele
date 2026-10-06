@@ -101,9 +101,9 @@ System(d, "D", $tags="constructor")`);
   it('writes the type, name, technology, and description of a shape', () => {
     const { svg } = draw('C4Container\nContainer(api, "API", "Node.js", "Serves <b>requests</b><br/>all day")');
     expect(svg).toContain('«container»');
-    expect(svg).toMatch(/class="pele-label" font-weight="bold"[^>]*>(<tspan[^>]*>)?API</);
+    expect(svg).toMatch(/class="pele-label" font-weight="var\(--_hw\)"[^>]*>(<tspan[^>]*>)?API</);
     expect(svg).toContain('>[Node.js]<');
-    expect(svg).toContain('font-weight="bold">requests</tspan>');
+    expect(svg).toContain('font-weight="var(--_w)">requests</tspan>');
     expect(svg).toContain('all day');
     expect(svg).not.toContain('&lt;br');
   });
@@ -397,7 +397,7 @@ Rel(a, c, "x", $link="https://example.com/rel")`);
   });
 
   it('takes the title from the diagram, then from front matter', () => {
-    expect(draw('C4Context\ntitle Own title\nSystem(a, "A")').svg).toContain('class="pele-title" font-weight="bold"');
+    expect(draw('C4Context\ntitle Own title\nSystem(a, "A")').svg).toContain('class="pele-title" font-weight="var(--_tw)"');
     expect(draw('C4Context\ntitle Own title\nSystem(a, "A")').svg).toContain('Own title');
     expect(draw('---\ntitle: From front matter\n---\nC4Context\nSystem(a, "A")').svg).toContain('From front matter');
     expect(draw('---\ntitle: From front matter\n---\nC4Context\ntitle Own\nSystem(a, "A")').svg).not.toContain('From front matter');

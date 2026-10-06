@@ -93,7 +93,7 @@ describe('railroad rendering', () => {
     const { svg } = ebnf('first = "a" b ;\nsecond = c ;');
     expect(count(svg, '<g class="pele-rule"')).toBe(2);
     expect(svg).toContain('<g class="pele-rule" data-id="first">');
-    expect(svg).toMatch(/<text class="pele-rule-name"[^>]*font-weight="bold"[^>]*>first<\/text>/);
+    expect(svg).toMatch(/<text class="pele-rule-name"[^>]*font-weight="var\(--_hw\)"[^>]*>first<\/text>/);
     expect(count(svg, 'class="pele-marker pele-start"')).toBe(2);
     expect(count(svg, 'class="pele-marker pele-end"')).toBe(2);
     expect(count(svg, 'class="pele-edge pele-track"')).toBe(2);
@@ -194,7 +194,7 @@ describe('railroad rendering', () => {
   });
 
   it('takes the title from the diagram, or else from front matter', () => {
-    expect(ebnf('title "Quoted \\"title\\""\nr = a ;').svg).toContain('class="pele-title" font-weight="bold"');
+    expect(ebnf('title "Quoted \\"title\\""\nr = a ;').svg).toContain('class="pele-title" font-weight="var(--_tw)"');
     expect(ebnf('title "Quoted \\"title\\""\nr = a ;').svg).toContain('>Quoted &quot;title&quot;<');
     expect(render('---\ntitle: From front matter\n---\nrailroad-peg-beta\nR <- a ;', options).svg).toContain('>From front matter<');
     const own = render('---\ntitle: From front matter\n---\nrailroad-abnf-beta\ntitle Own\nr = a ;', options).svg;

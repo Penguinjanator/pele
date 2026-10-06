@@ -401,7 +401,7 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
   }
 
   const content =
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     (grid ? `<path class="pele-grid" d="${grid}" stroke="var(--_a)"/>` : '') +
     `<g class="pele-plot">${series}</g>` +
     (axis ? `<path class="pele-axis" d="${axis}" fill="none" stroke="var(--_b)"/>` : '') +

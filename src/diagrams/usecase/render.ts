@@ -399,7 +399,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
       body =
         `<rect x="${num(x0)}" y="${num(-h / 2)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}"${SHAPE_ATTRS}${shape}/>` +
         `<path class="pele-json-lines" d="${lines}" fill="none" stroke="var(--_b)"${view.style.line}/>` +
-        labelSvg(view.label, 0, -h / 2 + view.headH / 2, ` class="pele-label" font-weight="bold"${textAttrs}`, icons) +
+        labelSvg(view.label, 0, -h / 2 + view.headH / 2, ` class="pele-label" font-weight="var(--_hw)"${textAttrs}`, icons) +
         `<g font-size="${small}">${cells}</g>`;
     } else {
       const labelY = view.stereotype.height / 2;
@@ -524,7 +524,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
     size,
     options,
     model,
-    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${small}">${labelsOut}</g>` : '') +

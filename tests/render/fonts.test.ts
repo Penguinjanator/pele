@@ -30,6 +30,35 @@ describe('fonts', () => {
     }
   });
 
+  it('takes the weight of bold text from variables, each defined only where it is used', () => {
+    const plain = render(FLOW, { measurer: metricsMeasurer }).svg;
+    expect(plain).not.toContain('font-weight');
+    expect(plain).not.toMatch(/--_t?h?w:/);
+
+    const titled = render(`---\ntitle: My title\n---\n${FLOW}\n  B --> C["\`**Bold** word\`"]`, { measurer: metricsMeasurer }).svg;
+    expect(titled).toContain(';--_tw:var(--pele-title-weight,bold);--_w:var(--pele-bold-weight,bold);');
+    expect(titled).not.toContain('--_hw:');
+    // Written once, on the text, so that a rule for .pele-title is enough to change it.
+    expect(titled).toMatch(/<text class="pele-title" font-weight="var\(--_tw\)"[^>]*><tspan x="[\d.]+" y="[\d.]+">My title<\/tspan><\/text>/);
+    expect(titled).toContain('<tspan x="0" y="5.6" font-weight="var(--_w)">Bold</tspan><tspan> word</tspan>');
+  });
+
+  it('draws the names of classes, columns, and other headings in the heading weight', () => {
+    const sources = [
+      'classDiagram\n  class Duck {\n    +swim()\n  }',
+      'kanban\n  Todo\n    [Write docs]',
+      'treeView-beta\n    src/\n        index.js\n',
+      'sequenceDiagram\n  loop Daily\n    A->>B: x\n  end',
+      'timeline\n  section Early\n    2001 : First',
+    ];
+    for (const source of sources) {
+      const { svg } = render(source, { measurer: metricsMeasurer });
+      expect(svg, source).toContain(';--_hw:var(--pele-heading-weight,bold);');
+      expect(svg, source).toMatch(/<text[^>]* font-weight="var\(--_hw\)"/);
+      expect(svg, source).not.toMatch(/font-weight="(?!var\(--_hw\)")/);
+    }
+  });
+
   it('does not write a font list that is more than names', () => {
     for (const family of ['x;color:red', 'x) ; y', 'url(//evil.example/f)', '"url(x)"', '"open', "it's", 'a\nb', 'x{}', '<b>', '"a";"b"', 'a,,b', ', a', '']) {
       const svg = render(FLOW, { measurer: metricsMeasurer, fontFamily: family, fontFamilyMono: family }).svg;

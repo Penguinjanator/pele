@@ -23,6 +23,9 @@ CSS variables and default values.
 | `--pele-accent` | `#5b7bd5` | Highlights |
 | `--pele-font` | Measured font | Label font. See [Fonts](#fonts) |
 | `--pele-font-mono` | Measured font | Monospace labels |
+| `--pele-title-weight` | `bold` | Diagram title |
+| `--pele-heading-weight` | `bold` | Headings inside a diagram, such as class names and section labels |
+| `--pele-bold-weight` | `bold` | Bold text in labels |
 | `--pele-radius` | `4px` | Corner radius of rounded shapes |
 
 ### Series colors
@@ -115,6 +118,8 @@ container.innerHTML = render(source, { fontFamily }).svg;
 
 The SVG resets inherited text styles such as `letter-spacing`, `font-weight`, and `text-transform`, because they change label widths after measurement.
 
+Bold text is measured as `bold`. A lighter weight is always safe. A heavier one can overflow.
+
 ## Classes
 
 Elements in the SVG have class names. Use them to style one kind of element without changing a variable.
@@ -123,6 +128,7 @@ Elements in the SVG have class names. Use them to style one kind of element with
 | --- | --- |
 | `pele` | The root `<svg>` of every diagram |
 | `pele-flowchart` | The root `<svg>` of a flowchart |
+| `pele-title` | The diagram title |
 | `pele-node` | The group that holds a node's shape and label |
 | `pele-edge` | The group that holds an edge's line and markers |
 | `pele-edge-label` | The label on an edge |

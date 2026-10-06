@@ -163,7 +163,7 @@ function draw(model: RadarModel, config: Config, options: RenderOptions, width: 
   const origin = `translate(${num(pad + (bodyWidth - (x1 - x0)) / 2 - x0)},${num(pad + titleHeight - y0)})`;
 
   const content =
-    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
+    labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     `<g transform="${origin}">` +
     (grid ? `<g class="pele-graticule" fill="none" stroke="var(--_a)">${grid}</g>` : '') +
     (spokes ? `<path class="pele-axes" d="${spokes}" fill="none" stroke="var(--_b)"/>` : '') +
