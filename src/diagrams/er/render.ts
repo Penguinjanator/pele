@@ -1,6 +1,7 @@
-import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num, type IconResolver } from '../../svg/builder.js';
+import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, routePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
@@ -287,36 +288,17 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
   const inner = Math.max(layoutWidth, title.width);
   const ox = pad + (inner - layoutWidth) / 2;
   const oy = pad + titleHeight;
-  for (const c of cnodes) {
-    c.x += ox;
-    c.y += oy;
-  }
-  for (const e of cedges) {
-    for (let k = 0; k < e.route.length; k += 3) {
-      e.route[k] += ox;
-      e.route[k + 1] += oy;
-    }
-    e.labelX += ox;
-    e.labelY += oy;
-  }
+  shiftLayout(cnodes, cedges, ox, oy);
   const width = Math.ceil(inner + 2 * pad);
   const height = Math.ceil(layout.height + titleHeight + 2 * pad);
   const links: LinkInfo[] = [];
 
   // Route points by rounded y, to find the edges that cross a cluster's top border.
-  const crossings = new Map<number, number[]>();
+  const crossings: Crossings = new Map();
   let anyGroup = false;
   for (const c of cnodes) if (c.isGroup) anyGroup = true;
   if (anyGroup) {
-    for (const e of cedges) {
-      const route = e.route;
-      for (let k = 0; k < route.length; k += 3) {
-        const key = Math.round(route[k + 1]);
-        const list = crossings.get(key);
-        if (list) list.push(route[k]);
-        else crossings.set(key, [route[k]]);
-      }
-    }
+    for (const e of cedges) markCrossings(crossings, e.route);
   }
 
   let clusters = '';
@@ -331,7 +313,7 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
       view.h = c.h;
       const x = c.x - c.w / 2;
       const y = c.y - c.h / 2;
-      const titleX = clusterTitleX(c, view.label.width, crossings);
+      const titleX = clusterTitleX(c, view.label.width, crossings, GROUP_PAD);
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${esc(node.id)}">` +
         `<rect x="${num(x)}" y="${num(y)}" width="${num(c.w)}" height="${num(c.h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${view.style.shape}/>` +
@@ -497,29 +479,6 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
   );
 
   return { svg, width, height, links };
-}
-
-// Picks where a cluster title sits along the top edge so that edges entering there do not cross it.
-function clusterTitleX(c: CNode, width: number, crossings: Map<number, number[]>): number {
-  if (width === 0) return c.x;
-  const top = c.y - c.h / 2;
-  const left = c.x - c.w / 2;
-  const half = width / 2;
-  const candidates = [left + GROUP_PAD - 6 + half, c.x, left + c.w - GROUP_PAD + 6 - half];
-  const xs = crossings.get(Math.round(top));
-  if (xs === undefined) return candidates[0];
-  let best = candidates[0];
-  let bestGap = -1;
-  for (const x of candidates) {
-    let gap = Infinity;
-    for (const cx of xs) if (cx > left && cx < left + c.w) gap = Math.min(gap, Math.abs(cx - x) - half);
-    if (gap >= 6) return x;
-    if (gap > bestGap + 0.5) {
-      bestGap = gap;
-      best = x;
-    }
-  }
-  return best;
 }
 
 // Drops the points in the middle of a straight vertical or horizontal run.

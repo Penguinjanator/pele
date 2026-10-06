@@ -77,6 +77,22 @@ interface Level {
 
 const MAX_PORTS = 40000;
 
+// Moves a finished layout, to make room for padding and a title.
+export function shiftLayout(nodes: CNode[], edges: CEdge[], ox: number, oy: number): void {
+  for (const c of nodes) {
+    c.x += ox;
+    c.y += oy;
+  }
+  for (const e of edges) {
+    for (let k = 0; k < e.route.length; k += 3) {
+      e.route[k] += ox;
+      e.route[k + 1] += oy;
+    }
+    e.labelX += ox;
+    e.labelY += oy;
+  }
+}
+
 export function cnode(w: number, h: number, parent = -1): CNode {
   return { w, h, parent, isGroup: false, dir: undefined, padX: 0, padTop: 0, padBottom: 0, minW: 0, seq: 0, x: 0, y: 0 };
 }

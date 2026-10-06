@@ -125,3 +125,45 @@ export function edgeLabelSvg(id: string, label: Label, x: number, y: number, att
     '</g>'
   );
 }
+
+// A self-loop beside a node of drawn size w by h: out of the side that lies across the flow and
+// back in. `k` counts the loops already on the node, so each one reaches a little further.
+// Also places the edge's label beyond the loop.
+export function loopPath(
+  c: { x: number; y: number },
+  w: number,
+  h: number,
+  k: number,
+  sideways: boolean,
+  base: number,
+  trim: number,
+  e: { labelW: number; labelH: number; labelX: number; labelY: number }
+): EdgePath {
+  const half = (sideways ? w : h) / 2;
+  const spread = Math.min(half - 4, 8 + k * 6);
+  const reach = base + k * 8;
+  const len = Math.hypot(reach, spread) || 1;
+  // Local frame: `out` points away from the node, `along` runs along its side.
+  const at = (out: number, along: number): string =>
+    sideways ? `${num(c.x + along)},${num(c.y + h / 2 + out)}` : `${num(c.x + w / 2 + out)},${num(c.y + along)}`;
+  const tx = (reach / len) * trim;
+  const ty = (spread / len) * trim;
+  if (sideways) {
+    e.labelX = c.x;
+    e.labelY = c.y + h / 2 + reach + 4 + e.labelH / 2;
+  } else {
+    e.labelX = c.x + w / 2 + reach + 4 + e.labelW / 2;
+    e.labelY = c.y;
+  }
+  return {
+    d: `M${at(0, -spread)}C${at(reach, -spread * 2)} ${at(reach, spread * 2)} ${at(tx, spread + ty)}`,
+    sx: sideways ? c.x - spread : c.x + w / 2,
+    sy: sideways ? c.y + h / 2 : c.y - spread,
+    sdx: sideways ? 0 : -1,
+    sdy: sideways ? -1 : 0,
+    ex: sideways ? c.x + spread : c.x + w / 2,
+    ey: sideways ? c.y + h / 2 : c.y + spread,
+    edx: sideways ? -spread / len : -reach / len,
+    edy: sideways ? -reach / len : -spread / len,
+  };
+}

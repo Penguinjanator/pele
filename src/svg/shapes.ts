@@ -1,3 +1,4 @@
+import type { CNode } from '../layout/compound.js';
 import { num } from './builder.js';
 import { RADIUS } from './theme.js';
 
@@ -581,4 +582,20 @@ export function shapeInset(shape: string, w: number, h: number, side: number): n
 
 export function shapeHasLabel(shape: string): boolean {
   return BY_NAME.get(shape)?.noLabel !== true;
+}
+
+// Moves a route end from a node's layout box onto the outline of the shape drawn in it.
+export function insetRoute(route: number[], at: number, view: { shape: string; w: number; h: number }, c: CNode): void {
+  if (c.isGroup) return;
+  const dx = route[at] - c.x;
+  const dy = route[at + 1] - c.y;
+  if (Math.abs(Math.abs(dy) - c.h / 2) < 0.5) {
+    const side = dy < 0 ? 0 : 2;
+    const amount = shapeInset(view.shape, view.w, view.h, side) + (c.h - view.h) / 2;
+    route[at + 1] += side === 0 ? amount : -amount;
+  } else if (Math.abs(Math.abs(dx) - c.w / 2) < 0.5) {
+    const side = dx < 0 ? 3 : 1;
+    const amount = shapeInset(view.shape, view.w, view.h, side) + (c.w - view.w) / 2;
+    route[at] += side === 3 ? amount : -amount;
+  }
 }

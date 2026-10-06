@@ -1,6 +1,7 @@
-import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num, type IconResolver } from '../../svg/builder.js';
+import { markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
@@ -320,31 +321,13 @@ export function renderUsecase(model: UsecaseModel, config: Config, options: Rend
   const inner = Math.max(layout.width, title.width);
   const ox = pad + (inner - layout.width) / 2;
   const oy = pad + titleHeight;
-  for (const c of cnodes) {
-    c.x += ox;
-    c.y += oy;
-  }
-  for (const e of cedges) {
-    for (let k = 0; k < e.route.length; k += 3) {
-      e.route[k] += ox;
-      e.route[k + 1] += oy;
-    }
-    e.labelX += ox;
-    e.labelY += oy;
-  }
+  shiftLayout(cnodes, cedges, ox, oy);
   const width = Math.ceil(inner + 2 * pad);
   const height = Math.ceil(layout.height + titleHeight + 2 * pad);
 
   // Where edges cross each boundary's top border, so that a title can keep out of their way.
-  const crossings = new Map<number, number[]>();
-  for (const e of cedges) {
-    for (let k = 0; k < e.route.length; k += 3) {
-      const key = Math.round(e.route[k + 1]);
-      const list = crossings.get(key);
-      if (list) list.push(e.route[k]);
-      else crossings.set(key, [e.route[k]]);
-    }
-  }
+  const crossings: Crossings = new Map();
+  for (const e of cedges) markCrossings(crossings, e.route);
   attachEnds(cedges, cnodes, views);
 
   let clusters = '';

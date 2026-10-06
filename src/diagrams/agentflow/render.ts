@@ -1,9 +1,10 @@
-import { cnode, compoundLayout, direction, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
-import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
+import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
+import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
-import { PAD_X, PAD_Y, drawShape, shapeInset, shapeSize } from '../../svg/shapes.js';
+import { PAD_X, PAD_Y, drawShape, insetRoute, shapeSize } from '../../svg/shapes.js';
 import { RADIUS, classNames, resolveStyle, seriesColor, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
@@ -200,18 +201,7 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
   const inner = Math.max(layout.width, title.width);
   const ox = pad + (inner - layout.width) / 2;
   const oy = pad + titleHeight;
-  for (const c of cnodes) {
-    c.x += ox;
-    c.y += oy;
-  }
-  for (const e of cedges) {
-    for (let k = 0; k < e.route.length; k += 3) {
-      e.route[k] += ox;
-      e.route[k + 1] += oy;
-    }
-    e.labelX += ox;
-    e.labelY += oy;
-  }
+  shiftLayout(cnodes, cedges, ox, oy);
   const width = Math.ceil(inner + 2 * pad);
   const height = Math.ceil(layout.height + titleHeight + 2 * pad);
   const links: LinkInfo[] = [];
@@ -270,25 +260,17 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
     heldRoutes.push(route);
     heldLabels.push((route[0] + route[3]) / 2, (route[1] + route[4]) / 2);
     const drawnRoute = route.slice();
-    inset(drawnRoute, out ? 0 : 3, views[i], n);
+    insetRoute(drawnRoute, out ? 0 : 3, views[i], n);
     heldPaths.push(routePath(drawnRoute, 'linear', 0, markerTrim(edge.arrowTypeEnd)));
   }
 
   // Route points by rounded y, to find the edges that cross a container's top border.
-  const crossings = new Map<number, number[]>();
+  const crossings: Crossings = new Map();
   let anyGroup = false;
   for (const c of cnodes) if (c.isGroup) anyGroup = true;
   if (anyGroup) {
-    const mark = (route: number[]): void => {
-      for (let k = 0; k < route.length; k += 3) {
-        const key = Math.round(route[k + 1]);
-        const list = crossings.get(key);
-        if (list) list.push(route[k]);
-        else crossings.set(key, [route[k]]);
-      }
-    };
-    for (const e of cedges) mark(e.route);
-    for (const route of heldRoutes) mark(route);
+    for (const e of cedges) markCrossings(crossings, e.route);
+    for (const route of heldRoutes) markCrossings(crossings, route);
   }
 
   let clusters = '';
@@ -302,7 +284,7 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
     const id = esc(node.id);
     if (c.isGroup) {
-      const titleX = clusterTitleX(c, view.label.width, crossings);
+      const titleX = clusterTitleX(c, view.label.width, crossings, GROUP_PAD);
       clusters +=
         `<g class="pele-cluster pele-flow${classes}" data-id="${id}">` +
         `<rect x="${num(x - c.w / 2)}" y="${num(y - c.h / 2)}" width="${num(c.w)}" height="${num(c.h)}" rx="${RADIUS}"${tint(
@@ -394,45 +376,14 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
     const endType = edge.arrowTypeEnd;
     let path: EdgePath;
     if (ce.src === ce.dst) {
-      const c = cnodes[ce.src];
       const view = views[ce.src];
       const k = loopSeen.get(ce.src) ?? 0;
       loopSeen.set(ce.src, k + 1);
-      const sideways = flowsSideways(ce.src);
-      const half = (sideways ? view.w : view.h) / 2;
-      const spread = Math.min(half - 4, 8 + k * 6);
-      const reach = LOOP + k * 8;
-      const trim = markerTrim(endType);
-      const len = Math.hypot(reach, spread) || 1;
-      // Local frame: `out` points away from the node, `along` runs along its side.
-      const at = (out: number, along: number): string =>
-        sideways
-          ? `${num(c.x + along)},${num(c.y + view.h / 2 + out)}`
-          : `${num(c.x + view.w / 2 + out)},${num(c.y + along)}`;
-      const tx = (reach / len) * trim;
-      const ty = (spread / len) * trim;
-      path = {
-        d: `M${at(0, -spread)}C${at(reach, -spread * 2)} ${at(reach, spread * 2)} ${at(tx, spread + ty)}`,
-        sx: sideways ? c.x - spread : c.x + view.w / 2,
-        sy: sideways ? c.y + view.h / 2 : c.y - spread,
-        sdx: sideways ? 0 : -1,
-        sdy: sideways ? -1 : 0,
-        ex: sideways ? c.x + spread : c.x + view.w / 2,
-        ey: sideways ? c.y + view.h / 2 : c.y + spread,
-        edx: sideways ? -spread / len : -reach / len,
-        edy: sideways ? -reach / len : -spread / len,
-      };
-      if (sideways) {
-        ce.labelX = c.x;
-        ce.labelY = c.y + view.h / 2 + reach + 4 + ce.labelH / 2;
-      } else {
-        ce.labelX = c.x + view.w / 2 + reach + 4 + ce.labelW / 2;
-        ce.labelY = c.y;
-      }
+      path = loopPath(cnodes[ce.src], view.w, view.h, k, flowsSideways(ce.src), LOOP, markerTrim(endType), ce);
     } else {
       const route = ce.route.slice();
-      inset(route, 0, views[ce.src], cnodes[ce.src]);
-      inset(route, route.length - 3, views[ce.dst], cnodes[ce.dst]);
+      insetRoute(route, 0, views[ce.src], cnodes[ce.src]);
+      insetRoute(route, route.length - 3, views[ce.dst], cnodes[ce.dst]);
       path = routePath(route, edge.curve, 0, markerTrim(endType));
     }
     put(edge, label, path, ce.labelX, ce.labelY);
@@ -458,43 +409,4 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
 
 function dot(x: number, y: number): string {
   return `M${num(x - 1.75)},${num(y)}a1.75,1.75 0 1 0 3.5,0a1.75,1.75 0 1 0 -3.5,0Z`;
-}
-
-// Picks where a container's title sits along the top edge so that edges entering there do not cross it.
-function clusterTitleX(c: CNode, width: number, crossings: Map<number, number[]>): number {
-  if (width === 0) return c.x;
-  const top = c.y - c.h / 2;
-  const left = c.x - c.w / 2;
-  const half = width / 2;
-  const candidates = [left + GROUP_PAD - 6 + half, c.x, left + c.w - GROUP_PAD + 6 - half];
-  const xs = crossings.get(Math.round(top));
-  if (xs === undefined) return candidates[0];
-  let best = candidates[0];
-  let bestGap = -1;
-  for (const x of candidates) {
-    let gap = Infinity;
-    for (const cx of xs) if (cx > left && cx < left + c.w) gap = Math.min(gap, Math.abs(cx - x) - half);
-    if (gap >= 6) return x;
-    if (gap > bestGap + 0.5) {
-      bestGap = gap;
-      best = x;
-    }
-  }
-  return best;
-}
-
-// Moves a route end from the node's layout box onto its outline.
-function inset(route: number[], at: number, view: NodeView, c: CNode): void {
-  if (c.isGroup) return;
-  const dx = route[at] - c.x;
-  const dy = route[at + 1] - c.y;
-  if (Math.abs(Math.abs(dy) - c.h / 2) < 0.5) {
-    const side = dy < 0 ? 0 : 2;
-    const amount = shapeInset(view.shape, view.w, view.h, side) + (c.h - view.h) / 2;
-    route[at + 1] += side === 0 ? amount : -amount;
-  } else if (Math.abs(Math.abs(dx) - c.w / 2) < 0.5) {
-    const side = dx < 0 ? 3 : 1;
-    const amount = shapeInset(view.shape, view.w, view.h, side) + (c.w - view.w) / 2;
-    route[at] += side === 3 ? amount : -amount;
-  }
 }

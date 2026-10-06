@@ -1,6 +1,7 @@
 import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
+import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { withTitle } from '../../svg/title.js';
@@ -424,17 +425,9 @@ export function renderClass(db: ClassDb, config: Config, options: RenderOptions)
   const links: LinkInfo[] = [];
 
   // Route points by rounded y, to find the edges that cross a namespace's top border.
-  const crossings = new Map<number, number[]>();
+  const crossings: Crossings = new Map();
   if (graph.nodes.length > 0 && graph.nodes[0].isGroup) {
-    for (const e of cedges) {
-      const route = e.route;
-      for (let k = 0; k < route.length; k += 3) {
-        const key = Math.round(route[k + 1]);
-        const list = crossings.get(key);
-        if (list) list.push(route[k]);
-        else crossings.set(key, [route[k]]);
-      }
-    }
+    for (const e of cedges) markCrossings(crossings, e.route);
   }
 
   let clusters = '';
@@ -454,7 +447,7 @@ export function renderClass(db: ClassDb, config: Config, options: RenderOptions)
         `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"/>` +
         labelSvg(
           view.label,
-          (c.isGroup ? clusterTitleX(c, view.label.width, crossings) : c.x) + ox,
+          (c.isGroup ? clusterTitleX(c, view.label.width, crossings, GROUP_PAD) : c.x) + ox,
           y - h / 2 + 8 + view.label.height / 2,
           ' class="pele-cluster-label" fill="var(--_m)"'
         ) +
@@ -607,24 +600,3 @@ export function renderClass(db: ClassDb, config: Config, options: RenderOptions)
   return { svg, width: titled.width, height: titled.height, links };
 }
 
-// Picks where a namespace title sits along the top edge so that edges entering there do not cross it.
-function clusterTitleX(c: CNode, width: number, crossings: Map<number, number[]>): number {
-  if (width === 0) return c.x;
-  const left = c.x - c.w / 2;
-  const half = width / 2;
-  const candidates = [left + GROUP_PAD - 6 + half, c.x, left + c.w - GROUP_PAD + 6 - half];
-  const xs = crossings.get(Math.round(c.y - c.h / 2));
-  if (xs === undefined) return candidates[0];
-  let best = candidates[0];
-  let bestGap = -1;
-  for (const x of candidates) {
-    let gap = Infinity;
-    for (const cx of xs) if (cx > left && cx < left + c.w) gap = Math.min(gap, Math.abs(cx - x) - half);
-    if (gap >= 6) return x;
-    if (gap > bestGap + 0.5) {
-      bestGap = gap;
-      best = x;
-    }
-  }
-  return best;
-}
