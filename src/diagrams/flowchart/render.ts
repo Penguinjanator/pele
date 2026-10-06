@@ -202,7 +202,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
       c.padX = GROUP_PAD;
       c.padTop = label.height > 0 ? label.height + 16 : GROUP_PAD;
       c.padBottom = GROUP_PAD;
-      c.minW = label.width + 2 * GROUP_PAD;
+      c.minW = label.width + 2 * GROUP_PAD - 12;
     } else {
       const shape = canonicalShape(node.shape);
       const text = node.img || node.icon || shapeHasLabel(shape) ? node.label : undefined;
@@ -284,12 +284,13 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
     const id = esc(node.id);
     if (c.isGroup) {
+      const titleX = clusterTitleX(c, view.label.width, cedges);
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${id}">` +
         `<rect x="${num(x - c.w / 2)}" y="${num(y - c.h / 2)}" width="${num(c.w)}" height="${num(c.h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${
           view.style.shape
         }/>` +
-        labelSvg(view.label, x, y - c.h / 2 + 8 + view.label.height / 2, ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`, icons) +
+        labelSvg(view.label, titleX + pad, y - c.h / 2 + 8 + view.label.height / 2, ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`, icons) +
         '</g>';
       continue;
     }
@@ -445,6 +446,35 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
     '</svg>';
 
   return { svg, width, height, links };
+}
+
+// Picks where a cluster title sits along the top edge so that edges entering there do not cross it.
+function clusterTitleX(c: CNode, width: number, edges: CEdge[]): number {
+  if (width === 0) return c.x;
+  const top = c.y - c.h / 2;
+  const left = c.x - c.w / 2;
+  const half = width / 2;
+  const crossings: number[] = [];
+  for (const e of edges) {
+    const route = e.route;
+    for (let i = 0; i < route.length; i += 3) {
+      if (Math.abs(route[i + 1] - top) < 0.5 && route[i] > left && route[i] < left + c.w) crossings.push(route[i]);
+    }
+  }
+  const candidates = [left + GROUP_PAD - 6 + half, c.x, left + c.w - GROUP_PAD + 6 - half];
+  if (crossings.length === 0) return candidates[0];
+  let best = candidates[0];
+  let bestGap = -1;
+  for (const x of candidates) {
+    let gap = Infinity;
+    for (const cx of crossings) gap = Math.min(gap, Math.abs(cx - x) - half);
+    if (gap > bestGap + 0.5) {
+      bestGap = gap;
+      best = x;
+    }
+    if (gap >= 6) return x;
+  }
+  return best;
 }
 
 // Moves a route end from the node's bounding box onto its outline.

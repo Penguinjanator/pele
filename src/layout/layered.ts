@@ -70,6 +70,15 @@ export function ledge(tail: number, head: number, minlen = 1, labelW = 0, labelH
 
 const MAX_SWEEPS = 24;
 
+interface Adjacency {
+  preds: number[][];
+  succs: number[][];
+  predDx: number[][];
+  succDx: number[][];
+  predMirror: number[][];
+  succMirror: number[][];
+}
+
 export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): LayeredResult {
   const realCount = nodes.length;
   if (realCount === 0) return { width: 0, height: 0 };
@@ -97,13 +106,18 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   const chains: number[][] = new Array(m);
   const preds: number[][] = [];
   const succs: number[][] = [];
-  const predOff: number[][] = [];
-  const succOff: number[][] = [];
+  // Per adjacency entry: where the edge attaches on this node, and its index in the other node's list.
+  const predDx: number[][] = [];
+  const succDx: number[][] = [];
+  const predMirror: number[][] = [];
+  const succMirror: number[][] = [];
   for (let i = 0; i < realCount; i++) {
     preds.push([]);
     succs.push([]);
-    predOff.push([]);
-    succOff.push([]);
+    predDx.push([]);
+    succDx.push([]);
+    predMirror.push([]);
+    succMirror.push([]);
   }
   const labelNode = new Int32Array(m).fill(-1);
 
@@ -129,8 +143,10 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
       nodes.push(d);
       preds.push([]);
       succs.push([]);
-      predOff.push([]);
-      succOff.push([]);
+      predDx.push([]);
+      succDx.push([]);
+      predMirror.push([]);
+      succMirror.push([]);
       if (isLabel) labelNode[ei] = id;
       chain.push(id);
     }
@@ -139,10 +155,12 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     for (let k = 0; k + 1 < chain.length; k++) {
       const u = chain[k];
       const v = chain[k + 1];
+      succMirror[u].push(preds[v].length);
+      predMirror[v].push(succs[u].length);
       succs[u].push(v);
-      succOff[u].push(k === 0 && nodes[a].w > 0 ? aDx / nodes[a].w : 0);
+      succDx[u].push(k === 0 ? aDx : 0);
       preds[v].push(u);
-      predOff[v].push(k === chain.length - 2 && nodes[b].w > 0 ? bDx / nodes[b].w : 0);
+      predDx[v].push(k === chain.length - 2 ? bDx : 0);
     }
   }
 
@@ -179,11 +197,12 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   applyPins(nodes, layers);
   setPositions();
 
-  if (m > 0 && maxRank > 0) reduceCrossings(nodes, layers, pos, preds, succs, predOff, succOff, setPositions);
+  const adj: Adjacency = { preds, succs, predDx, succDx, predMirror, succMirror };
+  if (m > 0 && maxRank > 0) reduceCrossings(nodes, layers, pos, adj, setPositions);
 
   for (const layer of layers) for (let i = 0; i < layer.length; i++) nodes[layer[i]].order = i;
 
-  const xs = position(nodes, layers, pos, preds, succs, opt);
+  const xs = position(nodes, layers, pos, adj, opt);
 
   const bandTop = new Float64Array(maxRank + 1);
   const bandBottom = new Float64Array(maxRank + 1);
@@ -403,7 +422,7 @@ function applyPins(nodes: LNode[], layers: number[][]): void {
   }
 }
 
-function countCrossings(layers: number[][], pos: Int32Array, succs: number[][], succOff: number[][]): number {
+function countCrossings(layers: number[][], pos: Int32Array, succs: number[][], succDx: number[][]): number {
   let total = 0;
   for (let r = 0; r + 1 < layers.length; r++) {
     const north = layers[r];
@@ -415,7 +434,7 @@ function countCrossings(layers: number[][], pos: Int32Array, succs: number[][], 
       if (out.length === 1) {
         targets.push(pos[out[0]]);
       } else if (out.length > 1) {
-        const off = succOff[v];
+        const off = succDx[v];
         const idx: number[] = [];
         for (let i = 0; i < out.length; i++) idx.push(i);
         idx.sort((a, b) => off[a] - off[b] || pos[out[a]] - pos[out[b]]);
@@ -443,26 +462,24 @@ function reduceCrossings(
   nodes: LNode[],
   layers: number[][],
   pos: Int32Array,
-  preds: number[][],
-  succs: number[][],
-  predOff: number[][],
-  succOff: number[][],
+  adj: Adjacency,
   setPositions: () => void
 ): void {
-  let best = countCrossings(layers, pos, succs, succOff);
+  const { preds, succs, succDx } = adj;
+  let best = countCrossings(layers, pos, succs, succDx);
   if (best === 0) return;
   let bestLayers = layers.map((l) => l.slice());
   const n = nodes.length;
   const bary = new Float64Array(n);
 
   let offsets = false;
-  for (const list of succOff) for (const off of list) if (off !== 0) offsets = true;
-  for (const list of predOff) for (const off of list) if (off !== 0) offsets = true;
+  for (const list of succDx) for (const off of list) if (off !== 0) offsets = true;
+  for (const list of adj.predDx) for (const off of list) if (off !== 0) offsets = true;
 
   const sweep = (down: boolean, biasRight: boolean): void => {
-    const adj = down ? preds : succs;
-    const other = down ? succs : preds;
-    const otherOff = down ? succOff : predOff;
+    const near = down ? preds : succs;
+    const mirror = down ? adj.predMirror : adj.succMirror;
+    const farDx = down ? succDx : adj.predDx;
     const count = layers.length;
     for (let step = 1; step < count; step++) {
       const layer = layers[down ? step : count - 1 - step];
@@ -474,15 +491,16 @@ function reduceCrossings(
           movable++;
           continue;
         }
-        const nb = adj[v];
+        const nb = near[v];
         if (nb.length === 0) {
           bary[v] = -1;
           continue;
         }
         let sum = 0;
-        for (const u of nb) {
+        for (let k = 0; k < nb.length; k++) {
+          const u = nb[k];
           sum += pos[u];
-          if (offsets && other[u].length > 1) sum += otherOff[u][other[u].indexOf(v)];
+          if (offsets && nodes[u].w > 0) sum += farDx[u][mirror[v][k]] / nodes[u].w;
         }
         bary[v] = sum / nb.length;
         movable++;
@@ -502,7 +520,7 @@ function reduceCrossings(
 
   for (let i = 0, stale = 0; stale < 4 && i < MAX_SWEEPS; i++, stale++) {
     sweep(i % 2 === 0, i % 4 >= 2);
-    const c = countCrossings(layers, pos, succs, succOff);
+    const c = countCrossings(layers, pos, succs, succDx);
     if (c < best) {
       best = c;
       bestLayers = layers.map((l) => l.slice());
@@ -519,10 +537,10 @@ function position(
   nodes: LNode[],
   layers: number[][],
   pos: Int32Array,
-  preds: number[][],
-  succs: number[][],
+  adj: Adjacency,
   opt: LayeredOptions
 ): Float64Array {
+  const { preds, succs } = adj;
   const n = nodes.length;
   const isDummy = (v: number): boolean => nodes[v].kind === Kind.Dummy || nodes[v].kind === Kind.Label;
   const sep = (u: number, v: number): number =>
@@ -564,15 +582,21 @@ function position(
   const root = new Int32Array(n);
   const align = new Int32Array(n);
   const lpos = new Int32Array(n);
+  // Offset of each node from its block's root, so that aligned edges meet at their attachment points.
+  const shift = new Float64Array(n);
   const count = layers.length;
 
   for (let variant = 0; variant < 4; variant++) {
     const up = variant < 2;
     const right = (variant & 1) === 1;
     const neighbors = up ? preds : succs;
+    const ownDx = up ? adj.predDx : adj.succDx;
+    const otherDx = up ? adj.succDx : adj.predDx;
+    const mirror = up ? adj.predMirror : adj.succMirror;
     for (let i = 0; i < n; i++) {
       root[i] = i;
       align[i] = i;
+      shift[i] = 0;
     }
     const ordered: number[][] = [];
     for (let k = 0; k < count; k++) {
@@ -586,14 +610,28 @@ function position(
       let prevIdx = -1;
       for (const v of layer) {
         const ws = neighbors[v];
-        if (ws.length === 0) continue;
-        const sorted = ws.length === 1 ? ws : ws.slice().sort((a, b) => lpos[a] - lpos[b]);
-        const mid = (sorted.length - 1) / 2;
-        for (let i = Math.floor(mid), end = Math.ceil(mid); i <= end; i++) {
-          const w = sorted[i];
+        const count = ws.length;
+        if (count === 0) continue;
+        let lo = 0;
+        let hi = 0;
+        if (count === 2) {
+          lo = lpos[ws[0]] <= lpos[ws[1]] ? 0 : 1;
+          hi = 1 - lo;
+        } else if (count > 2) {
+          const idx: number[] = [];
+          for (let i = 0; i < count; i++) idx.push(i);
+          idx.sort((a, b) => lpos[ws[a]] - lpos[ws[b]]);
+          lo = idx[(count - 1) >> 1];
+          hi = idx[count >> 1];
+        }
+        for (let pass = 0; pass < 2; pass++) {
+          const k = pass === 0 ? lo : hi;
+          if (pass === 1 && hi === lo) break;
+          const w = ws[k];
           if (align[v] === v && prevIdx < lpos[w] && !hasConflict(v, w)) {
             align[w] = v;
             align[v] = root[v] = root[w];
+            shift[v] = shift[w] + otherDx[w][mirror[v][k]] - ownDx[v][k];
             prevIdx = lpos[w];
           }
         }
@@ -611,7 +649,7 @@ function position(
         const v = layer[i];
         eFrom.push(root[u]);
         eTo.push(root[v]);
-        eW.push(right ? sep(v, u) : sep(u, v));
+        eW.push(right ? sep(v, u) - shift[u] + shift[v] : sep(u, v) + shift[u] - shift[v]);
         indeg[root[v]]++;
         outCount[root[u] + 1]++;
       }
@@ -644,7 +682,7 @@ function position(
       if (min !== Infinity && min > x[v]) x[v] = min;
     }
     const xs = new Float64Array(n);
-    for (let i = 0; i < n; i++) xs[i] = right ? -x[root[i]] : x[root[i]];
+    for (let i = 0; i < n; i++) xs[i] = (right ? -x[root[i]] : x[root[i]]) + shift[i];
     results.push(xs);
   }
 
