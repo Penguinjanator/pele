@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PeleError, detectType, parse, render, supports } from '../../src/index.js';
-import { genericTypes } from '../../src/diagrams/er/generics.js';
+import { parseGenericTypes as genericTypes } from '../../src/diagrams/common/generics.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 import { loadCorpus } from '../support/corpus.js';
 import { assertWellFormed, elements } from '../support/xml.js';

@@ -80,6 +80,6 @@ export function labelSvg(label: Label, cx: number, cy: number, attrs: string, ic
   return `<text${attrs} text-anchor="middle" xml:space="preserve">${body}</text>${extra}`;
 }
 
-function spanStyle(style: number): string {
+export function spanStyle(style: number): string {
   return (style & Style.Bold ? ' font-weight="bold"' : '') + (style & Style.Italic ? ' font-style="italic"' : '');
 }

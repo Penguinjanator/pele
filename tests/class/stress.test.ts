@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { PeleError, parse, render } from '../../src/index.js';
 import { tokenize } from '../../src/diagrams/class/lexer.js';
-import { ClassMember, parseGenericTypes } from '../../src/diagrams/class/members.js';
+import { ClassMember } from '../../src/diagrams/class/members.js';
+import { parseGenericTypes } from '../../src/diagrams/common/generics.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
 // Inputs of about 50,000 characters built to hit the worst cases of the class diagram code:

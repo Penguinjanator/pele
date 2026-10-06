@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ClassMember, parseGenericTypes } from '../../src/diagrams/class/members.js';
+import { ClassMember } from '../../src/diagrams/class/members.js';
+import { parseGenericTypes } from '../../src/diagrams/common/generics.js';
 import { random } from '../support/corpus.js';
 
 // Pele splits members and converts generics in one pass each. These are Mermaid's own versions,

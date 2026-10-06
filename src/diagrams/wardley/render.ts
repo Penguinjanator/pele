@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num } from '../../svg/builder.js';
+import { esc, labelSvg, num, spanStyle } from '../../svg/builder.js';
 import { marker, markerTrim } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS } from '../../svg/theme.js';
@@ -45,7 +45,7 @@ function startLabel(label: Label, x: number, y: number, attrs: string): string {
     let first = true;
     for (const span of line) {
       if (span.icon !== undefined) continue;
-      const style = (span.style & Style.Bold ? ' font-weight="bold"' : '') + (span.style & Style.Italic ? ' font-style="italic"' : '');
+      const style = spanStyle(span.style);
       body += `<tspan${first ? ` x="${num(x)}" y="${num(baseline)}"` : ''}${style}>${esc(span.text)}</tspan>`;
       first = false;
     }

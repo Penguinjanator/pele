@@ -13,7 +13,8 @@ import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { ClassDb } from './db.js';
 import { buildClassGraph, type GraphEdge, type GraphNode } from './graph.js';
 import { classMarker, classMarkerTrim } from './markers.js';
-import { parseGenericTypes, type ClassMember } from './members.js';
+import { parseGenericTypes } from '../common/generics.js';
+import type { ClassMember } from './members.js';
 import type { ClassNode } from './types.js';
 
 const NODE_SEP = 40;

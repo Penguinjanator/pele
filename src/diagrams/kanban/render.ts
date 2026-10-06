@@ -1,5 +1,5 @@
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num, type IconResolver } from '../../svg/builder.js';
+import { esc, labelSvg, num, spanStyle, type IconResolver } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label, type Span } from '../../text/label.js';
@@ -90,7 +90,7 @@ function textBlock(label: Label, x: number, y: number, attrs: string, icons: Ico
     const cy = y + (i + 0.5) * label.lineHeight;
     if (line.length === 1 && line[0].icon === undefined) {
       const style = line[0].style;
-      const emphasis = (style & Style.Bold ? ' font-weight="bold"' : '') + (style & Style.Italic ? ' font-style="italic"' : '');
+      const emphasis = spanStyle(style);
       out += `<text${attrs}${emphasis} x="${num(x)}" y="${num(cy + label.size * 0.35)}"${end ? ' text-anchor="end"' : ''}>${esc(
         line[0].text
       )}</text>`;

@@ -1,6 +1,6 @@
 import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
-import { esc, labelSvg, num, type IconResolver } from '../../svg/builder.js';
+import { esc, labelSvg, num, spanStyle, type IconResolver } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, routePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
@@ -11,7 +11,7 @@ import { decodeEntities } from '../../text/entities.js';
 import { sanitizeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { ErDb } from './db.js';
-import { genericTypes } from './generics.js';
+import { parseGenericTypes } from '../common/generics.js';
 import { buildErGraph, type ErGraphEdge, type ErGraphNode } from './graph.js';
 import { MARKER_LENGTH, erMarker } from './markers.js';
 
@@ -71,10 +71,6 @@ interface Loop {
   at: number;
 }
 
-function spanStyle(style: number): string {
-  return (style & Style.Bold ? ' font-weight="bold"' : '') + (style & Style.Italic ? ' font-style="italic"' : '');
-}
-
 // Writes a measured label starting at x, with the baseline of its first line at y.
 function textLeft(label: Label, x: number, y: number, attrs: string, icons: IconResolver | undefined): string {
   const lines = label.lines;
@@ -112,7 +108,7 @@ function textLeft(label: Label, x: number, y: number, attrs: string, icons: Icon
 // Mermaid reads `~` pairs as angle brackets. They are written as entities so the label parser
 // does not take `<int>` for a tag.
 function cellText(raw: string): string {
-  const converted = genericTypes(raw);
+  const converted = parseGenericTypes(raw);
   return converted === raw ? raw : converted.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
