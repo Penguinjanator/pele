@@ -76,6 +76,7 @@ function scrollableTables() {
 }
 
 export default defineConfig({
+  site: 'https://pele.run',
   output: 'static',
   trailingSlash: 'never',
   build: { format: 'file' },

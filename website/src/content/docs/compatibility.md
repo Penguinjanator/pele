@@ -1,17 +1,13 @@
 ---
 title: Compatibility
-description: What Pele shares with Mermaid, and where it differs on purpose.
+description: Pele shares with Mermaid, and where it differs on purpose.
 ---
 
 Pele aims to accept the diagrams that Mermaid accepts, and to draw them in its own way. The source syntax is compatible. The layout and the visual style are not copies of Mermaid's.
 
-## Mermaid version
-
-Pele targets the syntax of Mermaid 12.1.0. Newer Mermaid syntax is adopted when Pele moves to a newer Mermaid version.
-
 ## Diagram types
 
-Pele draws every diagram type built into Mermaid 12.1.0. See [Examples](/examples) for a drawing of each one.
+Pele supports every diagram type built into Mermaid 12.1.0. See [Examples](/examples) for a drawing of each one.
 
 | Type | Keywords |
 | --- | --- |

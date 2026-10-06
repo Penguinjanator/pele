@@ -1,8 +1,8 @@
 # Pele
 
-Pele renders [Mermaid](https://mermaid.js.org) diagrams to SVG. It is small, synchronous, has no dependencies, and takes its colors and fonts from CSS variables. It is designed for [Obsidian](https://obsidian.md).
+Pele renders [Mermaid](https://mermaid.js.org) diagrams to SVG. It is small, synchronous, has no dependencies, and uses CSS variables for colors and fonts.
 
-Pele is at an early stage. It draws every diagram type built into Mermaid 12.1.0.
+Pele supports every diagram type built into Mermaid 12.1.0.
 
 ## Install
 
@@ -77,8 +77,6 @@ npm test
 npm run build
 npm run bench
 ```
-
-The documentation site and playground are in `website/`.
 
 ## License
 

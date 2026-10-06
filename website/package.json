@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
     "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "deploy": "pnpm build && wrangler deploy && wrangler deploy --config wrangler.redirect.jsonc",
     "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
     "check": "ASTRO_TELEMETRY_DISABLED=1 astro check"
   },
@@ -28,6 +29,7 @@
     "@astrojs/check": "0.9.10",
     "@types/node": "22.19.19",
     "sass": "1.103.1",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "wrangler": "4.130.0"
   }
 }

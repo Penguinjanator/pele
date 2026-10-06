@@ -13,6 +13,8 @@ interface Props {
 
 const { title, description = siteDescription, markdownPath } = Astro.props;
 const pageTitle = formatPageTitle(title);
+const canonicalPath = Astro.url.pathname.replace(/\/index\.html$/, '/').replace(/\.html$/, '');
+const canonicalUrl = new URL(canonicalPath, Astro.site);
 ---
 
 <!doctype html>
@@ -22,10 +24,12 @@ const pageTitle = formatPageTitle(title);
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
     {markdownPath && <link rel="alternate" type="text/markdown" href={markdownPath} title={`${title ?? 'Pele'} as Markdown`} />}
     <meta property="og:type" content="website" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
     <title>{pageTitle}</title>
     <style is:inline>
       html[data-initial-hash] { scroll-behavior: auto; }

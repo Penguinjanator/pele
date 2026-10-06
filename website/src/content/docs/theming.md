@@ -1,15 +1,15 @@
 ---
 title: Theming
-description: Pele diagrams take their colors, fonts, and corner radius from CSS custom properties.
+description: Use CSS to apply colors, fonts, and other styles.
 ---
 
-The SVG that Pele returns has no `<style>` block and no colors of its own. Its fills, strokes, and fonts refer to custom properties such as `--pele-surface`, and its elements have semantic class names. Set those properties in your CSS to theme every diagram on the page.
+Pele returns SVG without a `<style>` block or inline styles. All fills, strokes, and fonts refer to custom properties such as `--pele-surface` and elements have semantic class names.
 
-Because the SVG refers to variables, a diagram follows a theme change, such as switching between light and dark mode, without being rendered again.
+Because the SVG refers to CSS variables, diagrams automatically adapt to theme changes, such as switching between light and dark mode, without being re-rendered.
 
 ## Tokens
 
-Each token has a neutral default that is used when the property is not set. The token list is subject to change.
+Each token has a neutral default that is used when the property is not set.
 
 | Token | Default | Used for |
 | --- | --- | --- |
@@ -55,8 +55,6 @@ Set the tokens on the root `<svg>` or on any element that contains it. The root 
 }
 ```
 
-The light and dark toggle in the [Playground](/playground) switches between these two sets of values.
-
 ### Fonts
 
 Set `--pele-font` to the font you want labels to use, and pass the same font to `render()` as the [`fontFamily`](/api#renderoptions) option. Pele measures labels with `fontFamily` to size the nodes around them. If the two differ, text can overflow its node or leave extra space.
@@ -66,29 +64,9 @@ const fontFamily = getComputedStyle(container).fontFamily;
 container.innerHTML = render(source, { fontFamily }).svg;
 ```
 
-## Obsidian
-
-This mapping connects Pele's tokens to the variables that Obsidian themes already define.
-
-```css
-.markdown-rendering .pele {
-  --pele-bg: var(--background-primary);
-  --pele-fg: var(--text-normal);
-  --pele-muted: var(--text-muted);
-  --pele-line: var(--text-normal);
-  --pele-surface: var(--background-secondary);
-  --pele-surface-alt: var(--background-modifier-hover);
-  --pele-border: var(--background-modifier-border);
-  --pele-accent: var(--interactive-accent);
-  --pele-font: var(--font-text);
-  --pele-font-mono: var(--font-monospace);
-  --pele-radius: var(--radius-s);
-}
-```
-
 ## Classes
 
-Elements in the SVG have class names that describe what they are. Use them to style one kind of element without changing a token.
+Elements in the SVG have class names. Use them to style one kind of element without changing a token.
 
 | Class | Element |
 | --- | --- |

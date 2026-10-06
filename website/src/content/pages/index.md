@@ -9,7 +9,7 @@ Pele is a lightweight library that renders [Mermaid](https://mermaid.js.org) dia
 
 ## How it works
 
-Pass Mermaid text to Pele. It returns an SVG.
+Pass Mermaid syntax to Pele. It returns an SVG.
 
 ### Mermaid
 
@@ -59,7 +59,7 @@ document.querySelector('#diagram').innerHTML = svg;
 
 ### [Examples](/examples)
 
-Every diagram type that Pele draws.
+Every diagram type that available.
 
 ### [API](/api)
 
@@ -75,7 +75,6 @@ What Pele shares with Mermaid, and where it differs.
 
 ## Pele in use
 
-Pele is [open source](https://github.com/kepano/pele). It is being built for [Obsidian](https://obsidian.md), to draw the Mermaid diagrams in your notes quickly and in the colors of your theme. Any app can use it. Pele is named after [Pele](https://en.wikipedia.org/wiki/Pele_(deity)), the Polynesian goddess of volcanoes and fire.
+Pele is [open source](https://github.com/kepano/pele). It is being built for [Obsidian](https://obsidian.md), to draw the Mermaid diagrams in your notes quickly and in the colors of your theme. Pele is named after [Pele](https://en.wikipedia.org/wiki/Pele_(deity)), the goddess of volcanoes and fire.
 
 - [Obsidian](https://obsidian.md): Pele is in development as the renderer for Mermaid diagrams in notes.
-- [Playground](/playground): Every diagram on this site is drawn by Pele. Edit one and compare it with Mermaid.

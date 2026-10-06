@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "pele-redirect",
+  "main": "./redirect.mjs",
+  "compatibility_date": "2026-10-06",
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "www.pele.run", "custom_domain": true },
+    { "pattern": "pelecharts.org", "custom_domain": true },
+    { "pattern": "pelecharts.com", "custom_domain": true },
+    { "pattern": "www.pelecharts.com", "custom_domain": true },
+    { "pattern": "www.pelecharts.org", "custom_domain": true }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
