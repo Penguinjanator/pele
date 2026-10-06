@@ -107,8 +107,10 @@ const TYPE_TITLES = new Map([
   ['packet', 'Packet'],
   ['radar', 'Radar'],
   ['treemap', 'Treemap'],
-  ['info', 'Info'],
 ]);
+
+// Info only prints a version number, which is not much of an example.
+const UNLISTED = new Set(['info']);
 
 const FIRST_LIMIT = 500;
 const FULLER_LIMIT = 1000;
@@ -156,7 +158,7 @@ export function exampleGroups(corpora: Record<string, unknown>, draw: (source: s
       const title = TYPE_TITLES.get(type) ?? type;
       return { type, title, slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), sources };
     })
-    .filter((group) => group.sources.length > 0)
+    .filter((group) => group.sources.length > 0 && !UNLISTED.has(group.type))
     .sort((a, b) => a.title.localeCompare(b.title));
 }
 
