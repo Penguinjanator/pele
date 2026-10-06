@@ -582,7 +582,3 @@ export function shapeInset(shape: string, w: number, h: number, side: number): n
 export function shapeHasLabel(shape: string): boolean {
   return BY_NAME.get(shape)?.noLabel !== true;
 }
-
-export function hasShape(shape: string): boolean {
-  return BY_NAME.has(shape);
-}

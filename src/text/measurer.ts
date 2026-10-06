@@ -81,7 +81,7 @@ function context(): Context2D | null {
 
 const MAX_CACHED = 20000;
 
-export function canvasMeasurer(fontFamily: string, monoFamily = 'monospace'): TextMeasurer | null {
+export function canvasMeasurer(fontFamily: string): TextMeasurer | null {
   const ctx = context();
   if (!ctx) return null;
   const caches = new Map<string, Map<string, number>>();
@@ -93,7 +93,7 @@ export function canvasMeasurer(fontFamily: string, monoFamily = 'monospace'): Te
         (style & Style.Bold ? 'bold ' : '') +
         size +
         'px ' +
-        (style & Style.Mono ? monoFamily : fontFamily);
+        (style & Style.Mono ? 'monospace' : fontFamily);
       let cache = caches.get(font);
       if (!cache) caches.set(font, (cache = new Map()));
       let w = cache.get(text);

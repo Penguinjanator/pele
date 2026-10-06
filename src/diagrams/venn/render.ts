@@ -14,7 +14,6 @@ const MAX_GROWTH = 1.6;
 const NO_STYLE = resolveStyle([]);
 
 interface Region {
-  key: string;
   sets: string[];
   inside: number[];
   spot: Spot;
@@ -82,7 +81,7 @@ export function renderVenn(model: VennModel, _config: Config, options: RenderOpt
     let spot = findSpot(circles, inside, neighbors[smallest].filter((i) => !within.has(i)));
     // A region that other circles cover, or all but cover, is written across them instead.
     if (spot.margin < circles[smallest].r * 0.2) spot = findSpot(circles, inside, []);
-    const region: Region = { key, sets, inside, spot, lines: [], style };
+    const region: Region = { sets, inside, spot, lines: [], style };
     if (text) {
       const fontSize = sets.length === 1 ? size : small;
       region.lines.push({ id: undefined, raw: text, size: fontSize, base, label: layoutLabel(text, false, measurer, fontSize, 4000, base) });

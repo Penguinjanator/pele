@@ -97,7 +97,7 @@ export function renderPie(model: PieModel, config: Config, options: RenderOption
   let labels = '';
   let outside = '';
   let angle = 0;
-  entries.forEach(([label, value], index) => {
+  entries.forEach(([label], index) => {
     const share = shares[index];
     if (share === 0) return;
     const end = angle + share * Math.PI * 2;

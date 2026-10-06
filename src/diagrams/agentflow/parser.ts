@@ -198,6 +198,11 @@ export function parseAgentflow(source: string, db: AgentflowDb, raw = false): vo
     db.extendVertexMapping(id, loc);
   };
 
+  const attachData = (id: string, frame: Frame): void => {
+    if (frame.data === undefined) return;
+    db.addVertex(id, undefined, undefined, undefined, undefined, undefined, undefined, frame.data, span(frame.dataFrom, frame.dataTo));
+  };
+
   const vertex = (): string => {
     const from = i;
     const id = idString();
@@ -560,19 +565,7 @@ export function parseAgentflow(source: string, db: AgentflowDb, raw = false): vo
         const frame = header(i++);
         const sep = i++;
         const id = db.addConnector(frame.id!, frame.title);
-        if (frame.data !== undefined) {
-          db.addVertex(
-            id,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            frame.data,
-            span(frame.dataFrom, frame.dataTo)
-          );
-        }
+        attachData(id, frame);
         db.addConnectorMapping(frame.id, frame.title, span(frame.at, frame.at), span(sep, sep));
         return id;
       }
@@ -628,19 +621,7 @@ export function parseAgentflow(source: string, db: AgentflowDb, raw = false): vo
           continue;
         }
         const id = db.addSubGraph(frame.id, list, frame.title, 'flow');
-        if (frame.data !== undefined) {
-          db.addVertex(
-            id,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            frame.data,
-            span(frame.dataFrom, frame.dataTo)
-          );
-        }
+        attachData(id, frame);
         db.addSubgraphMapping(frame.id, frame.title, span(frame.at, frame.at), span(at, at));
         list = frame.list;
         collect = frame.collect;

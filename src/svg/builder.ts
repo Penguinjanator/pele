@@ -1,5 +1,8 @@
 import { Style } from '../text/measurer.js';
 import type { Label } from '../text/label.js';
+import type { IconResolver } from '../types.js';
+
+export type { IconResolver };
 
 const RE_NEEDS_ESC = /[&<>"\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
 const RE_ESC = /[&<>"]|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]+/g;
@@ -31,7 +34,6 @@ export function num(value: number): string {
   return String(n / 100);
 }
 
-export type IconResolver = (name: string) => string | null | undefined;
 
 // Writes a measured label as SVG text centered on (cx, cy).
 export function labelSvg(label: Label, cx: number, cy: number, attrs: string, icons?: IconResolver): string {

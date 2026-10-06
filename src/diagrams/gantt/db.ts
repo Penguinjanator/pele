@@ -192,10 +192,6 @@ export class GanttDb implements GanttModel {
     this.byId.set(task.id, task);
   }
 
-  findTaskById(id: string): GanttTask | undefined {
-    return this.byId.get(id);
-  }
-
   setLink(ids: string, link: string): void {
     const href = safeUrl(link);
     for (const id of ids.split(',')) {

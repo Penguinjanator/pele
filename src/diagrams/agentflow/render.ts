@@ -24,7 +24,6 @@ const RANK_SEP = 48;
 const GROUP_PAD = 20;
 const LOOP = 26;
 const DOTS = 14;
-const MAX_PORTS = 40000;
 const COLLAPSED = 'collapsed';
 // The side a flow runs toward, with sides numbered clockwise from the top.
 const FLOW_END: Record<Dir, number> = { TB: 2, RL: 3, BT: 0, LR: 1 };
@@ -190,28 +189,6 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
       labelX: 0,
       labelY: 0,
     });
-  }
-
-  // Every container border an edge crosses costs the layout a port. Past the budget, an edge is
-  // drawn between the containers that hold its ends, at the level they share.
-  let ports = 0;
-  for (const ce of cedges) {
-    let a = ce.src;
-    let b = ce.dst;
-    let crossed = 0;
-    for (; depth[a] > depth[b]; crossed++) a = cnodes[a].parent;
-    for (; depth[b] > depth[a]; crossed++) b = cnodes[b].parent;
-    for (; a !== b && cnodes[a].parent !== cnodes[b].parent; crossed += 2) {
-      a = cnodes[a].parent;
-      b = cnodes[b].parent;
-    }
-    if (a === b) continue;
-    if (ports + crossed > MAX_PORTS) {
-      ce.src = a;
-      ce.dst = b;
-    } else {
-      ports += crossed;
-    }
   }
 
   const layout = compoundLayout(cnodes, cedges, rootDir, {

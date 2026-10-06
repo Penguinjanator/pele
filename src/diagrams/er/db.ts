@@ -138,8 +138,4 @@ export class ErDb implements ErModel {
   setAccDescription(text: string): void {
     this.accDescr = text.replace(/\n\s+/g, '\n');
   }
-
-  subgraph(id: string): ErSubgraph | undefined {
-    return this.subgraphLookup.get(id);
-  }
 }

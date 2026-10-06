@@ -3,7 +3,6 @@ import { parseYaml, type YamlValue } from '../../util/yaml.js';
 import { isCssColor } from './colors.js';
 import {
   LINETYPE,
-  PLACEMENT,
   type SeqActor,
   type SeqBox,
   type SeqBoxData,
@@ -83,10 +82,6 @@ export class SeqDb implements SequenceModel {
   constructor(options: SeqDbOptions = {}) {
     this.wrapEnabled = options.wrap;
     this.sequenceWrap = options.sequenceWrap ?? false;
-  }
-
-  setWrap(wrap: boolean | undefined): void {
-    this.wrapEnabled = wrap;
   }
 
   autoWrap(): boolean {

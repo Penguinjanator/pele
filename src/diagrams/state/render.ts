@@ -8,7 +8,7 @@ import { classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js
 import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
-import { sanitizeUrl } from '../../util/url.js';
+import { safeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { StateDb } from './db.js';
 import type { StateEdge, StateNode } from './graph.js';
@@ -25,8 +25,6 @@ const FOLD = 8;
 const NOTE_WRAP = 320;
 const CORNER = 10;
 const BAR = 8;
-// Composite borders that transitions may cross before the layout stops routing through them.
-const MAX_PORTS = 40000;
 const SURFACE = ' fill="var(--_s)" stroke="var(--_b)"';
 const RULE = ' fill="none" stroke="var(--_b)"';
 const MERMAID_CLASSES = /(?:^| )statediagram-(?:state|cluster-alt|cluster|note)(?= |$)/g;
@@ -377,39 +375,13 @@ export function renderState(db: StateDb, config: Config, options: RenderOptions)
     const initial = (i: number): number => (views[i].kind === K.Start ? 0 : 1);
     const byFlow = (a: number, b: number): number =>
       initial(a) - initial(b) || (appear[a] === appear[b] ? 0 : appear[a] < appear[b] ? -1 : 1) || a - b;
-    const depth = new Int32Array(cnodes.length);
     let seq = 0;
     const pending = top.sort(byFlow).reverse();
     while (pending.length > 0) {
       const i = pending.pop()!;
       cnodes[i].seq = seq++;
       const inside = members[i].sort(byFlow);
-      for (let k = inside.length - 1; k >= 0; k--) {
-        depth[inside[k]] = depth[i] + 1;
-        pending.push(inside[k]);
-      }
-    }
-
-    // Every composite border a transition crosses costs the layout a port. Past the budget, a
-    // transition is drawn between the composites that hold its ends, at the level they share.
-    let ports = 0;
-    for (const ce of cedges) {
-      let a = ce.src;
-      let b = ce.dst;
-      let crossed = 0;
-      for (; depth[a] > depth[b]; crossed++) a = cnodes[a].parent;
-      for (; depth[b] > depth[a]; crossed++) b = cnodes[b].parent;
-      for (; a !== b && cnodes[a].parent !== cnodes[b].parent; crossed += 2) {
-        a = cnodes[a].parent;
-        b = cnodes[b].parent;
-      }
-      if (a === b) continue;
-      if (ports + crossed > MAX_PORTS) {
-        ce.src = a;
-        ce.dst = b;
-      } else {
-        ports += crossed;
-      }
+      for (let k = inside.length - 1; k >= 0; k--) pending.push(inside[k]);
     }
   }
 
@@ -552,7 +524,7 @@ export function renderState(db: StateDb, config: Config, options: RenderOptions)
     if (link) {
       // Entity codes are resolved first, so the URL is checked in the form a browser would follow.
       const tooltip = decodeEntities(unquote(link.tooltip));
-      const href = sanitizeUrl(decodeEntities(unquote(link.url)));
+      const href = safeUrl(unquote(link.url));
       body = `<a href="${esc(href)}" target="_blank" rel="noopener">${tooltip ? `<title>${esc(tooltip)}</title>` : ''}${body}</a>`;
       links.push({ id: node.id, href, internal: false });
     }

@@ -17,14 +17,12 @@ export interface LNode {
   x: number;
   y: number;
   rank: number;
-  order: number;
 }
 
 export interface LEdge {
   tail: number;
   head: number;
   minlen: number;
-  weight: number;
   labelW: number;
   labelH: number;
   tailDx: number;
@@ -48,7 +46,7 @@ export interface LayeredResult {
 }
 
 export function lnode(w: number, h: number, kind: Kind = Kind.Node): LNode {
-  return { w, h, kind, pin: 0, x: 0, y: 0, rank: 0, order: 0 };
+  return { w, h, kind, pin: 0, x: 0, y: 0, rank: 0 };
 }
 
 export function ledge(tail: number, head: number, minlen = 1, labelW = 0, labelH = 0): LEdge {
@@ -56,7 +54,6 @@ export function ledge(tail: number, head: number, minlen = 1, labelW = 0, labelH
     tail,
     head,
     minlen,
-    weight: 1,
     labelW,
     labelH,
     tailDx: 0,
@@ -321,7 +318,6 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     const node = nodes[i];
     node.x = xs[i] - minX;
     node.y = (bandTop[node.rank] + bandBottom[node.rank]) / 2;
-    node.order = pos[i];
   }
 
   for (let ei = 0; ei < m; ei++) {
@@ -476,7 +472,7 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
   }
 
   // Longest-path ranking leaves loosely attached nodes far from their neighbours.
-  // Move each node toward the side that carries more edge weight.
+  // Move each node toward the side that has more edges.
   for (let pass = 0; pass < 8; pass++) {
     let changed = false;
     for (let q = count - 1; q >= 0; q--) {
@@ -486,21 +482,17 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
       if (ins === 0 && outs === 0) continue;
       let lo = -Infinity;
       let hi = Infinity;
-      let inW = 0;
-      let outW = 0;
       for (let k = inStart[v]; k < inStart[v + 1]; k++) {
         const ei = inE[k];
         lo = Math.max(lo, r[from[ei]] + len[ei]);
-        inW += edges[ei].weight;
       }
       for (let k = outStart[v]; k < outStart[v + 1]; k++) {
         const ei = outE[k];
         hi = Math.min(hi, r[to[ei]] - len[ei]);
-        outW += edges[ei].weight;
       }
       let next = r[v];
-      if (outW > inW && hi !== Infinity) next = hi;
-      else if (inW > outW && lo !== -Infinity) next = lo;
+      if (outs > ins && hi !== Infinity) next = hi;
+      else if (ins > outs && lo !== -Infinity) next = lo;
       if (next !== r[v]) {
         r[v] = next;
         changed = true;
