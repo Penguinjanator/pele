@@ -38,7 +38,6 @@ const RE_ACC_DESCR = /accDescr\s*:\s*/y;
 const RE_ACC_DESCR_ML = /accDescr\s*\{\s*/y;
 const RE_CALL = /call\s+/y;
 const RE_CLICK = /click\s+/y;
-const RE_END = /end\b\s*/y;
 const RE_NODIR = /(?:\r?\n)*\s*\n/y;
 const RE_DIR = /\s*(?:LR|RL|TB|BT|TD|BR)\b/y;
 const RE_DIR_SYM = /\s*[<>^]/y;
@@ -51,7 +50,6 @@ const RE_DIRECTION = [
   /.*direction\s+TD[^\n]*/y,
 ];
 const RE_LINE_END = /[\n\r\u2028\u2029]/g;
-const RE_LINK_ID = /[^\s"]+@(?=[^{"])/y;
 const RE_LINK = /\s*[xo<]?--+[-xo>]\s*/y;
 const RE_START_LINK = /\s*[xo<]?--\s*/y;
 const RE_THICK_LINK = /\s*[xo<]?==+[=xo>]\s*/y;
@@ -95,6 +93,9 @@ export function tokenize(src: string): Tokens {
   let dirNext = src.indexOf('direction');
   let atNext = src.indexOf('@');
   let lineEnd = -1;
+  let dirFailed = 0;
+  let runEnd = 0;
+  let runAt = -1;
   let wsFrom = -1;
   let wsTo = -1;
 
@@ -389,7 +390,9 @@ export function tokenize(src: string): Tokens {
         }
         break;
       case 101:
-        if ((e = at(RE_END, p)) >= 0) {
+        if (kw('end')) {
+          e = p + 3;
+          while (e < n && isWs(src.charCodeAt(e))) e++;
           emit(T.end, p, e);
           return true;
         }
@@ -414,7 +417,7 @@ export function tokenize(src: string): Tokens {
         break;
     }
 
-    if (dirNext !== -1) {
+    if (dirNext !== -1 && p >= dirFailed) {
       if (dirNext < p) dirNext = src.indexOf('direction', p);
       if (dirNext !== -1) {
         if (lineEnd < p) {
@@ -428,14 +431,37 @@ export function tokenize(src: string): Tokens {
               return true;
             }
           }
+          // No direction statement starts anywhere in the rest of this line either.
+          dirFailed = lineEnd;
         }
       }
     }
 
+    // A link id is a run of non-space characters up to its last `@` that is not followed by `{` or `"`.
     if (atNext !== -1 && c !== 34 && !isWs(c)) {
-      if (atNext < p) atNext = src.indexOf('@', p);
-      if (atNext !== -1 && (e = at(RE_LINK_ID, p)) >= 0) {
-        emit(T.LINK_ID, p, e);
+      if (p >= runEnd) {
+        if (atNext < p) atNext = src.indexOf('@', p);
+        let q = p;
+        while (q < n) {
+          const ch = src.charCodeAt(q);
+          if (ch === 34 || isWs(ch)) break;
+          q++;
+        }
+        runEnd = q;
+        runAt = -1;
+        if (atNext !== -1 && atNext < q) {
+          for (let k = Math.min(q, n - 1) - 1; k >= atNext; k--) {
+            if (src.charCodeAt(k) !== 64) continue;
+            const after = src.charCodeAt(k + 1);
+            if (after !== 123 && after !== 34) {
+              runAt = k;
+              break;
+            }
+          }
+        }
+      }
+      if (runAt > p) {
+        emit(T.LINK_ID, p, runAt + 1);
         return true;
       }
     }

@@ -51,8 +51,21 @@ interface Parsed {
   config: Config;
 }
 
-function parseSource(text: string, limit: number | undefined, extra: Config | undefined): Parsed {
-  if (limit !== undefined && text.length > limit) {
+// Mermaid's default maxTextSize.
+const DEFAULT_LIMIT = 50000;
+
+// Deep nesting can exhaust the stack in a few recursive spots. Report it as a limit, not a crash.
+function guarded<T>(run: () => T): T {
+  try {
+    return run();
+  } catch (error) {
+    if (error instanceof RangeError) throw new PeleError('Diagram is nested too deeply.', 'limit');
+    throw error;
+  }
+}
+
+function parseSource(text: string, limit: number = DEFAULT_LIMIT, extra: Config | undefined): Parsed {
+  if (text.length > limit) {
     throw new PeleError(`Diagram source is longer than the limit of ${limit} characters.`, 'limit');
   }
   const pre = preprocess(text);
@@ -84,11 +97,13 @@ export function supports(text: string): boolean {
   }
 }
 
-export function parse(text: string): DiagramModel {
-  return parseSource(text, undefined, undefined).model;
+export function parse(text: string, options: { limit?: number } = {}): DiagramModel {
+  return guarded(() => parseSource(text, options.limit, undefined).model);
 }
 
 export function render(text: string, options: RenderOptions = {}): RenderResult {
-  const { type, model, config } = parseSource(text, options.limit, options.config);
-  return { type, ...renderFlowchart(model as FlowDb, config, options) };
+  return guarded(() => {
+    const { type, model, config } = parseSource(text, options.limit, options.config);
+    return { type, ...renderFlowchart(model as FlowDb, config, options) };
+  });
 }

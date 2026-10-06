@@ -1,0 +1,186 @@
+import { describe, expect, it } from 'vitest';
+import { PeleError, render } from '../../src/index.js';
+import { metricsMeasurer } from '../../src/text/measurer.js';
+import { loadCorpus, mutator, random } from '../support/corpus.js';
+import { assertWellFormed, elements } from '../support/xml.js';
+
+// Pele's output is inserted into pages as markup, so it must be inert whatever the diagram says:
+// only drawing elements, only presentation attributes, no script-capable URLs, no way to load a stylesheet.
+
+const ELEMENTS = new Set(['svg', 'g', 'rect', 'circle', 'ellipse', 'polygon', 'path', 'text', 'tspan', 'a', 'title', 'desc', 'image']);
+const ATTRIBUTES = new Set([
+  'xmlns', 'class', 'viewBox', 'width', 'height', 'style', 'font-family', 'font-size', 'font-weight', 'font-style',
+  'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin',
+  'role', 'aria-roledescription', 'aria-labelledby', 'aria-describedby', 'id', 'data-id', 'data-icon', 'data-href',
+  'transform', 'x', 'y', 'rx', 'ry', 'r', 'cx', 'cy', 'd', 'points', 'text-anchor', 'xml:space',
+  'href', 'target', 'rel', 'preserveAspectRatio',
+]);
+const STYLE_PROPERTIES = new Set([
+  'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap',
+  'stroke-linejoin', 'stroke-opacity', 'opacity', 'rx', 'ry', 'font-size', 'font-family', 'font-weight', 'font-style',
+  'text-decoration', 'letter-spacing', 'word-spacing', 'max-width',
+]);
+const NUMERIC = new Set(['x', 'y', 'width', 'height', 'r', 'cx', 'cy', 'rx', 'ry']);
+const options = { measurer: metricsMeasurer };
+
+function assertInert(svg: string, where: string): void {
+  expect(() => assertWellFormed(svg), where).not.toThrow();
+  for (const el of elements(svg)) {
+    expect(ELEMENTS.has(el.name), `${where}: element <${el.name}>`).toBe(true);
+    for (const [name, value] of el.attrs) {
+      expect(ATTRIBUTES.has(name), `${where}: attribute ${name} on <${el.name}>`).toBe(true);
+      if (NUMERIC.has(name)) expect(value, `${where}: ${name}`).toMatch(/^(?:-?\d+(?:\.\d+)?(?:e[-+]?\d+)?|100%|var\(--pele-radius,4px\))$/);
+      if (name === 'href') {
+        expect(el.name === 'a' || el.name === 'image', `${where}: href on <${el.name}>`).toBe(true);
+        expect(value, `${where}: href`).not.toMatch(/^[\s\u0000-\u001f]*(?:javascript|vbscript|data)\s*:/i);
+      }
+      if (name === 'target') expect(value, `${where}: target`).toMatch(/^_(?:self|blank|parent|top)$/);
+      if (name === 'style') {
+        expect(value, `${where}: style`).not.toMatch(/url\s*\(|expression|@import|javascript:|[<>{}\\]/i);
+        for (const decl of value.split(';')) {
+          if (decl.trim() === '') continue;
+          const prop = decl.slice(0, decl.indexOf(':')).trim();
+          expect(STYLE_PROPERTIES.has(prop) || prop.startsWith('--_'), `${where}: style property ${prop}`).toBe(true);
+        }
+      }
+      if (['fill', 'stroke', 'font-family', 'rx'].includes(name)) {
+        expect(value, `${where}: ${name}`).not.toMatch(/url\s*\(|javascript:/i);
+      }
+    }
+  }
+}
+
+function check(src: string, extra: object = {}): boolean {
+  let svg: string;
+  try {
+    svg = render(src, { ...options, ...extra }).svg;
+  } catch (error) {
+    if (error instanceof PeleError) return false;
+    throw new Error(`Unexpected ${(error as Error).name} for ${JSON.stringify(src).slice(0, 200)}: ${(error as Error).message}`);
+  }
+  assertInert(svg, JSON.stringify(src).slice(0, 160));
+  return true;
+}
+
+const PAYLOADS = [
+  '<script>alert(1)</script>',
+  '"><script>alert(1)</script>',
+  '<img src=x onerror=alert(1)>',
+  '<svg onload=alert(1)>',
+  '<a href="javascript:alert(1)">x</a>',
+  '<foreignObject><iframe src=javascript:alert(1)></iframe></foreignObject>',
+  '</text></g></svg><script>alert(1)</script>',
+  'javascript:alert(1)',
+  'JaVaScRiPt:alert(1)',
+  ' javascript:alert(1)',
+  'jav&#x09;ascript:alert(1)',
+  'data:text/html,<script>alert(1)</script>',
+  'vbscript:msgbox(1)',
+  "' onload='alert(1)",
+  '" onmouseover="alert(1)',
+  'x" onclick="alert(1)" y="',
+  '#60;script#62;alert(1)#60;/script#62;',
+  '&lt;script&gt;alert(1)&lt;/script&gt;',
+  '&#60;script&#62;',
+  'url(javascript:alert(1))',
+  'expression(alert(1))',
+  'red;background:url(//evil.example/x)',
+  'red" onload="alert(1)',
+  ']]><script>alert(1)</script>',
+  '--><script>alert(1)</script>',
+  '\u0000\u0001\u0008\u000b\u001f',
+  '__proto__',
+  'constructor',
+  'toString',
+  'hasOwnProperty',
+  '{{7*7}}',
+  '${alert(1)}',
+  '%0ajavascript:alert(1)',
+  '\\"><script>',
+];
+
+const TEMPLATES: ((p: string) => string)[] = [
+  (p) => `flowchart TD\n  A[${p}] --> B`,
+  (p) => `flowchart TD\n  A["${p}"] --> B`,
+  (p) => `flowchart TD\n  A["\`${p}\`"] --> B`,
+  (p) => `flowchart TD\n  A(${p}) --> B{${p}}`,
+  (p) => `flowchart TD\n  ${p} --> B`,
+  (p) => `flowchart TD\n  A -->|${p}| B`,
+  (p) => `flowchart TD\n  A -- ${p} --> B`,
+  (p) => `flowchart TD\n  A -- "${p}" --> B`,
+  (p) => `flowchart TD\n  subgraph ${p}\n  A\n  end`,
+  (p) => `flowchart TD\n  subgraph s ["${p}"]\n  A\n  end`,
+  (p) => `flowchart TD\n  A:::${p} --> B`,
+  (p) => `flowchart TD\n  A --> B\n  class A ${p}`,
+  (p) => `flowchart TD\n  A --> B\n  classDef ${p} fill:red\n  class A ${p}`,
+  (p) => `flowchart TD\n  A --> B\n  classDef c fill:${p}\n  class A c`,
+  (p) => `flowchart TD\n  A --> B\n  style A fill:${p}`,
+  (p) => `flowchart TD\n  A --> B\n  style A ${p}:red`,
+  (p) => `flowchart TD\n  A --> B\n  style A color:${p},stroke:${p},font-family:${p}`,
+  (p) => `flowchart TD\n  A --> B\n  linkStyle 0 stroke:${p}`,
+  (p) => `flowchart TD\n  A --> B\n  click A "${p}"`,
+  (p) => `flowchart TD\n  A --> B\n  click A href "${p}" "${p}" _blank`,
+  (p) => `flowchart TD\n  A --> B\n  click A "x" "${p}"`,
+  (p) => `flowchart TD\n  A --> B\n  click A call ${p}()`,
+  (p) => `flowchart TD\n  A --> B\n  click A "https://example.com" ${p}`,
+  (p) => `flowchart TD\n  A["${p}"] --> B\n  class A internal-link`,
+  (p) => `flowchart TD\n  A[${p}]:::internal-link --> B`,
+  (p) => `flowchart TD\n  accTitle: ${p}\n  accDescr: ${p}\n  A --> B`,
+  (p) => `flowchart TD\n  accDescr {\n ${p}\n }\n  A --> B`,
+  (p) => `flowchart TD\n  A@{ label: "${p}" } --> B`,
+  (p) => `flowchart TD\n  A@{ shape: ${p} } --> B`,
+  (p) => `flowchart TD\n  A@{ icon: "${p}", form: "${p}", pos: "${p}", label: "x" } --> B`,
+  (p) => `flowchart TD\n  A@{ img: "${p}", label: "x", w: "${p}", h: "${p}", constraint: "${p}" } --> B`,
+  (p) => `flowchart TD\n  A@{ ${p}: 1 } --> B`,
+  (p) => `flowchart TD\n  A e1@--> B\n  e1@{ animate: "${p}", curve: "${p}" }`,
+  (p) => `flowchart TD\n  A[fa:fa-${p} x] --> B`,
+  (p) => `---\ntitle: "${p}"\nconfig:\n  flowchart:\n    curve: "${p}"\n---\nflowchart TD\n  A --> B`,
+  (p) => `%%{init: {"flowchart": {"curve": "${p}"}, "themeVariables": {"fontFamily": "${p}"}}}%%\nflowchart TD\n  A --> B`,
+  (p) => `flowchart ${p}\n  A --> B`,
+  (p) => `flowchart TD\n  %% ${p}\n  A --> B`,
+];
+
+describe('inert output', () => {
+  it('holds for every corpus input', () => {
+    for (const src of loadCorpus('flowchart', /graph|flowchart/)) check(src);
+  });
+
+  it('holds with hostile text in every position', () => {
+    let rendered = 0;
+    for (const template of TEMPLATES) {
+      for (const payload of PAYLOADS) {
+        if (check(template(payload))) rendered++;
+      }
+    }
+    expect(rendered).toBeGreaterThan(300);
+  });
+
+  it('holds for hostile option values', () => {
+    for (const payload of PAYLOADS) {
+      expect(check('flowchart TD\n  accTitle: t\n  A --> B', { idPrefix: payload, fontFamily: payload })).toBe(true);
+    }
+  });
+
+  it('holds for mutated inputs', () => {
+    const corpus = loadCorpus('flowchart', /graph|flowchart/);
+    const next = mutator(corpus, [...PAYLOADS, '"', '[', ']', '|', '\n', ':::', 'click A "', 'style A fill:', '@{ label: "', ' }'], random(3));
+    const count = Number(process.env.FUZZ ?? 4000);
+    for (let i = 0; i < count; i++) {
+      const src = next();
+      if (src.length <= 4000) check(src);
+    }
+  }, 600_000);
+
+  it('never gives an unsafe href to an internal link', () => {
+    const { svg } = render('flowchart TD\n  A["javascript:alert(1)"]:::internal-link', options);
+    expect(svg).toContain('<a class="internal-link" data-href="javascript:alert(1)">');
+  });
+
+  it('does not pollute prototypes', () => {
+    render('flowchart TD\n  A@{ __proto__: [polluted], constructor: 1, label: x } --> B', options);
+    render('flowchart TD\n  __proto__ --> constructor --> toString\n  class __proto__ constructor', options);
+    render('flowchart TD\n  A[|__proto__:x|text] --> B', options);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(Object.prototype, 'x')).toBe(false);
+  });
+});

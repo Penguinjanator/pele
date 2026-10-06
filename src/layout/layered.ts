@@ -70,18 +70,30 @@ export function ledge(tail: number, head: number, minlen = 1, labelW = 0, labelH
 
 const MAX_SWEEPS = 24;
 
-interface Adjacency {
-  preds: number[][];
-  succs: number[][];
-  predDx: number[][];
-  succDx: number[][];
-  predMirror: number[][];
-  succMirror: number[][];
+// An edge gets a bend point in every rank it skips. Past this many, the longest edges are
+// drawn as one direct curve instead, which keeps huge graphs from exhausting time and memory.
+const MAX_DUMMIES = 20000;
+
+function isDummy(kind: number): boolean {
+  return kind === Kind.Dummy || kind === Kind.Label;
+}
+
+function sortRange(list: Int32Array, from: number, to: number, key: Int32Array | Float64Array): void {
+  for (let i = from + 1; i < to; i++) {
+    const item = list[i];
+    const k = key[item];
+    let j = i - 1;
+    while (j >= from && (key[list[j]] > k || (key[list[j]] === k && list[j] > item))) {
+      list[j + 1] = list[j];
+      j--;
+    }
+    list[j + 1] = item;
+  }
 }
 
 export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): LayeredResult {
-  const realCount = nodes.length;
-  if (realCount === 0) return { width: 0, height: 0 };
+  const real = nodes.length;
+  if (real === 0) return { width: 0, height: 0 };
   const m = edges.length;
 
   // Every edge gets a middle rank of its own when labels or parallel edges need the room.
@@ -91,7 +103,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     for (const e of edges) {
       const a = Math.min(e.tail, e.head);
       const b = Math.max(e.tail, e.head);
-      const key = a * realCount + b;
+      const key = a * real + b;
       if (e.labelW > 0 || seen.has(key)) {
         step = 2;
         break;
@@ -103,124 +115,193 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   orient(nodes, edges);
   rank(nodes, edges, step);
 
-  const chains: number[][] = new Array(m);
-  const preds: number[][] = [];
-  const succs: number[][] = [];
-  // Per adjacency entry: where the edge attaches on this node, and its index in the other node's list.
-  const predDx: number[][] = [];
-  const succDx: number[][] = [];
-  const predMirror: number[][] = [];
-  const succMirror: number[][] = [];
-  for (let i = 0; i < realCount; i++) {
-    preds.push([]);
-    succs.push([]);
-    predDx.push([]);
-    succDx.push([]);
-    predMirror.push([]);
-    succMirror.push([]);
-  }
-  const labelNode = new Int32Array(m).fill(-1);
-
+  const span = new Int32Array(m);
+  let dummies = 0;
   for (let ei = 0; ei < m; ei++) {
     const e = edges[ei];
-    const a = e.reversed ? e.head : e.tail;
-    const b = e.reversed ? e.tail : e.head;
-    const aDx = e.reversed ? e.headDx : e.tailDx;
-    const bDx = e.reversed ? e.tailDx : e.headDx;
-    const ra = nodes[a].rank;
-    const rb = nodes[b].rank;
-    const chain = [a];
-    let labelRank = -1;
-    if (e.labelW > 0) {
-      labelRank = ra + ((rb - ra) >> 1);
-      if (step === 2 && (labelRank & 1) === 0) labelRank--;
-    }
-    for (let r = ra + 1; r < rb; r++) {
-      const isLabel = r === labelRank;
-      const d = lnode(isLabel ? e.labelW : 0, isLabel ? e.labelH : 0, isLabel ? Kind.Label : Kind.Dummy);
-      d.rank = r;
-      const id = nodes.length;
-      nodes.push(d);
-      preds.push([]);
-      succs.push([]);
-      predDx.push([]);
-      succDx.push([]);
-      predMirror.push([]);
-      succMirror.push([]);
-      if (isLabel) labelNode[ei] = id;
-      chain.push(id);
-    }
-    chain.push(b);
-    chains[ei] = chain;
-    for (let k = 0; k + 1 < chain.length; k++) {
-      const u = chain[k];
-      const v = chain[k + 1];
-      succMirror[u].push(preds[v].length);
-      predMirror[v].push(succs[u].length);
-      succs[u].push(v);
-      succDx[u].push(k === 0 ? aDx : 0);
-      preds[v].push(u);
-      predDx[v].push(k === chain.length - 2 ? bDx : 0);
+    span[ei] = Math.abs(nodes[e.head].rank - nodes[e.tail].rank);
+    if (span[ei] > 1) dummies += span[ei] - 1;
+  }
+  const direct = new Uint8Array(m);
+  if (dummies > MAX_DUMMIES) {
+    const longest: number[] = [];
+    for (let ei = 0; ei < m; ei++) if (span[ei] > 1) longest.push(ei);
+    longest.sort((a, b) => span[b] - span[a] || a - b);
+    for (const ei of longest) {
+      if (dummies <= MAX_DUMMIES) break;
+      direct[ei] = 1;
+      dummies -= span[ei] - 1;
     }
   }
 
-  const n = nodes.length;
+  const n = real + dummies;
+  const W = new Float64Array(n);
+  const H = new Float64Array(n);
+  const KIND = new Uint8Array(n);
+  const RANK = new Int32Array(n);
   let maxRank = 0;
-  for (const node of nodes) if (node.rank > maxRank) maxRank = node.rank;
-  const layers: number[][] = [];
-  for (let r = 0; r <= maxRank; r++) layers.push([]);
+  for (let i = 0; i < real; i++) {
+    const node = nodes[i];
+    W[i] = node.w;
+    H[i] = node.h;
+    KIND[i] = node.kind;
+    RANK[i] = node.rank;
+    if (node.rank > maxRank) maxRank = node.rank;
+  }
+
+  // The graph that gets ordered and positioned: every edge cut into rank-to-rank segments.
+  let segments = 0;
+  for (let ei = 0; ei < m; ei++) if (!direct[ei]) segments += span[ei];
+  const EF = new Int32Array(segments);
+  const ET = new Int32Array(segments);
+  const EFD = new Float64Array(segments);
+  const ETD = new Float64Array(segments);
+  const firstDummy = new Int32Array(m).fill(-1);
+  const labelNode = new Int32Array(m).fill(-1);
+  let offsets = false;
+  {
+    let next = real;
+    let ce = 0;
+    for (let ei = 0; ei < m; ei++) {
+      if (direct[ei]) continue;
+      const e = edges[ei];
+      const a = e.reversed ? e.head : e.tail;
+      const b = e.reversed ? e.tail : e.head;
+      const aDx = e.reversed ? e.headDx : e.tailDx;
+      const bDx = e.reversed ? e.tailDx : e.headDx;
+      if (aDx !== 0 || bDx !== 0) offsets = true;
+      const ra = RANK[a];
+      const rb = RANK[b];
+      let labelRank = -1;
+      if (e.labelW > 0) {
+        labelRank = ra + ((rb - ra) >> 1);
+        if (step === 2 && (labelRank & 1) === 0) labelRank--;
+      }
+      let prev = a;
+      if (rb - ra > 1) firstDummy[ei] = next;
+      for (let r = ra + 1; r < rb; r++) {
+        const d = next++;
+        RANK[d] = r;
+        if (r === labelRank) {
+          W[d] = e.labelW;
+          H[d] = e.labelH;
+          KIND[d] = Kind.Label;
+          labelNode[ei] = d;
+        } else {
+          KIND[d] = Kind.Dummy;
+        }
+        EF[ce] = prev;
+        ET[ce] = d;
+        EFD[ce] = prev === a ? aDx : 0;
+        ce++;
+        prev = d;
+      }
+      EF[ce] = prev;
+      ET[ce] = b;
+      EFD[ce] = prev === a ? aDx : 0;
+      ETD[ce] = bDx;
+      ce++;
+    }
+  }
+
+  const succStart = new Int32Array(n + 1);
+  const predStart = new Int32Array(n + 1);
+  for (let e = 0; e < segments; e++) {
+    succStart[EF[e] + 1]++;
+    predStart[ET[e] + 1]++;
+  }
+  for (let i = 0; i < n; i++) {
+    succStart[i + 1] += succStart[i];
+    predStart[i + 1] += predStart[i];
+  }
+  const succE = new Int32Array(segments);
+  const predE = new Int32Array(segments);
+  {
+    const sf = succStart.slice(0, n);
+    const pf = predStart.slice(0, n);
+    for (let e = 0; e < segments; e++) {
+      succE[sf[EF[e]]++] = e;
+      predE[pf[ET[e]]++] = e;
+    }
+  }
+
+  const layerStart = new Int32Array(maxRank + 2);
+  for (let i = 0; i < n; i++) layerStart[RANK[i] + 1]++;
+  for (let r = 0; r <= maxRank; r++) layerStart[r + 1] += layerStart[r];
+  const order = new Int32Array(n);
+  const pos = new Int32Array(n);
 
   // Initial order: depth-first from the top so that subtrees start out contiguous.
   {
+    const byRank = new Int32Array(n);
+    const fill = layerStart.slice(0, maxRank + 1);
+    for (let i = 0; i < n; i++) byRank[fill[RANK[i]]++] = i;
+    fill.set(layerStart.subarray(0, maxRank + 1));
     const visited = new Uint8Array(n);
-    const byRank: number[] = [];
-    for (let i = 0; i < n; i++) byRank.push(i);
-    byRank.sort((p, q) => nodes[p].rank - nodes[q].rank || p - q);
     const stack: number[] = [];
-    for (const start of byRank) {
-      if (visited[start]) continue;
-      stack.push(start);
+    for (let k = 0; k < n; k++) {
+      if (visited[byRank[k]]) continue;
+      stack.push(byRank[k]);
       while (stack.length > 0) {
         const v = stack.pop()!;
         if (visited[v]) continue;
         visited[v] = 1;
-        layers[nodes[v].rank].push(v);
-        const out = succs[v];
-        for (let k = out.length - 1; k >= 0; k--) if (!visited[out[k]]) stack.push(out[k]);
+        order[fill[RANK[v]]++] = v;
+        for (let j = succStart[v + 1] - 1; j >= succStart[v]; j--) {
+          const w = ET[succE[j]];
+          if (!visited[w]) stack.push(w);
+        }
       }
     }
   }
-  const pos = new Int32Array(n);
+
+  let pinned = false;
+  for (let i = 0; i < real; i++) if (nodes[i].pin !== 0) pinned = true;
+  if (pinned) {
+    for (let r = 0; r <= maxRank; r++) {
+      const layer = Array.from(order.subarray(layerStart[r], layerStart[r + 1]));
+      const index = new Map<number, number>();
+      layer.forEach((v, i) => index.set(v, i));
+      const pinOf = (v: number): number => (v < real ? nodes[v].pin : 0);
+      layer.sort((a, b) => pinOf(a) - pinOf(b) || index.get(a)! - index.get(b)!);
+      order.set(layer, layerStart[r]);
+    }
+  }
   const setPositions = (): void => {
-    for (const layer of layers) for (let i = 0; i < layer.length; i++) pos[layer[i]] = i;
+    for (let r = 0; r <= maxRank; r++) {
+      const s = layerStart[r];
+      for (let i = s, e = layerStart[r + 1]; i < e; i++) pos[order[i]] = i - s;
+    }
   };
-  applyPins(nodes, layers);
   setPositions();
 
-  const adj: Adjacency = { preds, succs, predDx, succDx, predMirror, succMirror };
-  if (m > 0 && maxRank > 0) reduceCrossings(nodes, layers, pos, adj, setPositions);
+  const g: Graph = { n, real, maxRank, W, KIND, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos, offsets };
 
-  for (const layer of layers) for (let i = 0; i < layer.length; i++) nodes[layer[i]].order = i;
+  if (segments > 0 && maxRank > 0) {
+    reduceCrossings(g, nodes);
+    setPositions();
+  }
 
-  const xs = position(nodes, layers, pos, adj, opt);
+  const xs = position(g, opt);
 
-  const bandTop = new Float64Array(maxRank + 1);
-  const bandBottom = new Float64Array(maxRank + 1);
   // Ranks that hold only border ports or their pass-through dummies need little room of their own.
   const portOnly = (r: number, kind: Kind): boolean => {
     let found = false;
-    for (const v of layers[r]) {
-      if (nodes[v].kind === kind) found = true;
-      else if (nodes[v].kind !== Kind.Dummy) return false;
+    for (let i = layerStart[r]; i < layerStart[r + 1]; i++) {
+      const k = KIND[order[i]];
+      if (k === kind) found = true;
+      else if (k !== Kind.Dummy) return false;
     }
     return found;
   };
   const startRanks = portOnly(0, Kind.StartPort) ? step : 0;
   const endRanks = portOnly(maxRank, Kind.EndPort) ? step : 0;
+  const bandTop = new Float64Array(maxRank + 1);
+  const bandBottom = new Float64Array(maxRank + 1);
   let y = 0;
   for (let r = 0; r <= maxRank; r++) {
     let h = 0;
-    for (const v of layers[r]) if (nodes[v].h > h) h = nodes[v].h;
+    for (let i = layerStart[r]; i < layerStart[r + 1]; i++) if (H[order[i]] > h) h = H[order[i]];
     bandTop[r] = y;
     bandBottom[r] = y + h;
     if (r === maxRank) y += h;
@@ -232,28 +313,31 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   let minX = Infinity;
   let maxX = -Infinity;
   for (let i = 0; i < n; i++) {
-    const half = nodes[i].w / 2;
+    const half = W[i] / 2;
     if (xs[i] - half < minX) minX = xs[i] - half;
     if (xs[i] + half > maxX) maxX = xs[i] + half;
   }
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < real; i++) {
     const node = nodes[i];
     node.x = xs[i] - minX;
     node.y = (bandTop[node.rank] + bandBottom[node.rank]) / 2;
+    node.order = pos[i];
   }
 
   for (let ei = 0; ei < m; ei++) {
     const e = edges[ei];
-    const chain = chains[ei];
-    const first = nodes[chain[0]];
-    const last = nodes[chain[chain.length - 1]];
+    const first = nodes[e.reversed ? e.head : e.tail];
+    const last = nodes[e.reversed ? e.tail : e.head];
     const pts: number[] = [first.x + (e.reversed ? e.headDx : e.tailDx), first.y + first.h / 2];
-    for (let k = 1; k + 1 < chain.length; k++) {
-      const d = nodes[chain[k]];
-      const top = bandTop[d.rank];
-      const bottom = bandBottom[d.rank];
-      pts.push(d.x, top);
-      if (bottom > top) pts.push(d.x, bottom);
+    const d0 = firstDummy[ei];
+    if (d0 >= 0) {
+      for (let d = d0, end = d0 + span[ei] - 1; d < end; d++) {
+        const x = xs[d] - minX;
+        const top = bandTop[RANK[d]];
+        const bottom = bandBottom[RANK[d]];
+        pts.push(x, top);
+        if (bottom > top) pts.push(x, bottom);
+      }
     }
     pts.push(last.x + (e.reversed ? e.tailDx : e.headDx), last.y - last.h / 2);
     if (e.reversed) {
@@ -269,52 +353,74 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     e.points = pts;
     const ln = labelNode[ei];
     if (ln >= 0) {
-      e.labelX = nodes[ln].x;
-      e.labelY = nodes[ln].y;
+      e.labelX = xs[ln] - minX;
+      e.labelY = (bandTop[RANK[ln]] + bandBottom[RANK[ln]]) / 2;
+    } else if (e.labelW > 0) {
+      e.labelX = (pts[0] + pts[pts.length - 2]) / 2;
+      e.labelY = (pts[1] + pts[pts.length - 1]) / 2;
     }
   }
 
-  nodes.length = realCount;
   return { width: maxX - minX, height };
+}
+
+interface Graph {
+  n: number;
+  real: number;
+  maxRank: number;
+  W: Float64Array;
+  KIND: Uint8Array;
+  // Segment endpoints, and where each segment attaches on them.
+  EF: Int32Array;
+  ET: Int32Array;
+  EFD: Float64Array;
+  ETD: Float64Array;
+  succStart: Int32Array;
+  succE: Int32Array;
+  predStart: Int32Array;
+  predE: Int32Array;
+  layerStart: Int32Array;
+  order: Int32Array;
+  pos: Int32Array;
+  offsets: boolean;
 }
 
 // Reverses the edges that close a cycle, found by depth-first search in declaration order.
 export function orient(nodes: LNode[], edges: LEdge[]): void {
   const n = nodes.length;
-  const out: number[][] = [];
-  for (let i = 0; i < n; i++) out.push([]);
-  for (let i = 0; i < edges.length; i++) {
+  const m = edges.length;
+  const start = new Int32Array(n + 1);
+  for (let i = 0; i < m; i++) {
     const e = edges[i];
-    e.reversed = false;
-    if (nodes[e.head].kind === Kind.StartPort || nodes[e.tail].kind === Kind.EndPort) e.reversed = true;
-    else out[e.tail].push(i);
+    e.reversed = nodes[e.head].kind === Kind.StartPort || nodes[e.tail].kind === Kind.EndPort;
+    if (!e.reversed) start[e.tail + 1]++;
+  }
+  for (let i = 0; i < n; i++) start[i + 1] += start[i];
+  const out = new Int32Array(start[n]);
+  {
+    const fill = start.slice(0, n);
+    for (let i = 0; i < m; i++) if (!edges[i].reversed) out[fill[edges[i].tail]++] = i;
   }
   const state = new Uint8Array(n);
-  const stackNode: number[] = [];
-  const stackEdge: number[] = [];
-  for (let start = 0; start < n; start++) {
-    if (state[start] !== 0) continue;
-    stackNode.push(start);
-    stackEdge.push(0);
-    state[start] = 1;
-    while (stackNode.length > 0) {
-      const top = stackNode.length - 1;
-      const v = stackNode[top];
-      const k = stackEdge[top];
-      if (k < out[v].length) {
-        stackEdge[top] = k + 1;
-        const e = edges[out[v][k]];
+  const cursor = start.slice(0, n);
+  const stack: number[] = [];
+  for (let root = 0; root < n; root++) {
+    if (state[root] !== 0) continue;
+    stack.push(root);
+    state[root] = 1;
+    while (stack.length > 0) {
+      const v = stack[stack.length - 1];
+      if (cursor[v] < start[v + 1]) {
+        const e = edges[out[cursor[v]++]];
         const w = e.head;
         if (state[w] === 1) e.reversed = true;
         else if (state[w] === 0) {
           state[w] = 1;
-          stackNode.push(w);
-          stackEdge.push(0);
+          stack.push(w);
         }
       } else {
         state[v] = 2;
-        stackNode.pop();
-        stackEdge.pop();
+        stack.pop();
       }
     }
   }
@@ -326,13 +432,8 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
   const from = new Int32Array(m);
   const to = new Int32Array(m);
   const len = new Int32Array(m);
-  const inList: number[][] = [];
-  const outList: number[][] = [];
-  const indeg = new Int32Array(n);
-  for (let i = 0; i < n; i++) {
-    inList.push([]);
-    outList.push([]);
-  }
+  const outStart = new Int32Array(n + 1);
+  const inStart = new Int32Array(n + 1);
   for (let i = 0; i < m; i++) {
     const e = edges[i];
     const a = e.reversed ? e.head : e.tail;
@@ -340,20 +441,37 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
     from[i] = a;
     to[i] = b;
     len[i] = Math.max(1, e.minlen) * step;
-    outList[a].push(i);
-    inList[b].push(i);
-    indeg[b]++;
+    outStart[a + 1]++;
+    inStart[b + 1]++;
+  }
+  for (let i = 0; i < n; i++) {
+    outStart[i + 1] += outStart[i];
+    inStart[i + 1] += inStart[i];
+  }
+  const outE = new Int32Array(m);
+  const inE = new Int32Array(m);
+  {
+    const of = outStart.slice(0, n);
+    const inf = inStart.slice(0, n);
+    for (let i = 0; i < m; i++) {
+      outE[of[from[i]]++] = i;
+      inE[inf[to[i]]++] = i;
+    }
   }
 
   const r = new Int32Array(n);
-  const topo: number[] = [];
-  for (let i = 0; i < n; i++) if (indeg[i] === 0) topo.push(i);
-  for (let q = 0; q < topo.length; q++) {
+  const indeg = new Int32Array(n);
+  for (let i = 0; i < n; i++) indeg[i] = inStart[i + 1] - inStart[i];
+  const topo = new Int32Array(n);
+  let count = 0;
+  for (let i = 0; i < n; i++) if (indeg[i] === 0) topo[count++] = i;
+  for (let q = 0; q < count; q++) {
     const v = topo[q];
-    for (const ei of outList[v]) {
+    for (let k = outStart[v]; k < outStart[v + 1]; k++) {
+      const ei = outE[k];
       const w = to[ei];
       if (r[v] + len[ei] > r[w]) r[w] = r[v] + len[ei];
-      if (--indeg[w] === 0) topo.push(w);
+      if (--indeg[w] === 0) topo[count++] = w;
     }
   }
 
@@ -361,20 +479,22 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
   // Move each node toward the side that carries more edge weight.
   for (let pass = 0; pass < 8; pass++) {
     let changed = false;
-    for (let q = topo.length - 1; q >= 0; q--) {
+    for (let q = count - 1; q >= 0; q--) {
       const v = topo[q];
-      const ins = inList[v];
-      const outs = outList[v];
-      if (ins.length === 0 && outs.length === 0) continue;
+      const ins = inStart[v + 1] - inStart[v];
+      const outs = outStart[v + 1] - outStart[v];
+      if (ins === 0 && outs === 0) continue;
       let lo = -Infinity;
       let hi = Infinity;
       let inW = 0;
       let outW = 0;
-      for (const ei of ins) {
+      for (let k = inStart[v]; k < inStart[v + 1]; k++) {
+        const ei = inE[k];
         lo = Math.max(lo, r[from[ei]] + len[ei]);
         inW += edges[ei].weight;
       }
-      for (const ei of outs) {
+      for (let k = outStart[v]; k < outStart[v + 1]; k++) {
+        const ei = outE[k];
         hi = Math.min(hi, r[to[ei]] - len[ei]);
         outW += edges[ei].weight;
       }
@@ -411,164 +531,166 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
   for (let i = 0; i < n; i++) nodes[i].rank = r[i] - min;
 }
 
-function applyPins(nodes: LNode[], layers: number[][]): void {
-  for (const layer of layers) {
-    let pinned = false;
-    for (const v of layer) if (nodes[v].pin !== 0) pinned = true;
-    if (!pinned) continue;
-    const index = new Map<number, number>();
-    layer.forEach((v, i) => index.set(v, i));
-    layer.sort((a, b) => nodes[a].pin - nodes[b].pin || index.get(a)! - index.get(b)!);
-  }
-}
+function reduceCrossings(g: Graph, nodes: LNode[]): void {
+  const { n, real, maxRank, W, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos, offsets } = g;
+  let widest = 0;
+  for (let r = 0; r <= maxRank; r++) widest = Math.max(widest, layerStart[r + 1] - layerStart[r]);
+  let size = 1;
+  while (size < widest) size <<= 1;
+  const tree = new Int32Array(2 * size);
+  const targets = new Int32Array(EF.length);
 
-function countCrossings(layers: number[][], pos: Int32Array, succs: number[][], succDx: number[][]): number {
-  let total = 0;
-  for (let r = 0; r + 1 < layers.length; r++) {
-    const north = layers[r];
-    const south = layers[r + 1];
-    if (north.length === 0 || south.length < 2) continue;
-    const targets: number[] = [];
-    for (const v of north) {
-      const out = succs[v];
-      if (out.length === 1) {
-        targets.push(pos[out[0]]);
-      } else if (out.length > 1) {
-        const off = succDx[v];
-        const idx: number[] = [];
-        for (let i = 0; i < out.length; i++) idx.push(i);
-        idx.sort((a, b) => off[a] - off[b] || pos[out[a]] - pos[out[b]]);
-        for (const i of idx) targets.push(pos[out[i]]);
+  const count = (): number => {
+    let total = 0;
+    for (let r = 0; r < maxRank; r++) {
+      const southLen = layerStart[r + 2] - layerStart[r + 1];
+      if (southLen < 2) continue;
+      let t = 0;
+      for (let i = layerStart[r]; i < layerStart[r + 1]; i++) {
+        const v = order[i];
+        const from = succStart[v];
+        const to = succStart[v + 1];
+        const t0 = t;
+        for (let k = from; k < to; k++) targets[t++] = pos[ET[succE[k]]];
+        const d = t - t0;
+        if (d < 2) continue;
+        let mixed = false;
+        if (offsets) for (let k = from + 1; k < to; k++) if (EFD[succE[k]] !== EFD[succE[from]]) mixed = true;
+        if (mixed) {
+          const ids = Array.from(succE.subarray(from, to));
+          ids.sort((a, b) => EFD[a] - EFD[b] || pos[ET[a]] - pos[ET[b]]);
+          for (let k = 0; k < d; k++) targets[t0 + k] = pos[ET[ids[k]]];
+        } else if (d <= 12) {
+          for (let a = t0 + 1; a < t; a++) {
+            const item = targets[a];
+            let b = a - 1;
+            while (b >= t0 && targets[b] > item) {
+              targets[b + 1] = targets[b];
+              b--;
+            }
+            targets[b + 1] = item;
+          }
+        } else {
+          targets.subarray(t0, t).sort();
+        }
       }
-    }
-    if (targets.length < 2) continue;
-    let size = 1;
-    while (size < south.length) size <<= 1;
-    const tree = new Int32Array(2 * size);
-    for (const t of targets) {
-      let i = t + size;
-      tree[i]++;
-      while (i > 1) {
-        if ((i & 1) === 0) total += tree[i + 1];
-        i >>= 1;
+      if (t < 2) continue;
+      let leaves = 1;
+      while (leaves < southLen) leaves <<= 1;
+      tree.fill(0, 0, 2 * leaves);
+      for (let k = 0; k < t; k++) {
+        let i = targets[k] + leaves;
         tree[i]++;
+        while (i > 1) {
+          if ((i & 1) === 0) total += tree[i + 1];
+          i >>= 1;
+          tree[i]++;
+        }
       }
     }
-  }
-  return total;
-}
+    return total;
+  };
 
-function reduceCrossings(
-  nodes: LNode[],
-  layers: number[][],
-  pos: Int32Array,
-  adj: Adjacency,
-  setPositions: () => void
-): void {
-  const { preds, succs, succDx } = adj;
-  let best = countCrossings(layers, pos, succs, succDx);
+  let best = count();
   if (best === 0) return;
-  let bestLayers = layers.map((l) => l.slice());
-  const n = nodes.length;
+  const bestOrder = order.slice();
   const bary = new Float64Array(n);
-
-  let offsets = false;
-  for (const list of succDx) for (const off of list) if (off !== 0) offsets = true;
-  for (const list of adj.predDx) for (const off of list) if (off !== 0) offsets = true;
+  const moving = new Int32Array(widest);
+  const leftBias = (a: number, b: number): number => bary[a] - bary[b] || pos[a] - pos[b];
+  const rightBias = (a: number, b: number): number => bary[a] - bary[b] || pos[b] - pos[a];
 
   const sweep = (down: boolean, biasRight: boolean): void => {
-    const near = down ? preds : succs;
-    const mirror = down ? adj.predMirror : adj.succMirror;
-    const farDx = down ? succDx : adj.predDx;
-    const count = layers.length;
-    for (let step = 1; step < count; step++) {
-      const layer = layers[down ? step : count - 1 - step];
+    const start = down ? predStart : succStart;
+    const list = down ? predE : succE;
+    const other = down ? EF : ET;
+    const otherDx = down ? EFD : ETD;
+    for (let step = 1; step <= maxRank; step++) {
+      const r = down ? step : maxRank - step;
+      const s = layerStart[r];
+      const e = layerStart[r + 1];
       let movable = 0;
-      for (const v of layer) {
-        const pin = nodes[v].pin;
+      for (let i = s; i < e; i++) {
+        const v = order[i];
+        const pin = v < real ? nodes[v].pin : 0;
         if (pin !== 0) {
           bary[v] = pin * 1e9;
-          movable++;
+          moving[movable++] = v;
           continue;
         }
-        const nb = near[v];
-        if (nb.length === 0) {
+        const from = start[v];
+        const to = start[v + 1];
+        if (from === to) {
           bary[v] = -1;
           continue;
         }
         let sum = 0;
-        for (let k = 0; k < nb.length; k++) {
-          const u = nb[k];
+        for (let k = from; k < to; k++) {
+          const u = other[list[k]];
           sum += pos[u];
-          if (offsets && nodes[u].w > 0) sum += farDx[u][mirror[v][k]] / nodes[u].w;
+          if (offsets && W[u] > 0) sum += otherDx[list[k]] / W[u];
         }
-        bary[v] = sum / nb.length;
-        movable++;
+        bary[v] = sum / (to - from);
+        moving[movable++] = v;
       }
       if (movable < 2) continue;
-      const moving: number[] = [];
-      for (const v of layer) if (bary[v] !== -1) moving.push(v);
-      if (biasRight) moving.sort((a, b) => bary[a] - bary[b] || pos[b] - pos[a]);
-      else moving.sort((a, b) => bary[a] - bary[b] || pos[a] - pos[b]);
+      moving.subarray(0, movable).sort(biasRight ? rightBias : leftBias);
       let k = 0;
-      for (let i = 0; i < layer.length; i++) {
-        if (bary[layer[i]] !== -1) layer[i] = moving[k++];
-      }
-      for (let i = 0; i < layer.length; i++) pos[layer[i]] = i;
+      for (let i = s; i < e; i++) if (bary[order[i]] !== -1) order[i] = moving[k++];
+      for (let i = s; i < e; i++) pos[order[i]] = i - s;
     }
   };
 
   for (let i = 0, stale = 0; stale < 4 && i < MAX_SWEEPS; i++, stale++) {
     sweep(i % 2 === 0, i % 4 >= 2);
-    const c = countCrossings(layers, pos, succs, succDx);
+    const c = count();
     if (c < best) {
       best = c;
-      bestLayers = layers.map((l) => l.slice());
+      bestOrder.set(order);
       stale = 0;
       if (c === 0) break;
     }
   }
-  for (let r = 0; r < layers.length; r++) layers[r] = bestLayers[r];
-  setPositions();
+  order.set(bestOrder);
 }
 
 // Brandes-Köpf horizontal coordinate assignment: four aligned layouts, balanced.
-function position(
-  nodes: LNode[],
-  layers: number[][],
-  pos: Int32Array,
-  adj: Adjacency,
-  opt: LayeredOptions
-): Float64Array {
-  const { preds, succs } = adj;
-  const n = nodes.length;
-  const isDummy = (v: number): boolean => nodes[v].kind === Kind.Dummy || nodes[v].kind === Kind.Label;
-  const sep = (u: number, v: number): number =>
-    nodes[u].w / 2 +
-    (isDummy(u) ? opt.edgeSep : opt.nodeSep) / 2 +
-    (isDummy(v) ? opt.edgeSep : opt.nodeSep) / 2 +
-    nodes[v].w / 2;
+function position(g: Graph, opt: LayeredOptions): Float64Array {
+  const { n, maxRank, W, KIND, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos } = g;
+  const segments = EF.length;
+  const gap = new Float64Array(n);
+  for (let i = 0; i < n; i++) gap[i] = W[i] / 2 + (isDummy(KIND[i]) ? opt.edgeSep : opt.nodeSep) / 2;
+
+  // Neighbours in left-to-right order, so the medians can be read off directly.
+  const key = new Int32Array(segments);
+  for (let e = 0; e < segments; e++) key[e] = pos[ET[e]];
+  for (let v = 0; v < n; v++) if (succStart[v + 1] - succStart[v] > 1) sortRange(succE, succStart[v], succStart[v + 1], key);
+  for (let e = 0; e < segments; e++) key[e] = pos[EF[e]];
+  for (let v = 0; v < n; v++) if (predStart[v + 1] - predStart[v] > 1) sortRange(predE, predStart[v], predStart[v + 1], key);
 
   // An edge between two real nodes may not cross a dummy-to-dummy segment; mark those that would.
-  const conflicts = new Set<number>();
-  for (let r = 1; r < layers.length; r++) {
-    const prev = layers[r - 1];
-    const layer = layers[r];
+  const conflict = new Uint8Array(segments);
+  for (let r = 1; r <= maxRank; r++) {
+    const prevLen = layerStart[r] - layerStart[r - 1];
+    const s = layerStart[r];
+    const end = layerStart[r + 1];
     let k0 = 0;
-    let scan = 0;
-    for (let i = 0; i < layer.length; i++) {
-      const v = layer[i];
+    let scan = s;
+    for (let i = s; i < end; i++) {
+      const v = order[i];
       let inner = -1;
-      if (isDummy(v)) {
-        for (const u of preds[v]) if (isDummy(u)) inner = u;
+      if (isDummy(KIND[v])) {
+        const u = EF[predE[predStart[v]]];
+        if (isDummy(KIND[u])) inner = u;
       }
-      const k1 = inner >= 0 ? pos[inner] : prev.length;
-      if (inner >= 0 || i === layer.length - 1) {
+      const k1 = inner >= 0 ? pos[inner] : prevLen;
+      if (inner >= 0 || i === end - 1) {
         for (let j = scan; j <= i; j++) {
-          const s = layer[j];
-          for (const u of preds[s]) {
-            const up = pos[u];
-            if ((up < k0 || k1 < up) && !(isDummy(u) && isDummy(s))) conflicts.add(u * n + s);
+          const w = order[j];
+          const wDummy = isDummy(KIND[w]);
+          for (let k = predStart[w]; k < predStart[w + 1]; k++) {
+            const e = predE[k];
+            const up = pos[EF[e]];
+            if ((up < k0 || k1 < up) && !(wDummy && isDummy(KIND[EF[e]]))) conflict[e] = 1;
           }
         }
         scan = i + 1;
@@ -576,107 +698,104 @@ function position(
       }
     }
   }
-  const hasConflict = (u: number, v: number): boolean => conflicts.has(u * n + v) || conflicts.has(v * n + u);
 
   const results: Float64Array[] = [];
   const root = new Int32Array(n);
   const align = new Int32Array(n);
-  const lpos = new Int32Array(n);
   // Offset of each node from its block's root, so that aligned edges meet at their attachment points.
   const shift = new Float64Array(n);
-  const count = layers.length;
+  const eFrom = new Int32Array(n);
+  const eTo = new Int32Array(n);
+  const eW = new Float64Array(n);
+  const indeg = new Int32Array(n);
+  const outStart = new Int32Array(n + 1);
+  const outE = new Int32Array(n);
+  const fill = new Int32Array(n);
+  const topo = new Int32Array(n);
 
   for (let variant = 0; variant < 4; variant++) {
     const up = variant < 2;
     const right = (variant & 1) === 1;
-    const neighbors = up ? preds : succs;
-    const ownDx = up ? adj.predDx : adj.succDx;
-    const otherDx = up ? adj.succDx : adj.predDx;
-    const mirror = up ? adj.predMirror : adj.succMirror;
+    const start = up ? predStart : succStart;
+    const list = up ? predE : succE;
+    const other = up ? EF : ET;
+    const ownDx = up ? ETD : EFD;
+    const otherDx = up ? EFD : ETD;
     for (let i = 0; i < n; i++) {
       root[i] = i;
       align[i] = i;
       shift[i] = 0;
     }
-    const ordered: number[][] = [];
-    for (let k = 0; k < count; k++) {
-      const layer = layers[up ? k : count - 1 - k];
-      const seq = right ? layer.slice().reverse() : layer;
-      ordered.push(seq);
-      for (let i = 0; i < seq.length; i++) lpos[seq[i]] = i;
-    }
 
-    for (const layer of ordered) {
+    for (let step = 0; step <= maxRank; step++) {
+      const r = up ? step : maxRank - step;
+      const s = layerStart[r];
+      const end = layerStart[r + 1];
+      const adjacent = up ? r - 1 : r + 1;
+      const adjacentLast = adjacent >= 0 && adjacent <= maxRank ? layerStart[adjacent + 1] - layerStart[adjacent] - 1 : 0;
       let prevIdx = -1;
-      for (const v of layer) {
-        const ws = neighbors[v];
-        const count = ws.length;
-        if (count === 0) continue;
-        let lo = 0;
-        let hi = 0;
-        if (count === 2) {
-          lo = lpos[ws[0]] <= lpos[ws[1]] ? 0 : 1;
-          hi = 1 - lo;
-        } else if (count > 2) {
-          const idx: number[] = [];
-          for (let i = 0; i < count; i++) idx.push(i);
-          idx.sort((a, b) => lpos[ws[a]] - lpos[ws[b]]);
-          lo = idx[(count - 1) >> 1];
-          hi = idx[count >> 1];
-        }
+      for (let i = right ? end - 1 : s; right ? i >= s : i < end; right ? i-- : i++) {
+        const v = order[i];
+        const from = start[v];
+        const d = start[v + 1] - from;
+        if (d === 0) continue;
+        const lo = from + ((d - 1) >> 1);
+        const hi = from + (d >> 1);
         for (let pass = 0; pass < 2; pass++) {
-          const k = pass === 0 ? lo : hi;
-          if (pass === 1 && hi === lo) break;
-          const w = ws[k];
-          if (align[v] === v && prevIdx < lpos[w] && !hasConflict(v, w)) {
+          if (pass === 1 && lo === hi) break;
+          const e = list[(pass === 0) !== right ? lo : hi];
+          const w = other[e];
+          const idx = right ? adjacentLast - pos[w] : pos[w];
+          if (align[v] === v && prevIdx < idx && conflict[e] === 0) {
             align[w] = v;
             align[v] = root[v] = root[w];
-            shift[v] = shift[w] + otherDx[w][mirror[v][k]] - ownDx[v][k];
-            prevIdx = lpos[w];
+            shift[v] = shift[w] + otherDx[e] - ownDx[e];
+            prevIdx = idx;
           }
         }
       }
     }
 
-    const eFrom: number[] = [];
-    const eTo: number[] = [];
-    const eW: number[] = [];
-    const indeg = new Int32Array(n);
-    const outCount = new Int32Array(n + 1);
-    for (const layer of ordered) {
-      for (let i = 1; i < layer.length; i++) {
-        const u = layer[i - 1];
-        const v = layer[i];
-        eFrom.push(root[u]);
-        eTo.push(root[v]);
-        eW.push(right ? sep(v, u) - shift[u] + shift[v] : sep(u, v) + shift[u] - shift[v]);
-        indeg[root[v]]++;
-        outCount[root[u] + 1]++;
+    let blockEdges = 0;
+    indeg.fill(0);
+    outStart.fill(0);
+    for (let r = 0; r <= maxRank; r++) {
+      const s = layerStart[r];
+      const end = layerStart[r + 1];
+      for (let i = s + 1; i < end; i++) {
+        const a = right ? order[i] : order[i - 1];
+        const b = right ? order[i - 1] : order[i];
+        const sep = gap[a] + gap[b];
+        eFrom[blockEdges] = root[a];
+        eTo[blockEdges] = root[b];
+        eW[blockEdges] = right ? sep - shift[a] + shift[b] : sep + shift[a] - shift[b];
+        indeg[root[b]]++;
+        outStart[root[a] + 1]++;
+        blockEdges++;
       }
     }
-    for (let i = 0; i < n; i++) outCount[i + 1] += outCount[i];
-    const fill = outCount.slice(0, n);
-    const outEdges = new Int32Array(eFrom.length);
-    for (let i = 0; i < eFrom.length; i++) outEdges[fill[eFrom[i]]++] = i;
+    for (let i = 0; i < n; i++) outStart[i + 1] += outStart[i];
+    fill.set(outStart.subarray(0, n));
+    for (let e = 0; e < blockEdges; e++) outE[fill[eFrom[e]]++] = e;
 
     const x = new Float64Array(n);
-    const topo: number[] = [];
-    for (let i = 0; i < n; i++) if (root[i] === i && indeg[i] === 0) topo.push(i);
-    for (let q = 0; q < topo.length; q++) {
+    let count = 0;
+    for (let i = 0; i < n; i++) if (root[i] === i && indeg[i] === 0) topo[count++] = i;
+    for (let q = 0; q < count; q++) {
       const v = topo[q];
-      for (let k = outCount[v]; k < outCount[v + 1]; k++) {
-        const ei = outEdges[k];
-        const w = eTo[ei];
-        if (x[v] + eW[ei] > x[w]) x[w] = x[v] + eW[ei];
-        if (--indeg[w] === 0) topo.push(w);
+      for (let k = outStart[v]; k < outStart[v + 1]; k++) {
+        const e = outE[k];
+        const w = eTo[e];
+        if (x[v] + eW[e] > x[w]) x[w] = x[v] + eW[e];
+        if (--indeg[w] === 0) topo[count++] = w;
       }
     }
-    for (let q = topo.length - 1; q >= 0; q--) {
+    for (let q = count - 1; q >= 0; q--) {
       const v = topo[q];
       let min = Infinity;
-      for (let k = outCount[v]; k < outCount[v + 1]; k++) {
-        const ei = outEdges[k];
-        const cand = x[eTo[ei]] - eW[ei];
+      for (let k = outStart[v]; k < outStart[v + 1]; k++) {
+        const e = outE[k];
+        const cand = x[eTo[e]] - eW[e];
         if (cand < min) min = cand;
       }
       if (min !== Infinity && min > x[v]) x[v] = min;
@@ -695,7 +814,7 @@ function position(
     let hi = -Infinity;
     const xs = results[k];
     for (let i = 0; i < n; i++) {
-      const half = nodes[i].w / 2;
+      const half = W[i] / 2;
       if (xs[i] - half < lo) lo = xs[i] - half;
       if (xs[i] + half > hi) hi = xs[i] + half;
     }

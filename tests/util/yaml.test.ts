@@ -27,6 +27,9 @@ const CASES = [
   '',
   'just a scalar',
   '- 1\n- 2\n',
+  'a: {\n  b: 1,\n  c: [2,\n    3]\n}\nd: "two\n  lines"\ne: 5\n',
+  '{\n a: 1, # comment\n b: 2\n}',
+  '__proto__: 1\nb:\n  __proto__: {x: 1}\n',
 ];
 
 describe('yaml reader', () => {
@@ -35,6 +38,22 @@ describe('yaml reader', () => {
       expect(parseYaml(source) ?? null).toEqual(load(source, { schema: JSON_SCHEMA }) ?? null);
     });
   }
+
+  it('does not touch prototypes', () => {
+    const value = parseYaml('{ __proto__: { polluted: true } }') as Record<string, unknown>;
+    expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it('refuses absurd nesting instead of overflowing the stack', () => {
+    expect(() => parseYaml('{ a: ' + '['.repeat(20000) + ' }')).toThrow(/too deep/);
+  });
+
+  it('reads a long unterminated collection in linear time', () => {
+    const started = performance.now();
+    expect(() => parseYaml('a: {\n' + ' b: 1,\n'.repeat(20000))).toThrow();
+    expect(performance.now() - started).toBeLessThan(500);
+  });
 
   it('rejects an unterminated flow mapping', () => {
     expect(() => parseYaml('{ a: 1')).toThrow();

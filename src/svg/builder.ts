@@ -1,12 +1,13 @@
 import { Style } from '../text/measurer.js';
 import type { Label } from '../text/label.js';
 
-const RE_ESC = /[&<>"]/g;
-const RE_NEEDS_ESC = /[&<>"]/;
+const RE_NEEDS_ESC = /[&<>"\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+const RE_ESC = /[&<>"]|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]+/g;
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 
+// Escapes text for XML and drops the control characters XML does not allow.
 export function esc(text: string): string {
-  return RE_NEEDS_ESC.test(text) ? text.replace(RE_ESC, (c) => ESC[c]) : text;
+  return RE_NEEDS_ESC.test(text) ? text.replace(RE_ESC, (c) => ESC[c] ?? '') : text;
 }
 
 export function num(value: number): string {

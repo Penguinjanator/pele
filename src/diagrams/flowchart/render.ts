@@ -48,7 +48,11 @@ function direction(dir: string | undefined): Dir {
 
 function numberOption(config: Config, key: string, fallback: number): number {
   const value = (config.flowchart as Config | undefined)?.[key];
-  return typeof value === 'number' && value > 0 ? value : fallback;
+  return typeof value === 'number' && value > 0 ? Math.min(value, 2000) : fallback;
+}
+
+function assetSize(value: number | undefined, fallback: number): number {
+  return value !== undefined && value > 0 && value <= 4000 ? value : fallback;
 }
 
 interface Path {
@@ -212,8 +216,8 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
       let dy = 0;
       if (node.img || node.icon) {
         const box = node.img ? 80 : 48;
-        const aw = node.assetWidth ?? box;
-        const ah = node.assetHeight ?? box;
+        const aw = assetSize(node.assetWidth, box);
+        const ah = assetSize(node.assetHeight, box);
         w = Math.max(aw, label.width + 8);
         h = ah + (label.height > 0 ? label.height + 6 : 0);
         dy = node.pos === 't' ? -ah / 2 : ah / 2;
@@ -273,6 +277,22 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
   const links: FlowLink[] = [];
   const prefix = options.idPrefix ?? 'pele';
 
+  // Route points by rounded y, to find the edges that cross a cluster's top border.
+  const crossings = new Map<number, number[]>();
+  let anyGroup = false;
+  for (const c of cnodes) if (c.isGroup) anyGroup = true;
+  if (anyGroup) {
+    for (const e of cedges) {
+      const route = e.route;
+      for (let k = 0; k < route.length; k += 3) {
+        const key = Math.round(route[k + 1]);
+        const list = crossings.get(key);
+        if (list) list.push(route[k]);
+        else crossings.set(key, [route[k]]);
+      }
+    }
+  }
+
   let clusters = '';
   let nodesOut = '';
   for (let i = 0; i < views.length; i++) {
@@ -284,7 +304,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
     const id = esc(node.id);
     if (c.isGroup) {
-      const titleX = clusterTitleX(c, view.label.width, cedges);
+      const titleX = clusterTitleX(c, view.label.width, crossings);
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${id}">` +
         `<rect x="${num(x - c.w / 2)}" y="${num(y - c.h / 2)}" width="${num(c.w)}" height="${num(c.h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${
@@ -299,14 +319,14 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
     const h = view.h;
     let inner: string;
     if (node.img) {
-      const aw = node.assetWidth ?? 80;
-      const ah = node.assetHeight ?? 80;
+      const aw = assetSize(node.assetWidth, 80);
+      const ah = assetSize(node.assetHeight, 80);
       const top = view.label.height > 0 ? (node.pos === 't' ? h / 2 - ah : -h / 2) : -ah / 2;
       inner = `<image href="${esc(sanitizeUrl(node.img))}" x="${num(-aw / 2)}" y="${num(top)}" width="${num(
         aw
       )}" height="${num(ah)}" preserveAspectRatio="${node.constraint === 'on' ? 'xMidYMid meet' : 'none'}"/>`;
     } else if (node.icon) {
-      const box = node.assetHeight ?? 48;
+      const box = assetSize(node.assetHeight, 48);
       const top = view.label.height > 0 ? (node.pos === 't' ? h / 2 - box : -h / 2) : -box / 2;
       const frame =
         node.shape === 'icon'
@@ -331,8 +351,10 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
     let text = labelSvg(view.label, 0, view.dy, ` class="pele-label"${view.style.text}`, icons);
     const internal = / internal-link(?: |$)/.test(classes + ' ');
     if (internal && node.label) {
+      // The label is a note name, but it still ends up in an href, so it gets the same check as a URL.
+      const safe = sanitizeUrl(node.label) !== 'about:blank';
       const target = esc(node.label);
-      text = `<a class="internal-link" href="${target}" data-href="${target}">${text}</a>`;
+      text = `<a class="internal-link"${safe ? ` href="${target}"` : ''} data-href="${target}">${text}</a>`;
       links.push({ id: node.id, href: node.label, internal: true });
     }
     let body = inner + text;
@@ -449,30 +471,24 @@ export function renderFlowchart(db: FlowDb, config: Config, options: FlowRenderO
 }
 
 // Picks where a cluster title sits along the top edge so that edges entering there do not cross it.
-function clusterTitleX(c: CNode, width: number, edges: CEdge[]): number {
+function clusterTitleX(c: CNode, width: number, crossings: Map<number, number[]>): number {
   if (width === 0) return c.x;
   const top = c.y - c.h / 2;
   const left = c.x - c.w / 2;
   const half = width / 2;
-  const crossings: number[] = [];
-  for (const e of edges) {
-    const route = e.route;
-    for (let i = 0; i < route.length; i += 3) {
-      if (Math.abs(route[i + 1] - top) < 0.5 && route[i] > left && route[i] < left + c.w) crossings.push(route[i]);
-    }
-  }
   const candidates = [left + GROUP_PAD - 6 + half, c.x, left + c.w - GROUP_PAD + 6 - half];
-  if (crossings.length === 0) return candidates[0];
+  const xs = crossings.get(Math.round(top));
+  if (xs === undefined) return candidates[0];
   let best = candidates[0];
   let bestGap = -1;
   for (const x of candidates) {
     let gap = Infinity;
-    for (const cx of crossings) gap = Math.min(gap, Math.abs(cx - x) - half);
+    for (const cx of xs) if (cx > left && cx < left + c.w) gap = Math.min(gap, Math.abs(cx - x) - half);
+    if (gap >= 6) return x;
     if (gap > bestGap + 0.5) {
       bestGap = gap;
       best = x;
     }
-    if (gap >= 6) return x;
   }
   return best;
 }

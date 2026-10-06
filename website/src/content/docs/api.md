@@ -37,7 +37,7 @@ All options are optional.
 | `idPrefix` | `string` | Prefix for element ids and marker references. Use a different prefix for each diagram on a page. |
 | `maxWidth` | `boolean` | Lets the SVG scale to the width of its container instead of using a fixed pixel width. |
 | `padding` | `number` | Space around the diagram in pixels. |
-| `limit` | `number` | Maximum length of `text` in characters. Longer input throws a `PeleError` with the code `limit`. |
+| `limit` | `number` | Maximum length of `text` in characters. The default is 50,000, as in Mermaid. Longer input throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
 | `icons` | `(name: string) => string \| null \| undefined` | Returns the inner SVG markup for an icon name such as `fa:fa-car`. Without a resolver, the icon's space is left empty. |
 | `config` | `object` | Mermaid configuration. Frontmatter and directives in the text take precedence over it. |
 
@@ -120,7 +120,7 @@ supports('sequenceDiagram\n  A->>B: Hi');    // false
 | `unsupported-diagram` | The text is not a Mermaid diagram, or its type is not implemented yet. |
 | `syntax` | The diagram could not be parsed. `line`, `column`, and `snippet` locate the problem. |
 | `semantic` | The diagram parsed but describes something invalid. |
-| `limit` | The text is longer than the `limit` option. |
+| `limit` | The text is longer than the `limit` option, or is nested too deeply to process. |
 
 ```ts
 try {

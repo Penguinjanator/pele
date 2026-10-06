@@ -112,6 +112,7 @@ export class FlowDb implements FlowchartModel {
   accDescr: string | undefined;
 
   private subgraphLookup = new Map<string, FlowSubgraph>();
+  private members = new Set<string>();
   private edgeById = new Map<string, FlowEdge>();
   private pairCount = new Map<string, number>();
   private subCount = 0;
@@ -136,7 +137,14 @@ export class FlowDb implements FlowchartModel {
     let doc: Record<string, YamlValue> | undefined;
     if (metadata !== undefined) {
       const yaml = metadata.includes('\n') ? metadata + '\n' : '{\n' + metadata + '\n}';
-      const parsed = parseYaml(yaml);
+      let parsed: YamlValue;
+      try {
+        parsed = parseYaml(yaml);
+      } catch (error) {
+        throw new PeleError(`Metadata of "${id}" is not valid YAML. ${(error as Error).message}`, 'syntax', {
+          type: 'flowchart',
+        });
+      }
       doc = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : undefined;
     }
 
@@ -405,10 +413,13 @@ export class FlowDb implements FlowchartModel {
       dir,
       labelType: labelType(titleText?.type),
     };
-    subgraph.nodes = this.makeUniq(subgraph, this.subgraphs).nodes.filter((nodeId) => nodeId !== id);
+    // A node belongs to the first subgraph that lists it, and a subgraph never contains itself.
+    const members = this.members;
+    subgraph.nodes = nodeList.filter((nodeId) => !members.has(nodeId) && nodeId !== id);
+    for (const nodeId of subgraph.nodes) members.add(nodeId);
 
-    const existing = this.subgraphs.find((sg) => sg.id === id);
-    if (existing) existing.nodes.push(...subgraph.nodes);
+    const existing = this.subgraphLookup.get(id);
+    if (existing) for (const nodeId of subgraph.nodes) existing.nodes.push(nodeId);
     else this.subgraphs.push(subgraph);
     this.subgraphLookup.set(id, existing ?? subgraph);
     return id;
@@ -420,7 +431,6 @@ export class FlowDb implements FlowchartModel {
   }
 
   makeUniq(sg: FlowSubgraph, all: FlowSubgraph[]): { nodes: string[] } {
-    if (all.length === 0) return { nodes: sg.nodes };
     const taken = new Set<string>();
     for (const other of all) for (const id of other.nodes) taken.add(id);
     return { nodes: sg.nodes.filter((id) => !taken.has(id)) };

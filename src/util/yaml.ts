@@ -3,6 +3,22 @@
 
 export type YamlValue = null | boolean | number | string | YamlValue[] | { [key: string]: YamlValue };
 
+// Thrown when a quoted scalar or flow collection runs past the text read so far.
+// Not an Error, so that throwing it does not capture a stack trace.
+class Incomplete {
+  constructor(readonly message: string) {}
+}
+
+const MAX_DEPTH = 64;
+
+function assign(target: { [key: string]: YamlValue }, key: string, value: YamlValue): void {
+  if (key === '__proto__') {
+    Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+  } else {
+    target[key] = value;
+  }
+}
+
 class Reader {
   lines: string[];
   i = 0;
@@ -33,7 +49,49 @@ const RE_HEX = /^[-+]?0x[0-9a-fA-F]+$/;
 const RE_OCT = /^[-+]?0o[0-7]+$/;
 const RE_BIN = /^[-+]?0b[01]+$/;
 const RE_FLOAT = /^[-+]?(?:[0-9][0-9]*(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][-+]?[0-9]+)?$/;
-const RE_KEY = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s#:,[\]{}&*!|>'"%@`-][^:#]*?|-[^\s:#][^:#]*?)\s*:(?:\s+|$)/;
+const RE_KEY_START = /[\s#:,[\]{}&*!|>'"%@`]/;
+
+function isBlank(ch: string | undefined): boolean {
+  return ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r';
+}
+
+// Splits `key: rest` at the start of a line. Returns the raw key and the offset where the value starts.
+function splitKey(line: string): { key: string; length: number } | null {
+  const first = line[0];
+  let end: number;
+  let colon: number;
+  if (first === '"' || first === "'") {
+    let i = 1;
+    while (true) {
+      if (i >= line.length) return null;
+      const c = line[i];
+      if (first === '"' && c === '\\') {
+        i += 2;
+      } else if (c === first) {
+        if (first === '"' || line[i + 1] !== "'") break;
+        i += 2;
+      } else {
+        i++;
+      }
+    }
+    end = i + 1;
+    colon = end;
+    while (isBlank(line[colon])) colon++;
+    if (line[colon] !== ':') return null;
+  } else {
+    if (first === undefined || RE_KEY_START.test(first)) return null;
+    if (first === '-' && (line.length < 2 || isBlank(line[1]) || line[1] === ':' || line[1] === '#')) return null;
+    colon = 1;
+    while (colon < line.length && line[colon] !== ':' && line[colon] !== '#') colon++;
+    if (line[colon] !== ':') return null;
+    end = colon;
+    while (isBlank(line[end - 1])) end--;
+  }
+  let length = colon + 1;
+  if (length < line.length && !isBlank(line[length])) return null;
+  while (isBlank(line[length])) length++;
+  return { key: line.slice(0, end), length };
+}
 
 function scalar(raw: string): YamlValue {
   const s = raw.trim();
@@ -98,41 +156,57 @@ function unquoteDouble(body: string): string {
   return out;
 }
 
+function skip(s: string, pos: number, commas: boolean): number {
+  while (pos < s.length) {
+    const c = s[pos];
+    if (c === ' ' || c === '\n' || c === '\t' || c === '\r' || (commas && c === ',')) {
+      pos++;
+    } else if (c === '#' && (pos === 0 || /\s/.test(s[pos - 1]))) {
+      const nl = s.indexOf('\n', pos);
+      pos = nl === -1 ? s.length : nl;
+    } else {
+      break;
+    }
+  }
+  return pos;
+}
+
 // Parses a flow value starting at s[pos]; returns the value and the index after it.
-function flow(s: string, pos: number, stops: string): [YamlValue, number] {
-  while (pos < s.length && /\s/.test(s[pos])) pos++;
+function flow(s: string, pos: number, stops: string, depth = 0): [YamlValue, number] {
+  if (depth > MAX_DEPTH) throw new Error('YAML: nesting is too deep');
+  pos = skip(s, pos, false);
   const ch = s[pos];
   if (ch === '{') {
     const out: { [key: string]: YamlValue } = {};
     pos++;
     while (true) {
-      while (pos < s.length && /[\s,]/.test(s[pos])) pos++;
-      if (pos >= s.length) throw new Error('YAML: unexpected end of the stream within a flow collection');
+      pos = skip(s, pos, true);
+      if (pos >= s.length) throw new Incomplete('YAML: unexpected end of the stream within a flow collection');
       if (s[pos] === '}') return [out, pos + 1];
       let key: YamlValue;
-      [key, pos] = flow(s, pos, ':,}');
-      while (pos < s.length && /\s/.test(s[pos])) pos++;
+      [key, pos] = flow(s, pos, ':,}', depth + 1);
+      pos = skip(s, pos, false);
       let value: YamlValue = null;
-      if (s[pos] === ':') [value, pos] = flow(s, pos + 1, ',}');
-      out[String(key)] = value;
+      if (s[pos] === ':') [value, pos] = flow(s, pos + 1, ',}', depth + 1);
+      assign(out, String(key), value);
     }
   }
   if (ch === '[') {
     const out: YamlValue[] = [];
     pos++;
     while (true) {
-      while (pos < s.length && /[\s,]/.test(s[pos])) pos++;
-      if (pos >= s.length) throw new Error('YAML: unexpected end of the stream within a flow collection');
+      pos = skip(s, pos, true);
+      if (pos >= s.length) throw new Incomplete('YAML: unexpected end of the stream within a flow collection');
       if (s[pos] === ']') return [out, pos + 1];
       let value: YamlValue;
-      [value, pos] = flow(s, pos, ',]');
+      [value, pos] = flow(s, pos, ',]', depth + 1);
       out.push(value);
     }
   }
   if (ch === '"') {
     let end = pos + 1;
     while (end < s.length && s[end] !== '"') end += s[end] === '\\' ? 2 : 1;
-    if (end >= s.length) throw new Error('YAML: unexpected end of the stream within a double quoted scalar');
+    if (end >= s.length) throw new Incomplete('YAML: unexpected end of the stream within a double quoted scalar');
     return [unquoteDouble(s.slice(pos + 1, end)), end + 1];
   }
   if (ch === "'") {
@@ -144,7 +218,7 @@ function flow(s: string, pos: number, stops: string): [YamlValue, number] {
       }
       end++;
     }
-    if (end >= s.length) throw new Error('YAML: unexpected end of the stream within a single quoted scalar');
+    if (end >= s.length) throw new Incomplete('YAML: unexpected end of the stream within a single quoted scalar');
     return [fold(s.slice(pos + 1, end)).replace(/''/g, "'"), end + 1];
   }
   let end = pos;
@@ -153,8 +227,7 @@ function flow(s: string, pos: number, stops: string): [YamlValue, number] {
     if (stops.includes(c) && (c !== ':' || end + 1 >= s.length || /[\s,[\]{}]/.test(s[end + 1]))) break;
     if (c === '#' && end > pos && /\s/.test(s[end - 1])) {
       const nl = s.indexOf('\n', end);
-      s = s.slice(0, end) + (nl === -1 ? '' : s.slice(nl));
-      continue;
+      return [scalar(fold(s.slice(pos, end).trim())), nl === -1 ? s.length : nl];
     }
     end++;
   }
@@ -231,18 +304,29 @@ function inlineValue(r: Reader, rest: string, indent: number): YamlValue {
     if (/^[|>][-+0-9]*\s*(?:#.*)?$/.test(rest)) return blockScalar(r, rest, indent);
   }
   if (first === '{' || first === '[' || first === '"' || first === "'") {
+    // The value may continue on later lines. Read them in growing batches until it closes.
+    const start = r.i;
     let text = rest;
-    const close = first === '{' ? '}' : first === '[' ? ']' : first;
+    let taken = 0;
+    let batch = 1;
     while (true) {
       try {
         const [value, end] = flow(text, 0, '');
-        if (stripComment(text.slice(end)).trim() !== '') {
-          throw new SyntaxError('YAML: unexpected content after a ' + (close === first ? 'quoted scalar' : 'flow collection'));
+        let used = 0;
+        for (let k = text.indexOf('\n'); k !== -1 && k < end; k = text.indexOf('\n', k + 1)) used++;
+        const lineEnd = text.indexOf('\n', end);
+        if (stripComment(text.slice(end, lineEnd === -1 ? text.length : lineEnd)).trim() !== '') {
+          throw new Error('YAML: unexpected content after a value');
         }
+        r.i = start + used;
         return value;
       } catch (err) {
-        if (err instanceof SyntaxError || r.i >= r.lines.length) throw err;
-        text += '\n' + r.lines[r.i++];
+        if (!(err instanceof Incomplete)) throw err;
+        if (start + taken >= r.lines.length) throw new Error(err.message);
+        const more = r.lines.slice(start + taken, start + taken + batch);
+        text += '\n' + more.join('\n');
+        taken += more.length;
+        batch *= 2;
       }
     }
   }
@@ -265,7 +349,8 @@ function inlineValue(r: Reader, rest: string, indent: number): YamlValue {
   return scalar(text);
 }
 
-function block(r: Reader, minIndent: number): YamlValue {
+function block(r: Reader, minIndent: number, depth = 0): YamlValue {
+  if (depth > MAX_DEPTH) throw new Error('YAML: nesting is too deep');
   r.skipBlank();
   if (r.i >= r.lines.length) return null;
   const indent = r.indent();
@@ -284,10 +369,10 @@ function block(r: Reader, minIndent: number): YamlValue {
       const body = stripComment(rest).trim();
       if (body === '') {
         r.i++;
-        out.push(block(r, indent + 1));
-      } else if (RE_KEY.test(body) && body[0] !== '{' && body[0] !== '[') {
+        out.push(block(r, indent + 1, depth + 1));
+      } else if (splitKey(body) !== null) {
         r.lines[r.i] = ' '.repeat(indent + pad) + rest.trimStart();
-        out.push(block(r, indent + pad));
+        out.push(block(r, indent + pad, depth + 1));
       } else {
         r.i++;
         out.push(inlineValue(r, rest.trim(), indent));
@@ -296,8 +381,7 @@ function block(r: Reader, minIndent: number): YamlValue {
     return out;
   }
 
-  const m = RE_KEY.exec(line);
-  if (!m || line[0] === '{' || line[0] === '[') {
+  if (splitKey(line) === null) {
     r.i++;
     return inlineValue(r, line.trim(), indent - 1);
   }
@@ -310,10 +394,10 @@ function block(r: Reader, minIndent: number): YamlValue {
     if (k < indent) break;
     if (k > indent) throw new Error('YAML: bad indentation of a mapping entry');
     const cur = r.lines[r.i].slice(indent);
-    const km = RE_KEY.exec(cur);
+    const km = splitKey(cur);
     if (!km) throw new Error('YAML: can not read a block mapping entry');
-    const key = String(flow(km[1], 0, '')[0]);
-    const rest = cur.slice(km[0].length);
+    const key = String(flow(km.key, 0, '')[0]);
+    const rest = cur.slice(km.length);
     r.i++;
     if (stripComment(rest).trim() === '') {
       r.skipBlank();
@@ -321,18 +405,28 @@ function block(r: Reader, minIndent: number): YamlValue {
         const next = r.indent();
         const nextLine = r.lines[r.i].slice(next);
         const seq = nextLine === '-' || nextLine.startsWith('- ');
-        out[key] = next > indent || (seq && next === indent) ? block(r, seq ? indent : indent + 1) : null;
+        assign(out, key, next > indent || (seq && next === indent) ? block(r, seq ? indent : indent + 1, depth + 1) : null);
       } else {
-        out[key] = null;
+        assign(out, key, null);
       }
     } else {
-      out[key] = inlineValue(r, rest.trim(), indent);
+      assign(out, key, inlineValue(r, rest.trim(), indent));
     }
   }
   return out;
 }
 
 export function parseYaml(src: string): YamlValue {
+  const trimmed = src.trim();
+  if (trimmed[0] === '{' || trimmed[0] === '[') {
+    try {
+      const [value, end] = flow(trimmed, 0, '');
+      if (skip(trimmed, end, false) === trimmed.length) return value;
+    } catch (err) {
+      if (err instanceof Incomplete) throw new Error(err.message);
+      throw err;
+    }
+  }
   const r = new Reader(src);
   const value = block(r, 0);
   r.skipBlank();

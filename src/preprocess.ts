@@ -1,3 +1,4 @@
+import { PeleError } from './errors.js';
 import { parseYaml, type YamlValue } from './util/yaml.js';
 
 export type Config = { [key: string]: YamlValue };
@@ -111,8 +112,14 @@ function directives(text: string, config: Config): string {
 
 export function preprocess(source: string): Preprocessed {
   let text = source.includes('\r') ? source.replace(/\r\n?/g, '\n') : source;
-  if (text.includes('<')) {
-    text = text.replace(RE_HTML_TAG, (_m, tag: string, attrs: string) => '<' + tag + attrs.replace(RE_ATTR, "='$1'") + '>');
+  // A tag needs a closing bracket, so nothing after the last one can match.
+  const lastClose = text.includes('<') ? text.lastIndexOf('>') : -1;
+  if (lastClose > 0) {
+    text =
+      text
+        .slice(0, lastClose + 1)
+        .replace(RE_HTML_TAG, (_m, tag: string, attrs: string) => '<' + tag + attrs.replace(RE_ATTR, "='$1'") + '>') +
+      text.slice(lastClose + 1);
   }
 
   const config: Config = {};
@@ -126,7 +133,12 @@ export function preprocess(source: string): Preprocessed {
           .map((line) => (line.startsWith(front.indent) ? line.slice(front.indent.length) : line))
           .join('\n')
       : front.body;
-    const parsed = parseYaml(body);
+    let parsed: YamlValue;
+    try {
+      parsed = parseYaml(body);
+    } catch (error) {
+      throw new PeleError(`Front matter is not valid YAML. ${(error as Error).message}`, 'syntax');
+    }
     if (isRecord(parsed)) {
       if (parsed.title) title = String(parsed.title);
       if (isRecord(parsed.config)) merge(config, parsed.config);
@@ -142,19 +154,68 @@ export function preprocess(source: string): Preprocessed {
   return { text: cleanupComments(text), title, config };
 }
 
-const RE_STYLE_HASH = /style.*:\S*#.*;/g;
-const RE_CLASSDEF_HASH = /classDef.*:\S*#.*;/g;
 const RE_ENTITY = /#\w+;/g;
 const RE_INT = /^\+?\d+$/;
+const RE_LINE_BREAK = new RegExp('[\\n\\r' + String.fromCharCode(0x2028, 0x2029) + ']', 'g');
+
+function isWhitespace(c: number): boolean {
+  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
+  return (
+    c === 0xa0 ||
+    c === 0x1680 ||
+    (c >= 0x2000 && c <= 0x200a) ||
+    c === 0x2028 ||
+    c === 0x2029 ||
+    c === 0x202f ||
+    c === 0x205f ||
+    c === 0x3000 ||
+    c === 0xfeff
+  );
+}
+
+// Does what Mermaid's `text.replace(/keyword.*:\S*#.*;/g, drop the last character)` does:
+// on a line where the keyword is followed by a colon, a color-like `#`, and later a semicolon,
+// the last semicolon goes. Mermaid's regex backtracks without bound; this is one pass.
+function dropColorSemicolons(text: string, keyword: string): string {
+  let from = text.indexOf(keyword);
+  if (from === -1) return text;
+  let out = '';
+  let last = 0;
+  while (from !== -1) {
+    RE_LINE_BREAK.lastIndex = from;
+    const lineEnd = RE_LINE_BREAK.test(text) ? RE_LINE_BREAK.lastIndex - 1 : text.length;
+    let afterColon = false;
+    let hash = -1;
+    for (let j = from + keyword.length; j < lineEnd; j++) {
+      const c = text.charCodeAt(j);
+      if (c === 58) {
+        afterColon = true;
+      } else if (c === 35) {
+        if (afterColon) {
+          hash = j;
+          break;
+        }
+      } else if (isWhitespace(c)) {
+        afterColon = false;
+      }
+    }
+    if (hash !== -1) {
+      const semi = text.lastIndexOf(';', lineEnd - 1);
+      if (semi > hash) {
+        out += text.slice(last, semi);
+        last = semi + 1;
+      }
+    }
+    from = lineEnd >= text.length ? -1 : text.indexOf(keyword, lineEnd + 1);
+  }
+  return last === 0 ? text : out + text.slice(last);
+}
 
 // Mermaid hides `#name;` entity codes behind placeholder characters so `#` and `;` survive parsing.
 export function encodeEntities(text: string): string {
   if (!text.includes('#')) return text;
-  return text
-    .replace(RE_STYLE_HASH, (s) => s.substring(0, s.length - 1))
-    .replace(RE_CLASSDEF_HASH, (s) => s.substring(0, s.length - 1))
-    .replace(RE_ENTITY, (s) => {
-      const inner = s.substring(1, s.length - 1);
-      return (RE_INT.test(inner) ? 'ﬂ°°' : 'ﬂ°') + inner + '¶ß';
-    });
+  return dropColorSemicolons(dropColorSemicolons(text, 'style'), 'classDef').replace(RE_ENTITY, (s) => {
+    const inner = s.substring(1, s.length - 1);
+    return (RE_INT.test(inner) ? 'ﬂ°°' : 'ﬂ°') + inner + '¶ß';
+  });
 }

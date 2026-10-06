@@ -564,22 +564,25 @@ function wave(w: number, h: number, a: string): string {
 
 const FALLBACK = SHAPES.rect;
 
+// Looked up through a Map so that names like "constructor" cannot reach Object.prototype.
+const BY_NAME = new Map(Object.entries(SHAPES));
+
 export function shapeSize(shape: string, tw: number, th: number): ShapeSize {
-  return (SHAPES[shape] ?? FALLBACK).size(tw, th);
+  return (BY_NAME.get(shape) ?? FALLBACK).size(tw, th);
 }
 
 export function drawShape(shape: string, w: number, h: number, a: string, line: string): string {
-  return (SHAPES[shape] ?? FALLBACK).draw(w, h, a, line);
+  return (BY_NAME.get(shape) ?? FALLBACK).draw(w, h, a, line);
 }
 
 export function shapeInset(shape: string, w: number, h: number, side: number): number {
-  return SHAPES[shape]?.inset?.(w, h, side) ?? 0;
+  return BY_NAME.get(shape)?.inset?.(w, h, side) ?? 0;
 }
 
 export function shapeHasLabel(shape: string): boolean {
-  return SHAPES[shape]?.noLabel !== true;
+  return BY_NAME.get(shape)?.noLabel !== true;
 }
 
 export function hasShape(shape: string): boolean {
-  return shape in SHAPES;
+  return BY_NAME.has(shape);
 }

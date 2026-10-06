@@ -113,31 +113,49 @@ export function buildFlowGraph(model: FlowchartModel & Pick<FlowDb, 'subgraph'>,
   const childrenOf = new Map<string, string[]>();
   for (const sg of subgraphs) {
     const parent = subgraphParent.get(sg.id);
-    if (parent !== undefined) childrenOf.set(parent, [...(childrenOf.get(parent) ?? []), sg.id]);
+    if (parent === undefined) continue;
+    const kids = childrenOf.get(parent);
+    if (kids) kids.push(sg.id);
+    else childrenOf.set(parent, [sg.id]);
   }
   let nextIndex = 0;
-  const walk = (id: string): void => {
-    declarationIndex.set(id, nextIndex++);
-    for (const child of childrenOf.get(id) ?? []) walk(child);
-  };
-  for (const sg of subgraphs) if (!subgraphParent.has(sg.id)) walk(sg.id);
+  for (const sg of subgraphs) {
+    if (subgraphParent.has(sg.id)) continue;
+    const pending = [sg.id];
+    while (pending.length > 0) {
+      const id = pending.pop()!;
+      if (declarationIndex.has(id)) continue;
+      declarationIndex.set(id, nextIndex++);
+      const kids = childrenOf.get(id);
+      if (kids) for (let i = kids.length - 1; i >= 0; i--) pending.push(kids[i]);
+    }
+  }
 
   const isCollapsed = (id: string): boolean => model.subgraph(id)?.metadata?.view === 'collapsed';
+  let anyCollapsed = false;
+  for (const sg of subgraphs) if (sg.metadata?.view === 'collapsed') anyCollapsed = true;
+  // The outermost collapsed subgraph around each subgraph, resolved once per chain of parents.
+  const outermost = new Map<string, string | undefined>();
   const outermostCollapsed = (id: string): string | undefined => {
-    let result: string | undefined;
+    const chain: string[] = [];
     const seen = new Set<string>();
     let current: string | undefined = id;
-    while (current !== undefined && !seen.has(current)) {
+    while (current !== undefined && !outermost.has(current) && !seen.has(current)) {
       seen.add(current);
-      if (isCollapsed(current)) result = current;
+      chain.push(current);
       current = subgraphParent.get(current);
+    }
+    let result = current !== undefined ? outermost.get(current) : undefined;
+    for (let i = chain.length - 1; i >= 0; i--) {
+      if (result === undefined && isCollapsed(chain[i])) result = chain[i];
+      outermost.set(chain[i], result);
     }
     return result;
   };
 
   const hidden = new Set<string>();
   const collapsedInto = new Map<string, string>();
-  for (const sg of subgraphs) {
+  for (const sg of anyCollapsed ? subgraphs : []) {
     const ancestor = outermostCollapsed(sg.id);
     if (ancestor === undefined) continue;
     if (sg.id !== ancestor) {

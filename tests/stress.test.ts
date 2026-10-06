@@ -1,0 +1,69 @@
+import { describe, expect, it } from 'vitest';
+import { PeleError, parse, render } from '../src/index.js';
+import { tokenize } from '../src/diagrams/flowchart/lexer.js';
+import { encodeEntities, preprocess } from '../src/preprocess.js';
+import { metricsMeasurer } from '../src/text/measurer.js';
+
+// Inputs built to trigger worst cases: regex backtracking, quadratic scans, deep recursion,
+// and oversized layouts. Each must finish quickly and either succeed or fail with a PeleError.
+// The bounds are loose; a regression here is seconds or a hang, not milliseconds.
+
+const N = 50000;
+const big = { measurer: metricsMeasurer, limit: Infinity };
+const repeat = (count: number, line: (i: number) => string): string => Array.from({ length: count }, (_, i) => line(i)).join('');
+
+const CASES: [string, () => unknown][] = [
+  ['comment stripping over blank lines', () => preprocess('graph TD\n' + ('\n' + ' '.repeat(4)).repeat(10000) + '%% c\nA')],
+  ['unterminated comment markers', () => preprocess('graph TD\nA\n%%' + 'x%%'.repeat(16000))],
+  ['tag-like text with no closing bracket', () => preprocess('graph TD\nA["' + '<a'.repeat(N / 2) + '"]')],
+  ['unclosed init directive', () => preprocess('%%{init: ' + '{"a":'.repeat(8000) + '\ngraph TD\nA')],
+  ['front matter fence over blank lines', () => preprocess('---\n' + ' \n'.repeat(16000) + 'graph TD\nA')],
+  ['style with colors and no semicolon', () => encodeEntities('graph TD\nstyle A ' + 'style:x#'.repeat(N / 8))],
+  ['classDef made of colons and hashes', () => encodeEntities('classDef ' + ':#'.repeat(N / 2))],
+  ['long line that mentions direction', () => tokenize('graph TD;' + 'A-->B;'.repeat(N / 6) + 'direction XX')],
+  ['long unspaced chain ending in metadata', () => tokenize('graph TD;A' + '-->D'.repeat(N / 4) + '@{shape: rect}\n')],
+  ['edge text of spaces', () => tokenize('graph TD;A -- ' + ' '.repeat(N) + 'x --> B')],
+  ['edge text of link-like characters', () => tokenize('graph TD;A -- ' + 'xo< -'.repeat(N / 5) + ' --> B')],
+  ['ellipse text of spaces and tildes', () => tokenize('graph TD;A(-' + ' ~'.repeat(N / 2) + '-)')],
+  ['runs of dashes, dots, equals', () => tokenize('graph TD;A' + '-'.repeat(N) + '.'.repeat(N) + '='.repeat(N))],
+  ['20,000 nested subgraphs', () => parse('graph TD\n' + 'subgraph s\n'.repeat(20000) + 'A\n' + 'end\n'.repeat(20000), big)],
+  ['3,000 nested subgraphs, rendered', () => render('graph TD\n' + repeat(3000, (i) => `subgraph s${i}\n`) + 'A-->B\n' + 'end\n'.repeat(3000), big)],
+  ['deeply bracketed metadata', () => parse('graph TD\nA@{ a: ' + '['.repeat(20000) + ' }\n', big)],
+  ['unclosed metadata over many lines', () => parse('graph TD\nA@{\n a: {\n' + ' b: 1,\n'.repeat(5000) + '}\n', big)],
+  ['5,000 sibling subgraphs', () => render('graph TD\n' + repeat(5000, (i) => `subgraph s${i}\nn${i}\nend\n`), big)],
+  ['chain of 5,000', () => render('graph TD\n' + repeat(5000, (i) => `n${i}-->n${i + 1}\n`), big)],
+  ['star of 5,000', () => render('graph TD\n' + repeat(5000, (i) => `c-->n${i}\n`), big)],
+  ['3,000 long edges over a chain of 3,000', () => render('graph TD\n' + repeat(3000, (i) => `n${i}-->n${i + 1}\nn0-->n${i + 2}\n`), big)],
+  ['complete graph of 60', () => {
+    let s = 'graph TD\n';
+    for (let i = 0; i < 60; i++) for (let j = i + 1; j < 60; j++) s += `n${i}-->n${j}\n`;
+    return render(s, big);
+  }],
+  ['2,000 parallel edges and 2,000 self loops', () => render('graph TD\n' + 'A-->B\n'.repeat(2000) + 'A-->A\n'.repeat(2000), big)],
+  ['one 50,000 character label', () => render('graph TD\nA["' + 'word '.repeat(N / 5) + '"]', big)],
+  ['label of emphasis markers', () => render('graph TD\nA["`' + '*a _b '.repeat(N / 6) + '`"]', big)],
+  ['label of entities and line breaks', () => render('graph TD\nA["' + '#35;&amp;<br>'.repeat(N / 13) + '"]', big)],
+  ['label of unclosed entity placeholders', () => render('graph TD\nA["' + 'ﬂ°'.repeat(N / 2) + '¶x"]', big)],
+  ['metadata key followed by spaces', () => parse('graph TD\nA@{\n a' + ' '.repeat(N) + '\n}\n', big)],
+  ['link wrapped in layers of entity encoding', () => render('graph TD\nA\nclick A "&' + '#38;'.repeat(N / 4) + 'x"', big)],
+  ['1,000 edges of length ten', () => render('graph TD\n' + repeat(1000, (i) => `n${i} ------------> n${i + 1}\n`), big)],
+];
+
+describe('worst cases', () => {
+  for (const [name, run] of CASES) {
+    it(name, () => {
+      const started = performance.now();
+      try {
+        run();
+      } catch (error) {
+        expect(error, (error as Error).message).toBeInstanceOf(PeleError);
+      }
+      expect(performance.now() - started).toBeLessThan(3000);
+    }, 30_000);
+  }
+
+  it('refuses source over the default limit', () => {
+    expect(() => render('graph TD\n' + 'A-->B\n'.repeat(10000))).toThrow(/limit of 50000/);
+    expect(render('graph TD\n' + 'A-->B\n'.repeat(10000), big).svg).toContain('<svg');
+  });
+});

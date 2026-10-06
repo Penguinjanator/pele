@@ -43,7 +43,11 @@ A subgraph with no name is accepted. Mermaid 12.1.0 fails on it.
 
 ### Limits
 
-Pele has no limit on the number of edges. Mermaid stops at 500 unless configured otherwise. Use the [`limit`](/api#renderoptions) option to cap the length of the source.
+Pele has no limit on the number of edges. Mermaid stops at 500 unless configured otherwise.
+
+Like Mermaid, Pele refuses source longer than 50,000 characters by default. Change this with the [`limit`](/api#renderoptions) option.
+
+In a very large graph, the longest edges are drawn as single curves that may pass behind nodes, instead of bending around every rank they cross.
 
 ### Labels
 

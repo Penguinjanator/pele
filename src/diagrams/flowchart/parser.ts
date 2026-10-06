@@ -68,6 +68,13 @@ for (const t of [
 const STYLE_PART = new Uint8Array(T.EOF + 1);
 for (const t of [T.NUM, T.NODE_STRING, T.COLON, T.SPACE, T.BRKT, T.STYLE]) STYLE_PART[t] = 1;
 
+interface Frame {
+  id: FlowText | undefined;
+  title: FlowText | undefined;
+  list: DocItem[];
+  collect: boolean;
+}
+
 const TEXT_TOKENS = "'UNICODE_TEXT', 'TEXT', 'TAGSTART'";
 const NO_ITEMS: string[] = [];
 
@@ -461,14 +468,13 @@ export function parseFlowchart(source: string, db: FlowDb): void {
     }
   };
 
-  const subgraphStatement = (): string => {
+  // Reads a subgraph header up to the separator that starts its body.
+  const subgraphHeader = (): Frame => {
     i++;
     let t = types[i];
     if (t === T.NEWLINE || t === T.SEMI || t === T.EOF) {
       i++;
-      const list = document(true);
-      expect(T.end);
-      return db.addSubGraph(undefined, list, undefined);
+      return { id: undefined, title: undefined, list: [], collect: false };
     }
     expect(T.SPACE, "'SEMI', 'NEWLINE', 'EOF'");
     const id = textNoTags();
@@ -481,9 +487,7 @@ export function parseFlowchart(source: string, db: FlowDb): void {
     t = types[i];
     if (t !== T.NEWLINE && t !== T.SEMI && t !== T.EOF) fail("'SEMI', 'NEWLINE', 'EOF', 'SQS'");
     i++;
-    const list = document(true);
-    expect(T.end);
-    return db.addSubGraph(id, list, title);
+    return { id, title, list: [], collect: false };
   };
 
   const statement = (): DocItem => {
@@ -524,8 +528,6 @@ export function parseFlowchart(source: string, db: FlowDb): void {
         clickStatement();
         separator();
         return NO_ITEMS;
-      case T.subgraph:
-        return subgraphStatement();
       case T.direction_tb:
       case T.direction_bt:
       case T.direction_rl:
@@ -559,20 +561,39 @@ export function parseFlowchart(source: string, db: FlowDb): void {
     }
   };
 
-  function document(collect: boolean): DocItem[] {
-    const list: DocItem[] = [];
+  // Subgraphs nest without recursion: each open one keeps the list and collect flag of its parent.
+  const document = (): void => {
+    const open: Frame[] = [];
+    let list: DocItem[] = [];
+    let collect = false;
     while (true) {
       const t = types[i];
-      if (t === T.END || t === T.end) return list;
-      if (t === T.SEMI || t === T.NEWLINE || t === T.SPACE || t === T.EOF) {
+      if (t === T.END) break;
+      if (t === T.end) {
+        const frame = open.pop();
+        if (frame === undefined) break;
+        i++;
+        const id = db.addSubGraph(frame.id, list, frame.title);
+        list = frame.list;
+        collect = frame.collect;
+        if (collect) list.push(id);
+      } else if (t === T.SEMI || t === T.NEWLINE || t === T.SPACE || t === T.EOF) {
         if (collect) list.push(texts[i]);
         i++;
-        continue;
+      } else if (t === T.subgraph) {
+        const frame = subgraphHeader();
+        frame.list = list;
+        frame.collect = collect;
+        open.push(frame);
+        list = [];
+        collect = true;
+      } else {
+        const item = statement();
+        if (collect && (!Array.isArray(item) || item.length > 0)) list.push(item);
       }
-      const item = statement();
-      if (collect && (!Array.isArray(item) || item.length > 0)) list.push(item);
     }
-  }
+    if (open.length > 0) fail("'end'");
+  };
 
   while (types[i] === T.SPACE || types[i] === T.NEWLINE) i++;
   expect(T.GRAPH, "'SPACE', 'NEWLINE'");
@@ -593,7 +614,7 @@ export function parseFlowchart(source: string, db: FlowDb): void {
     i++;
     db.setDirection(dir);
   }
-  document(false);
+  document();
   if (types[i] !== T.END) fail(STATEMENT_START);
 }
 

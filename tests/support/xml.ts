@@ -28,3 +28,29 @@ export function assertWellFormed(xml: string): void {
   }
   if (stack.length > 0) throw new Error(`Unclosed <${stack[stack.length - 1]}>`);
 }
+
+export interface XmlElement {
+  name: string;
+  attrs: Map<string, string>;
+}
+
+// Lists every element with its attributes. Call assertWellFormed first.
+export function elements(xml: string): XmlElement[] {
+  const out: XmlElement[] = [];
+  const tag = /<([A-Za-z][\w:.-]*)((?:\s+[\w:.-]+="[^"<]*")*)\s*\/?>/g;
+  const attr = /([\w:.-]+)="([^"<]*)"/g;
+  let m: RegExpExecArray | null;
+  while ((m = tag.exec(xml)) !== null) {
+    const attrs = new Map<string, string>();
+    let a: RegExpExecArray | null;
+    attr.lastIndex = 0;
+    while ((a = attr.exec(m[2])) !== null) {
+      attrs.set(
+        a[1],
+        a[2].replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+      );
+    }
+    out.push({ name: m[1], attrs });
+  }
+  return out;
+}

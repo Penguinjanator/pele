@@ -19,7 +19,10 @@ export function sanitizeUrl(url: string): string {
   if (!url) return BLANK;
   let decoded = decode(url.trim());
   let more: RegExpMatchArray | null;
+  let rounds = 0;
   do {
+    // Each round peels one layer of encoding. A URL wrapped this many times is not a real one.
+    if (++rounds > 32) return BLANK;
     decoded = decoded
       .replace(RE_CTRL, '')
       .replace(RE_HTML_ENTITIES, (_m, dec) => String.fromCharCode(dec))

@@ -87,13 +87,13 @@ const INTERNAL = [
 ];
 
 // Shapes produced by the bracket syntax, mapped to their documented names.
-const SYNTAX: Record<string, string> = {
-  square: 'rect',
-  round: 'rounded',
-  ellipse: 'ellipse',
-  hexagon: 'hex',
-  diamond: 'diam',
-};
+const SYNTAX = new Map([
+  ['square', 'rect'],
+  ['round', 'rounded'],
+  ['ellipse', 'ellipse'],
+  ['hexagon', 'hex'],
+  ['diamond', 'diam'],
+]);
 
 const canonical = new Map<string, string>();
 for (const names of SHAPES) for (const name of names) canonical.set(name, names[0]);
@@ -105,5 +105,5 @@ export function isValidShape(name: string): boolean {
 
 export function canonicalShape(name: string | undefined): string {
   if (name === undefined) return 'rect';
-  return SYNTAX[name] ?? canonical.get(name) ?? 'rect';
+  return SYNTAX.get(name) ?? canonical.get(name) ?? 'rect';
 }
