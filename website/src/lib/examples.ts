@@ -76,6 +76,7 @@ export function sampleGroups(corpora: Record<string, unknown>): SampleGroup[] {
 // Names for the examples page, in the order the types are shown.
 const TYPE_TITLES = new Map([
   ['flowchart', 'Flowchart'],
+  ['swimlane', 'Swimlane'],
   ['sequence', 'Sequence'],
   ['class', 'Class'],
   ['state', 'State'],

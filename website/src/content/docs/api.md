@@ -39,7 +39,7 @@ function draw(source: string, element: HTMLElement) {
 }
 ```
 
-Pele is in early development and has not had a stable release. Most Mermaid diagram types are implemented. See [Examples](/examples) for what they look like and [Compatibility](/compatibility) for the full list.
+Pele is in early development and has not had a stable release. Every diagram type built into Mermaid is implemented. See [Examples](/examples) for what they look like and [Compatibility](/compatibility) for the full list.
 
 ## render
 
@@ -150,7 +150,7 @@ supports('sequenceDiagram\n  A->>B: Hi');    // false
 
 | Code | Meaning |
 | --- | --- |
-| `unsupported-diagram` | The text is not a Mermaid diagram, or its type is not implemented yet. |
+| `unsupported-diagram` | The text is not a Mermaid diagram, or its type is one Pele does not draw. |
 | `syntax` | The diagram could not be parsed. `line`, `column`, and `snippet` locate the problem. |
 | `semantic` | The diagram parsed but describes something invalid. |
 | `limit` | The text is longer than the `limit` option, or is nested too deeply to process. |

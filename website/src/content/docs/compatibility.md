@@ -11,45 +11,45 @@ Pele targets the syntax of Mermaid 12.1.0. Newer Mermaid syntax is adopted when 
 
 ## Diagram types
 
-See [Examples](/examples) for a drawing of each implemented type.
+Pele draws every diagram type built into Mermaid 12.1.0. See [Examples](/examples) for a drawing of each one.
 
-| Type | Keywords | Status |
-| --- | --- | --- |
-| Flowchart | `graph`, `flowchart` | Implemented |
-| Sequence | `sequenceDiagram` | Implemented |
-| Class | `classDiagram` | Implemented |
-| State | `stateDiagram`, `stateDiagram-v2` | Implemented |
-| Entity relationship | `erDiagram` | Implemented |
-| Gantt | `gantt` | Implemented |
-| Git graph | `gitGraph` | Implemented |
-| Pie | `pie` | Implemented |
-| Mindmap | `mindmap` | Implemented |
-| Kanban | `kanban` | Implemented |
-| Timeline | `timeline` | Implemented |
-| User journey | `journey` | Implemented |
-| Quadrant chart | `quadrantChart` | Implemented |
-| XY chart | `xychart`, `xychart-beta` | Implemented |
-| Requirement | `requirementDiagram` | Implemented |
-| Sankey | `sankey`, `sankey-beta` | Implemented |
-| Architecture | `architecture-beta` | Implemented |
-| C4 | `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` | Implemented |
-| Block | `block`, `block-beta` | Implemented |
-| Agentflow | `agentflow-beta` | Implemented |
-| Railroad | `railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta` | Implemented |
-| Tree view | `treeView-beta` | Implemented |
-| Cynefin | `cynefin-beta` | Implemented |
-| Wardley map | `wardley-beta` | Implemented |
-| Event modeling | `eventmodeling` | Implemented |
-| Use case | `usecase-beta` | Implemented |
-| Venn | `venn-beta` | Implemented |
-| Ishikawa | `ishikawa`, `ishikawa-beta` | Implemented |
-| Packet | `packet`, `packet-beta` | Implemented |
-| Radar | `radar-beta` | Implemented |
-| Treemap | `treemap`, `treemap-beta` | Implemented |
-| Info | `info` | Implemented |
-| Swimlane | `swimlane-beta` | Planned |
+| Type | Keywords |
+| --- | --- |
+| Flowchart | `graph`, `flowchart` |
+| Swimlane | `swimlane-beta` |
+| Sequence | `sequenceDiagram` |
+| Class | `classDiagram` |
+| State | `stateDiagram`, `stateDiagram-v2` |
+| Entity relationship | `erDiagram` |
+| Gantt | `gantt` |
+| Git graph | `gitGraph` |
+| Pie | `pie` |
+| Mindmap | `mindmap` |
+| Kanban | `kanban` |
+| Timeline | `timeline` |
+| User journey | `journey` |
+| Quadrant chart | `quadrantChart` |
+| XY chart | `xychart`, `xychart-beta` |
+| Requirement | `requirementDiagram` |
+| Sankey | `sankey`, `sankey-beta` |
+| Architecture | `architecture-beta` |
+| C4 | `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` |
+| Block | `block`, `block-beta` |
+| Agentflow | `agentflow-beta` |
+| Railroad | `railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta` |
+| Tree view | `treeView-beta` |
+| Cynefin | `cynefin-beta` |
+| Wardley map | `wardley-beta` |
+| Event modeling | `eventmodeling` |
+| Use case | `usecase-beta` |
+| Venn | `venn-beta` |
+| Ishikawa | `ishikawa`, `ishikawa-beta` |
+| Packet | `packet`, `packet-beta` |
+| Radar | `radar-beta` |
+| Treemap | `treemap`, `treemap-beta` |
+| Info | `info` |
 
-For a type that is not implemented, [`supports()`](/api#supports) returns `false` and [`render()`](/api#render) throws a `PeleError` with the code `unsupported-diagram`. An app can use this to fall back to Mermaid for those diagrams.
+ZenUML is a separate Mermaid plugin and is not supported. For text that Pele cannot draw, [`supports()`](/api#supports) returns `false` and [`render()`](/api#render) throws a `PeleError` with the code `unsupported-diagram`. An app can use this to fall back to Mermaid.
 
 ## Syntax
 
