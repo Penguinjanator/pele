@@ -1,4 +1,6 @@
 import type { CNode } from '../layout/compound.js';
+import type { Label } from '../text/label.js';
+import { labelSvg, type IconResolver } from './builder.js';
 
 // The x of every route point, by its rounded y: the edges that cross a cluster's top border.
 export type Crossings = Map<number, number[]>;
@@ -33,4 +35,24 @@ export function clusterTitleX(c: CNode, width: number, crossings: Crossings, pad
     }
   }
   return best;
+}
+
+// Whether an edge that enters at the top runs through a title placed at `x`.
+export function titleCrossed(c: CNode, width: number, x: number, crossings: Crossings): boolean {
+  const xs = width > 0 ? crossings.get(Math.round(c.y - c.h / 2)) : undefined;
+  if (xs === undefined) return false;
+  const left = c.x - c.w / 2;
+  for (const cx of xs) if (cx > left && cx < left + c.w && Math.abs(cx - x) < width / 2 + 4) return true;
+  return false;
+}
+
+// A title that an edge runs through, to be drawn over the edges: the text, on an outline that
+// breaks the line around it.
+export function struckTitle(label: Label, x: number, y: number, attrs: string, id: string, icons?: IconResolver): string {
+  return (
+    `<g class="pele-cluster-title" data-id="${id}">` +
+    labelSvg(label, x, y, ' fill="none" stroke="var(--_bg)" stroke-width="5" stroke-linejoin="round"', icons) +
+    labelSvg(label, x, y, attrs, icons) +
+    '</g>'
+  );
 }

@@ -2,7 +2,7 @@ import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode, 
 import type { LayeredOptions } from '../../layout/layered.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
-import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
+import { clusterTitleX, markCrossings, struckTitle, titleCrossed, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape, insetRoute, shapeHasLabel, shapeSize } from '../../svg/shapes.js';
@@ -12,7 +12,7 @@ import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
 import { imageUrl, linkUrl, safeUrl, sanitizeUrl } from '../../util/url.js';
 import type { IconResolver, LinkInfo, RenderOptions, Rendered } from '../../types.js';
-import { runsAcross, turnToFit } from '../common/fit-width.js';
+import { runsAcross, tighten, turnToFit } from '../common/fit-width.js';
 import type { FlowDb } from './db.js';
 import { buildFlowGraph, type FlowGraph, type GraphEdge, type GraphNode } from './graph.js';
 import { canonicalShape } from './shapes.js';
@@ -54,12 +54,14 @@ interface NodeView {
 }
 
 export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptions, variant?: FlowVariant): Rendered {
-  if (variant !== undefined || !runsAcross(db.direction)) return draw(db, config, options, variant, false);
-  return turnToFit(options, (down) => draw(db, config, options, undefined, down));
+  if (variant !== undefined) return draw(db, config, options, variant, false, false);
+  const fitted = (down: boolean): Rendered => tighten(options, (tight) => draw(db, config, options, undefined, down, tight));
+  return runsAcross(db.direction) ? turnToFit(options, fitted) : fitted(false);
 }
 
-// `turned` draws a flowchart that runs across as one that runs down.
-function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowVariant | undefined, turned: boolean): Rendered {
+// `turned` draws a flowchart that runs across as one that runs down. `tight` sets nodes closer together.
+function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowVariant | undefined, turned: boolean, tight: boolean): Rendered {
+  const groupPad = tight ? 12 : GROUP_PAD;
   const own = variant ? config[variant.type] : undefined;
   const flow = (typeof own === 'object' && own !== null && !Array.isArray(own) ? own : (config.flowchart ?? {})) as Config;
   const graph = buildFlowGraph(db, typeof flow.curve === 'string' ? flow.curve : undefined);
@@ -91,10 +93,10 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
       c = cnode(0, 0);
       c.isGroup = true;
       c.dir = node.dir ? direction(node.dir) : undefined;
-      c.padX = GROUP_PAD;
+      c.padX = groupPad;
       c.padTop = label.height > 0 ? label.height + 16 : GROUP_PAD;
-      c.padBottom = GROUP_PAD;
-      c.minW = label.width + 2 * GROUP_PAD - 12;
+      c.padBottom = groupPad;
+      c.minW = label.width + 2 * groupPad - 12;
     } else {
       const shape = canonicalShape(node.shape);
       const text = node.img || node.icon || shapeHasLabel(shape) ? node.label : undefined;
@@ -166,9 +168,9 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
   }
 
   const layout = (variant?.layout ?? compoundLayout)(cnodes, cedges, rootDir, {
-    nodeSep: numberOption(flow, 'nodeSpacing', NODE_SEP),
+    nodeSep: numberOption(flow, 'nodeSpacing', NODE_SEP) * (tight ? 0.5 : 1),
     edgeSep: EDGE_SEP,
-    rankSep: numberOption(flow, 'rankSpacing', RANK_SEP),
+    rankSep: numberOption(flow, 'rankSpacing', RANK_SEP) * (tight ? 0.75 : 1),
     portSep: 20,
   });
 
@@ -192,6 +194,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
   }
 
   let clusters = '';
+  let struckTitles = '';
   let nodesOut = '';
   for (let i = 0; i < views.length; i++) {
     const view = views[i];
@@ -206,13 +209,17 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
       continue;
     }
     if (c.isGroup) {
-      const titleX = clusterTitleX(c, view.label.width, crossings, GROUP_PAD);
+      const titleX = clusterTitleX(c, view.label.width, crossings, groupPad);
+      const titleY = y - c.h / 2 + 8 + view.label.height / 2;
+      const titleAttrs = ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`;
+      const struck = titleCrossed(c, view.label.width, titleX, crossings);
+      if (struck) struckTitles += struckTitle(view.label, titleX, titleY, titleAttrs, id, icons);
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${id}">` +
         `<rect x="${num(x - c.w / 2)}" y="${num(y - c.h / 2)}" width="${num(c.w)}" height="${num(c.h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${
           view.style.shape
         }/>` +
-        labelSvg(view.label, titleX, y - c.h / 2 + 8 + view.label.height / 2, ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`, icons) +
+        (struck ? '' : labelSvg(view.label, titleX, titleY, titleAttrs, icons)) +
         '</g>';
       continue;
     }
@@ -325,6 +332,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
+      (struckTitles ? `<g class="pele-cluster-titles">${struckTitles}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${edgeSize}">${labelsOut}</g>` : '') +
       `<g class="pele-nodes">${nodesOut}</g>`
   );

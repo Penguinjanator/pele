@@ -111,18 +111,47 @@ describe('the maxWidth option', () => {
 
   it('keeps the direction when told to, at a width over the breakpoint, and when across fits', () => {
     for (const [name, source] of ACROSS) {
-      const { svg: across, width } = render(source, options);
-      expect(render(source, { ...options, maxWidth: PHONE, autoDirection: false }).svg, name).toBe(across);
-      expect(render(source, { ...options, maxWidth: 640 }).svg, name).toBe(across);
-      expect(render(source, { ...options, maxWidth: PHONE, directionBreakpoint: 300 }).svg, name).toBe(across);
-      // With the breakpoint raised, a diagram a little too wide for a wide container turns too.
-      expect(render(source, { ...options, maxWidth: width - 1, directionBreakpoint: width + 500 }).svg, name).not.toBe(across);
+      const across = render(source, options);
+      // Still running across: no taller than it was. It may be set closer together to fit.
+      const stays = (extra: object): void => {
+        const drawn = render(source, { ...options, ...extra });
+        expect(drawn.height, name).toBeLessThanOrEqual(across.height);
+        expect(drawn.width, name).toBeLessThanOrEqual(across.width);
+      };
+      stays({ maxWidth: PHONE, autoDirection: false });
+      stays({ maxWidth: 640 });
+      stays({ maxWidth: PHONE, directionBreakpoint: 300 });
+      // With the breakpoint raised, a diagram too wide for a wide container turns too.
+      const raised = render(source, { ...options, maxWidth: Math.round(across.width / 2), directionBreakpoint: across.width });
+      expect(raised.height, name).toBeGreaterThan(across.height);
     }
     const small = 'flowchart LR\n  A --> B';
     expect(render(small, { ...options, maxWidth: PHONE }).svg).toBe(render(small, options).svg);
     // Lanes are not turned: across and down are different diagrams there.
     const lanes = 'swimlane-beta LR\n  subgraph One\n    A[First step] --> B[Second step]\n  end\n  subgraph Two\n    C[Third step] --> D[Fourth step]\n  end\n  B --> C';
     expect(render(lanes, { ...options, maxWidth: 100 }).svg).toBe(render(lanes, options).svg);
+  });
+
+  it('gives up spare room in a class diagram or flowchart that does not fit', () => {
+    const namespaces =
+      '---\nconfig:\n  class:\n    hierarchicalNamespaces: false\n---\nclassDiagram\n  namespace Company.Engineering.Backend {\n    class Developer\n  }\n  namespace Company.Engineering.Frontend {\n    class Designer\n  }\n' +
+      '  namespace Company {\n    class CEO\n  }\n  CEO --> Developer : oversees\n  CEO --> Designer : oversees';
+    const loose = render(namespaces, options);
+    const tight = render(namespaces, { ...options, maxWidth: 700 });
+    expect(loose.width).toBeGreaterThan(700);
+    expect(tight.width).toBeLessThan(loose.width * 0.7);
+    // The names that the arrows now run through are drawn over them.
+    expect(loose.svg).not.toContain('pele-cluster-title"');
+    expect(tight.svg.match(/class="pele-cluster-title"/g)?.length).toBe(2);
+    expect(tight.svg.indexOf('pele-cluster-titles')).toBeGreaterThan(tight.svg.indexOf('class="pele-edges"'));
+    assertInert(tight.svg, 'class');
+
+    const wide = 'flowchart TB\n  A[Start here] --> ' + Array.from({ length: 8 }, (_, i) => `N${i}[Step number ${i}]`).join(' & ');
+    const natural = render(wide, options);
+    const closer = render(wide, { ...options, maxWidth: 700 });
+    expect(natural.width).toBeGreaterThan(700);
+    expect(closer.width).toBeLessThan(natural.width);
+    expect(closer.svg.match(/class="pele-node/g)?.length).toBe(natural.svg.match(/class="pele-node/g)?.length);
   });
 
   it('ignores a width that is not a positive number, and survives a tiny one', { timeout: 120000 }, () => {

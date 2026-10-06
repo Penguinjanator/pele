@@ -54,3 +54,13 @@ export function turnToFit(options: RenderOptions, draw: (down: boolean) => Rende
 export function runsAcross(direction: string | undefined): boolean {
   return direction === 'LR' || direction === 'RL';
 }
+
+// Draws a diagram with room to spare, and tightly instead when that does not fit the width the
+// host has and tight is narrower.
+export function tighten(options: RenderOptions, draw: (tight: boolean) => Rendered): Rendered {
+  const loose = draw(false);
+  const available = options.maxWidth;
+  if (available === undefined || !(available > 0) || loose.width <= available) return loose;
+  const tight = draw(true);
+  return tight.width < loose.width ? tight : loose;
+}

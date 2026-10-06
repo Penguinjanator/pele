@@ -80,7 +80,7 @@ describe('mount', () => {
     const handle = mount(el, FLOW, options);
     const across = handle.result;
     resize(el, 700);
-    expect(handle.result.svg).toBe(across.svg);
+    expect(handle.result.height).toBeLessThanOrEqual(across.height);
     resize(el, 340);
     expect(handle.result.height).toBeGreaterThan(across.height);
     expect(handle.result.width).toBeLessThan(across.width);

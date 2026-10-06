@@ -1,7 +1,7 @@
 import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
-import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
+import { clusterTitleX, markCrossings, struckTitle, titleCrossed, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { withTitle } from '../../svg/title.js';
@@ -10,7 +10,7 @@ import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
-import { runsAcross, turnToFit } from '../common/fit-width.js';
+import { runsAcross, tighten, turnToFit } from '../common/fit-width.js';
 import { linkUrl } from '../../util/url.js';
 import type { ClassDb } from './db.js';
 import { buildClassGraph, type GraphEdge, type GraphNode } from './graph.js';
@@ -88,12 +88,13 @@ function sideOf(x: number, y: number, c: CNode): number {
 }
 
 export function renderClass(db: ClassDb, config: Config, options: RenderOptions): Rendered {
-  if (!runsAcross(db.direction)) return draw(db, config, options, false);
-  return turnToFit(options, (down) => draw(db, config, options, down));
+  const fitted = (down: boolean): Rendered => tighten(options, (tight) => draw(db, config, options, down, tight));
+  return runsAcross(db.direction) ? turnToFit(options, fitted) : fitted(false);
 }
 
-// `turned` draws a diagram that runs across as one that runs down.
-function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boolean): Rendered {
+// `turned` draws a diagram that runs across as one that runs down. `tight` gives up the room
+// that keeps a namespace's name clear of an edge coming in beside it.
+function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boolean, tight: boolean): Rendered {
   const conf = (config.class ?? {}) as Config;
   const graph = buildClassGraph(db, conf.hierarchicalNamespaces !== false);
   const hideEmpty = conf.hideEmptyMembersBox === true;
@@ -164,7 +165,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
         c.padX = GROUP_PAD;
         c.padTop = label.height > 0 ? label.height + 16 : GROUP_PAD;
         c.padBottom = GROUP_PAD;
-        c.minW = label.width + 2 * GROUP_PAD - 12 + (crossed[i] === 1 ? Math.min(label.width + 24, 240) : 0);
+        c.minW = label.width + 2 * GROUP_PAD - 12 + (crossed[i] === 1 && !tight ? Math.min(label.width + 24, 240) : 0);
       } else {
         view.w = Math.max(label.width + 2 * GROUP_PAD, 80);
         view.h = label.height + 2 * GROUP_PAD;
@@ -440,6 +441,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
   }
 
   let clusters = '';
+  let struckTitles = '';
   let nodesOut = '';
   for (let i = 0; i < views.length; i++) {
     const view = views[i];
@@ -451,15 +453,15 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
     const w = c.isGroup ? c.w : view.w;
     const h = c.isGroup ? c.h : view.h;
     if (node.isGroup) {
+      const titleX = c.isGroup ? clusterTitleX(c, view.label.width, crossings, GROUP_PAD) : c.x;
+      const titleY = y - h / 2 + 8 + view.label.height / 2;
+      const titleAttrs = ' class="pele-cluster-label" fill="var(--_m)"';
+      const struck = c.isGroup && titleCrossed(c, view.label.width, titleX, crossings);
+      if (struck) struckTitles += struckTitle(view.label, titleX + ox, titleY, titleAttrs, id);
       clusters +=
         `<g class="pele-cluster pele-namespace" data-id="${id}">` +
         `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"/>` +
-        labelSvg(
-          view.label,
-          (c.isGroup ? clusterTitleX(c, view.label.width, crossings, GROUP_PAD) : c.x) + ox,
-          y - h / 2 + 8 + view.label.height / 2,
-          ' class="pele-cluster-label" fill="var(--_m)"'
-        ) +
+        (struck ? '' : labelSvg(view.label, titleX + ox, titleY, titleAttrs)) +
         '</g>';
       continue;
     }
@@ -601,6 +603,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
     height,
     (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="${LINE}" stroke-linecap="round">${edgesOut}</g>` : '') +
+      (struckTitles ? `<g class="pele-cluster-titles">${struckTitles}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${small}">${labelsOut}</g>` : '') +
       (cardsOut ? `<g class="pele-cardinalities" font-size="${tiny}" fill="var(--_m)">${cardsOut}</g>` : '') +
       `<g class="pele-nodes">${nodesOut}</g>`
