@@ -5,6 +5,7 @@ import { RADIUS, seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { turnToFit } from '../common/fit-width.js';
 import { plainLabel } from '../common/fit.js';
 import { commitType, type GitCommit, type GitModel } from './db.js';
 
@@ -66,6 +67,11 @@ function symbol(type: number, x: number, y: number, color: string): string {
 }
 
 export function renderGit(model: GitModel, config: Config, options: RenderOptions): Rendered {
+  if (model.direction !== 'LR') return draw(model, config, options, model.direction);
+  return turnToFit(options, (down) => draw(model, config, options, down ? 'TB' : 'LR'));
+}
+
+function draw(model: GitModel, config: Config, options: RenderOptions, direction: GitModel['direction']): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.75);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
@@ -75,8 +81,8 @@ export function renderGit(model: GitModel, config: Config, options: RenderOption
   const showCommitLabel = flag(config, 'showCommitLabel', true);
   const rotate = flag(config, 'rotateCommitLabel', true);
   const parallel = flag(config, 'parallelCommits', false);
-  const vertical = model.direction !== 'LR';
-  const flip = model.direction === 'BT';
+  const vertical = direction !== 'LR';
+  const flip = direction === 'BT';
 
   const laneOf = new Map<string, number>();
   model.lanes.forEach((name, index) => laneOf.set(name, index));

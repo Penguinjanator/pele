@@ -56,6 +56,39 @@ describe('the maxWidth option', () => {
     expect(render(placed, { ...options, maxWidth: PHONE }).svg).toBe(render(placed, options).svg);
   });
 
+  it('runs a timeline or a git graph downward when it does not fit across', () => {
+    const timeline = 'timeline\n  title History\n  section One\n    2001 : First thing\n    2002 : Second thing\n    2003 : Third thing\n  section Two\n    2004 : Fourth thing\n    2005 : Fifth thing';
+    const across = render(timeline, options);
+    const down = render(timeline, { ...options, maxWidth: PHONE });
+    expect(across.width).toBeGreaterThan(PHONE);
+    expect(down.width).toBeLessThanOrEqual(PHONE);
+    expect(down.height).toBeGreaterThan(across.height);
+    // The same drawing as a timeline written to run down, at that width.
+    expect(down.svg).toBe(render(timeline.replace('timeline', 'timeline TD'), { ...options, maxWidth: PHONE }).svg);
+    expect(render(timeline, { ...options, maxWidth: across.width }).svg).toBe(across.svg);
+
+    const git = 'gitGraph\n  commit\n  commit\n  branch develop\n  commit\n  commit\n  checkout main\n  merge develop\n  commit\n  commit\n  commit';
+    const wide = render(git, options);
+    expect(wide.width).toBeGreaterThan(PHONE);
+    expect(render(git, { ...options, maxWidth: PHONE }).svg).toBe(render(git.replace('gitGraph', 'gitGraph TB:'), options).svg);
+    // A direction the author chose is kept.
+    const upward = git.replace('gitGraph', 'gitGraph BT:');
+    expect(render(upward, { ...options, maxWidth: 100 }).svg).toBe(render(upward, options).svg);
+  });
+
+  it('folds a kanban board into rows of columns', () => {
+    const board = 'kanban\n' + ['Todo', 'Doing', 'Review', 'Done'].map((name, i) => `  c${i}[${name}]\n    t${i}[Task ${i}]`).join('\n');
+    const wide = render(board, options);
+    const tops = (svg: string): number[] => [...svg.matchAll(/class="pele-cluster pele-column" data-id="[^"]*" transform="translate\([\d.]+,([\d.]+)\)"/g)].map((m) => Number(m[1]));
+    expect(new Set(tops(wide.svg)).size).toBe(1);
+    const phone = render(board, { ...options, maxWidth: PHONE });
+    expect(phone.width).toBeLessThanOrEqual(PHONE);
+    expect(new Set(tops(phone.svg)).size).toBe(4);
+    const tablet = render(board, { ...options, maxWidth: 480 });
+    expect(tablet.width).toBeLessThanOrEqual(480);
+    expect(new Set(tops(tablet.svg)).size).toBe(2);
+  });
+
   it('ignores a width that is not a positive number, and survives a tiny one', { timeout: 120000 }, () => {
     for (const { name, sources } of corpora) {
       const source = sources[0];

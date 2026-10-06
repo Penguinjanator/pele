@@ -6,6 +6,7 @@ import { layoutLabel, type Label, type Span } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import { linkUrl, safeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
+import { titleRoom } from '../common/fit-width.js';
 import { iconSvg } from '../common/icon.js';
 import type { KanbanModel, KanbanNode } from './db.js';
 
@@ -123,7 +124,14 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
   const icons = options.icons;
   const conf = (config.kanban ?? {}) as Config;
   const sectionWidth = conf.sectionWidth;
-  const columnWidth = typeof sectionWidth === 'number' && sectionWidth > 0 ? Math.min(Math.max(sectionWidth, 80), 2000) : 200;
+  const ownWidth = typeof sectionWidth === 'number' && sectionWidth > 0 ? Math.min(Math.max(sectionWidth, 80), 2000) : 200;
+  // A board wider than the width the host has is folded into rows of columns, which then
+  // share the row between them.
+  const room = options.maxWidth !== undefined && options.maxWidth > 0 ? options.maxWidth - 2 * pad : Infinity;
+  const count = model.sections.length;
+  const fits = count * (ownWidth + COLUMN_GAP) - COLUMN_GAP <= room;
+  const perRow = fits ? Math.max(count, 1) : Math.max(1, Math.floor((room + COLUMN_GAP) / (ownWidth + COLUMN_GAP)));
+  const columnWidth = fits ? ownWidth : Math.max(Math.min(ownWidth, room), Math.min(Math.floor((room + COLUMN_GAP) / perRow) - COLUMN_GAP, ownWidth * 2));
   const baseUrl = typeof conf.ticketBaseUrl === 'string' ? conf.ticketBaseUrl : '';
   const cardWidth = columnWidth - 2 * COLUMN_PAD;
   const textWidth = cardWidth - 2 * CARD_PAD;
@@ -135,7 +143,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
   const countWidths: number[] = [];
   const cards: Card[][] = [];
   let headHeight = line;
-  let bodyHeight = CARD_GAP;
+  const bodyHeights: number[] = [];
   for (const section of sections) {
     const countWidth = measurer.width(String(section.items.length), small, 0);
     const reserved = countWidth + 12 + (section.icon ? glyph + ICON_GAP : 0);
@@ -160,14 +168,24 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
       height += cardHeight + CARD_GAP;
     }
     cards.push(list);
-    bodyHeight = Math.max(bodyHeight, height);
+    bodyHeights.push(height);
   }
   headHeight += 2 * COLUMN_PAD;
-  const columnHeight = headHeight + bodyHeight;
+  // The columns of a row are as tall as the tallest of them.
+  const rowHeights: number[] = [];
+  const rowTops: number[] = [];
+  for (let first = 0, y = 0; first < sections.length; first += perRow) {
+    let tallest = CARD_GAP;
+    for (let index = first; index < Math.min(first + perRow, sections.length); index++) tallest = Math.max(tallest, bodyHeights[index]);
+    rowTops.push(y);
+    rowHeights.push(headHeight + tallest);
+    y += headHeight + tallest + COLUMN_GAP;
+  }
+  const boardHeight = rowHeights.length > 0 ? rowTops[rowTops.length - 1] + rowHeights[rowHeights.length - 1] : 0;
 
-  const title = layoutLabel(model.title, false, measurer, size, 4000, Style.Bold);
+  const title = layoutLabel(model.title, false, measurer, size, titleRoom(options), Style.Bold);
   const titleHeight = title.height > 0 ? title.height + 16 : 0;
-  const boardWidth = Math.max(sections.length * (columnWidth + COLUMN_GAP) - COLUMN_GAP, 0);
+  const boardWidth = Math.max(Math.min(sections.length, perRow) * (columnWidth + COLUMN_GAP) - COLUMN_GAP, 0);
   const width = Math.max(boardWidth, title.width);
   const left = pad + (width - boardWidth) / 2;
   const edge = columnWidth - COLUMN_PAD - 4;
@@ -175,8 +193,9 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
   let out = '';
   for (let index = 0; index < sections.length; index++) {
     const section = sections[index];
+    const row = Math.floor(index / perRow);
     let body =
-      `<rect width="${columnWidth}" height="${num(columnHeight)}" rx="${RADIUS}" fill="var(--_s)"/>` +
+      `<rect width="${columnWidth}" height="${num(rowHeights[row])}" rx="${RADIUS}" fill="var(--_s)"/>` +
       textBlock(titles[index], COLUMN_PAD + 4, COLUMN_PAD, ' class="pele-cluster-label"', icons) +
       `<text class="pele-count" x="${edge}" y="${num(
         COLUMN_PAD + line / 2 + small * 0.35
@@ -233,12 +252,12 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
 
     out +=
       `<g class="pele-cluster pele-column${classNames(section.cssClasses ?? '')}" data-id="${escText(section.id)}" transform="translate(${num(
-        left + index * (columnWidth + COLUMN_GAP)
-      )},${num(pad + titleHeight)})">${body}</g>`;
+        left + (index % perRow) * (columnWidth + COLUMN_GAP)
+      )},${num(pad + titleHeight + rowTops[row])})">${body}</g>`;
   }
 
   const totalWidth = Math.ceil(width + 2 * pad);
-  const totalHeight = Math.ceil((sections.length > 0 ? columnHeight : 0) + titleHeight + 2 * pad);
+  const totalHeight = Math.ceil(boardHeight + titleHeight + 2 * pad);
   const content = labelSvg(title, totalWidth / 2, pad + title.height / 2, ' class="pele-title" font-weight="bold"') + out;
 
   return {

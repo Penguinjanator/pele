@@ -6,6 +6,7 @@ import { RADIUS, seriesColor } from '../../svg/theme.js';
 import type { Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { turnToFit } from '../common/fit-width.js';
 import { fitLabel, plainLabel } from '../common/fit.js';
 import type { TimelineModel } from './db.js';
 
@@ -33,11 +34,15 @@ function box(x: number, y: number, w: number, h: number, attrs: string): string 
 }
 
 export function renderTimeline(model: TimelineModel, config: Config, options: RenderOptions): Rendered {
+  if (model.direction === 'TD') return draw(model, config, options, true);
+  return turnToFit(options, (down) => draw(model, config, options, down));
+}
+
+function draw(model: TimelineModel, config: Config, options: RenderOptions, vertical: boolean): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
   const pad = options.padding ?? 8;
-  const vertical = model.direction === 'TD';
   const multicolor = (config.timeline as Config | undefined)?.disableMulticolor !== true;
   const periods = model.periods;
   const hasSections = model.sections.length > 0;
@@ -49,17 +54,22 @@ export function renderTimeline(model: TimelineModel, config: Config, options: Re
   if (leading.periods.length > 0) groups.unshift(leading);
 
   // Columns widen, up to a point, for a word that would not fit; past that the word is cut.
-  let textW = MIN_TEXT;
-  const eventTextW = (): number => (vertical ? EVENT_TEXT_TD : textW);
+  // Running down, the two columns share the width the host has.
+  const room = vertical && options.maxWidth !== undefined && options.maxWidth > 0 ? options.maxWidth - 2 * pad : Infinity;
+  const taken = AXIS + SPINE * 2 + 4 * PAD_X;
+  const periodText = Math.min(MIN_TEXT, Math.max(80, Math.round((room - taken) * 0.38)));
+  const eventText = Math.min(EVENT_TEXT_TD, Math.max(110, room - taken - periodText));
+  let textW = periodText;
+  const eventTextW = (): number => (vertical ? eventText : textW);
   let periodLabels = periods.map((p) => plainLabel(p.text, measurer, size, textW));
   let eventLabels = periods.map((p) => p.events.map((e) => plainLabel(e, measurer, small, eventTextW())));
   let widest = 0;
   for (const label of periodLabels) widest = Math.max(widest, label.width);
   if (!vertical) for (const labels of eventLabels) for (const label of labels) widest = Math.max(widest, label.width);
   let overflow = widest > textW;
-  if (vertical) for (const labels of eventLabels) for (const label of labels) overflow ||= label.width > EVENT_TEXT_TD;
+  if (vertical) for (const labels of eventLabels) for (const label of labels) overflow ||= label.width > eventText;
   if (overflow) {
-    textW = Math.min(Math.max(Math.ceil(widest), MIN_TEXT), MAX_TEXT);
+    textW = Math.min(Math.max(Math.ceil(widest), periodText), room === Infinity ? MAX_TEXT : periodText);
     periodLabels = periods.map((p) => fitLabel(p.text, measurer, size, textW));
     eventLabels = periods.map((p) => p.events.map((e) => fitLabel(e, measurer, small, eventTextW())));
   }
