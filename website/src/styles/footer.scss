@@ -1,0 +1,50 @@
+.site-footer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 72px;
+  padding-block: 24px 48px;
+  color: var(--muted);
+}
+
+.footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.footer-author {
+  margin-top: 48px;
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 12px;
+
+  .footer-author-by {
+    color: var(--muted);
+  }
+
+  > img {
+    display: block;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 50%;
+  }
+}
+
+@media (max-width: 760px) {
+  .site-footer {
+    gap: 32px;
+  }
+
+  .footer-nav {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(3, auto);
+    gap: 16px;
+  }
+}

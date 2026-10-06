@@ -1,0 +1,42 @@
+// Flexoki mappings for Pele's theme tokens: https://stephango.com/flexoki
+[data-pele-theme] {
+  --pele-font: var(--font-sans);
+  --pele-font-mono: var(--font-mono);
+  --pele-radius: var(--radius-small);
+}
+[data-pele-theme="light"] {
+  --pele-bg: #fffcf0;
+  --pele-fg: #100f0f;
+  --pele-muted: #6f6e69;
+  --pele-line: #100f0f;
+  --pele-surface: #f2f0e5;
+  --pele-surface-alt: #e6e4d9;
+  --pele-border: #cecdc3;
+  --pele-accent: #205ea6;
+  --pele-series-1: #af3029;
+  --pele-series-2: #bc5215;
+  --pele-series-3: #ad8301;
+  --pele-series-4: #66800b;
+  --pele-series-5: #24837b;
+  --pele-series-6: #205ea6;
+  --pele-series-7: #5e409d;
+  --pele-series-8: #a02f6f;
+}
+[data-pele-theme="dark"] {
+  --pele-bg: #100f0f;
+  --pele-fg: #cecdc3;
+  --pele-muted: #878580;
+  --pele-line: #cecdc3;
+  --pele-surface: #1c1b1a;
+  --pele-surface-alt: #282726;
+  --pele-border: #403e3c;
+  --pele-accent: #4385be;
+  --pele-series-1: #d14d41;
+  --pele-series-2: #da702c;
+  --pele-series-3: #d0a215;
+  --pele-series-4: #879a39;
+  --pele-series-5: #3aa99f;
+  --pele-series-6: #4385be;
+  --pele-series-7: #8b7ec8;
+  --pele-series-8: #ce5d97;
+}

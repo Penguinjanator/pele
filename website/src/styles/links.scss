@@ -1,0 +1,28 @@
+// Shared colors and hover fades for body and navigation links.
+:where(.lede, .used-by-heading, .get-started-link, .markdown-doc, .site-header-links, .site-footer, .footer-nav) a,
+:where(.playground-link) {
+  --link-color: var(--link-default-color, var(--paper));
+  color: var(--link-color);
+  transition: color 150ms ease, text-decoration-color 150ms ease;
+
+  @media (hover: hover) {
+    &:hover {
+      --link-color: var(--link-hover-color, #f2f0e5);
+      text-decoration-color: currentColor;
+    }
+  }
+}
+
+:where(.site-header-links, .site-footer, .footer-nav) a:focus-visible,
+:where(.playground-link):focus-visible {
+  --link-color: var(--link-hover-color, #f2f0e5);
+  outline: 0;
+}
+
+// Keep inline links distinct without making their underline compete with the text.
+:where(.lede, .used-by-heading, .get-started-link, .markdown-doc) a {
+  text-decoration-line: underline;
+  text-decoration-color: var(--link-decoration-color, var(--faint));
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}

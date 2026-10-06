@@ -1,0 +1,99 @@
+---
+import { render } from 'pele';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import DocsNavigation from '../components/DocsNavigation.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import Install from '../components/Install.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import CopyButton from '../components/CopyButton.astro';
+import PlaygroundLink from '../components/PlaygroundLink.astro';
+import { highlightCode } from '../lib/highlight';
+import { homeExample } from '../lib/examples';
+import { repositoryUrl } from '../lib/site';
+
+// Rendered at build time so the diagram is in the page before any script runs.
+// The client renders it again with the fonts the browser actually uses.
+let svg = '';
+try {
+  svg = render(homeExample, { idPrefix: 'home-' }).svg;
+} catch {
+  // The client-side render reports the failure.
+}
+
+const usage = `import { render } from '@kepano/pele';
+
+const { svg } = render(\`flowchart LR
+  A[Mermaid text] --> B[SVG]\`);
+
+document.querySelector('#diagram').innerHTML = svg;`;
+---
+
+<BaseLayout>
+  <main id="top" class="docs-page home-page">
+    <SiteHeader />
+    <div class="docs-layout home-layout">
+      <DocsNavigation class="docs-toc" />
+      <div class="home-content">
+        <section class="hero-shell">
+          <div class="hero-grid">
+            <div class="hero-copy">
+              <h1 class="lede">Pele is a lightweight library that renders <a href="https://mermaid.js.org" target="_blank" rel="noopener noreferrer">Mermaid</a> diagrams to SVG, <a href="/theming">themed with CSS variables</a>.</h1>
+            </div>
+          </div>
+        </section>
+
+        <section class="home-example" aria-labelledby="example-title">
+          <header class="home-example-heading">
+            <h2 id="example-title">How it works</h2>
+            <PlaygroundLink source={homeExample} />
+          </header>
+          <p class="home-example-description">Pass Mermaid text to Pele. It returns an SVG that takes its colors and fonts from your CSS.</p>
+          <div class="home-example-panel">
+            <div class="home-example-block home-example-source" data-code-block>
+              <div class="home-example-label"><span>Mermaid</span><span class="doc-code-actions"><CopyButton /></span></div>
+              <pre><code class="language-mermaid" data-language="mermaid" set:html={highlightCode(homeExample, 'mermaid')} /></pre>
+            </div>
+            <div class="home-example-block">
+              <div class="home-example-label"><span>Pele</span></div>
+              <figure class="home-example-figure" data-pele-theme="dark" data-pele-example={homeExample} aria-label="Flowchart rendered by Pele" set:html={svg} />
+            </div>
+          </div>
+        </section>
+
+        <Install>
+          <p class="get-started-link">Then render a diagram. Read the <a href="/introduction">introduction</a> and the <a href="/api">API</a> for more.</p>
+          <CodeBlock language="ts" code={usage} />
+        </Install>
+
+        <section class="guide-section" aria-labelledby="explore-title">
+          <header class="guide-heading"><h2 id="explore-title">Explore</h2></header>
+          <nav class="guide-links" aria-label="Explore Pele">
+            <a class="guide-link-card" href="/introduction">
+              <h3>Docs</h3>
+              <p>Install Pele, render a diagram, and theme it.</p>
+            </a>
+            <a class="guide-link-card" href="/playground">
+              <h3>Playground</h3>
+              <p>Edit a diagram and compare Pele with Mermaid.</p>
+            </a>
+            <a class="guide-link-card" href={repositoryUrl} target="_blank" rel="noopener noreferrer">
+              <h3>GitHub</h3>
+              <p>Read the source and report issues.</p>
+            </a>
+          </nav>
+        </section>
+
+        <section class="used-by" aria-labelledby="about-title">
+          <header class="used-by-heading"><h2 id="about-title">About</h2><p>Pele is <a href={repositoryUrl} target="_blank" rel="noopener noreferrer">open source</a> and in early development. Flowcharts work today, and other Mermaid diagram types are planned. Pele is named after <a href="https://en.wikipedia.org/wiki/Pele_(deity)" target="_blank" rel="noopener noreferrer">Pele</a>, the Polynesian goddess of volcanoes.</p></header>
+        </section>
+
+        <SiteFooter />
+      </div>
+    </div>
+  </main>
+</BaseLayout>
+
+<script>
+  import '../scripts/home';
+</script>

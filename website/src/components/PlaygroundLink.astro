@@ -1,0 +1,16 @@
+---
+import { playgroundHref } from '../lib/playground-link';
+
+interface Props {
+  source: string;
+}
+
+const { source } = Astro.props;
+---
+
+<a class="playground-link text-action" href={playgroundHref(source)}>
+  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="6 3 20 12 6 21 6 3" />
+  </svg>
+  <span><span class="playground-link-prefix">Open in </span>Playground</span>
+</a>

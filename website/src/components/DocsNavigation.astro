@@ -1,0 +1,32 @@
+---
+import { docsPages, type DocsPageId, type Heading } from '../lib/site';
+
+interface Props {
+  class?: string;
+  current?: DocsPageId;
+  headings?: Heading[];
+  ariaLabel?: string;
+}
+
+const { class: className, current, headings = [], ariaLabel = 'Documentation' } = Astro.props;
+const toc = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+---
+
+<nav class:list={['docs-navigation', className]} aria-label={ariaLabel}>
+  {docsPages.map((page) => (
+    <div class="docs-toc-page">
+      <a
+        class:list={['docs-toc-title', { 'is-current': page.id === current }]}
+        href={page.id === current ? '#top' : `/${page.id}`}
+        aria-current={page.id === current ? 'page' : undefined}
+      >
+        {page.title}
+      </a>
+      {page.id === current && toc.length > 0 && (
+        <div class="docs-toc-outline">
+          {toc.map((item) => <a href={`#${item.slug}`} data-depth={item.depth}>{item.text}</a>)}
+        </div>
+      )}
+    </div>
+  ))}
+</nav>

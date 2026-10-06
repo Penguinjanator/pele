@@ -1,0 +1,410 @@
+import { maxHighlightLineLength } from './playground-limits';
+
+export type CodeLanguage = 'mermaid' | 'ts' | 'shell' | 'css' | 'xml';
+
+// Flat on purpose: CodeMirror's StreamLanguage copies editor state shallowly.
+export interface HighlightState {
+  started: boolean;
+  frontmatter: boolean;
+  quote: boolean;
+  meta: boolean;
+  comment: boolean;
+  tag: boolean;
+  expectsCommand: boolean;
+  expectsRedirect: boolean;
+  expectsPath: boolean;
+}
+
+export const createHighlightState = (): HighlightState => ({
+  started: false,
+  frontmatter: false,
+  quote: false,
+  meta: false,
+  comment: false,
+  tag: false,
+  expectsCommand: true,
+  expectsRedirect: false,
+  expectsPath: false,
+});
+
+const escapeHtml = (value: string) => value
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#39;');
+
+const span = (className: string | undefined, value: string) => !value ? '' : className
+  ? `<span class="${className}">${escapeHtml(value)}</span>`
+  : escapeHtml(value);
+
+const quoted = (value: string) => value.length > 1 && value.at(-1) === value[0]
+  ? span('syn-punctuation', value[0]) + span('syn-string', value.slice(1, -1)) + span('syn-punctuation', value[0])
+  : span('syn-punctuation', value[0]) + span('syn-string', value.slice(1));
+
+function highlightStyleValue(value: string) {
+  return [...value.matchAll(/#[0-9a-fA-F]{3,8}\b|-?\d*\.?\d+[a-z%]*|"[^"]*"|'[^']*'|--[\w-]+|[(),]|\s+|[^\s(),"'#]+|./g)].map((match) => {
+    const part = match[0];
+    if (/^#[0-9a-fA-F]{3,8}$/.test(part)) return span('syn-constant', part);
+    if (/^-?\d*\.?\d+[a-z%]*$/.test(part)) return span('syn-number', part);
+    if (/^["']/.test(part)) return quoted(part);
+    if (part.startsWith('--')) return span('syn-variable', part);
+    if (/^[(),]$/.test(part)) return span('syn-punctuation', part);
+    if (value[match.index + part.length] === '(') return span('syn-function', part);
+    return escapeHtml(part);
+  }).join('');
+}
+
+const highlightDeclarations = (value: string) => value.split(/([,;])/).map((part) => {
+  if (part === ',' || part === ';') return span('syn-punctuation', part);
+  const declaration = part.match(/^(\s*)([\w-]+)(\s*:\s*)(.*)$/);
+  if (!declaration) return escapeHtml(part);
+  return escapeHtml(declaration[1]) + span('syn-variable', declaration[2]) + span('syn-punctuation', declaration[3]) + highlightStyleValue(declaration[4]);
+}).join('');
+
+function highlightYamlLine(line: string) {
+  const entry = line.match(/^(\s*(?:-\s+)?)([\w-]+)(:)(\s*)(.*)$/);
+  if (!entry) return span('syn-string', line);
+  const value = entry[5];
+  let highlighted = span('syn-string', value);
+  if (/^(["']).*\1$/.test(value)) highlighted = quoted(value);
+  else if (/^(?:true|false|null|~)$/.test(value)) highlighted = span('syn-constant', value);
+  else if (/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(value)) highlighted = span('syn-number', value);
+  return escapeHtml(entry[1]) + span('syn-yaml-key', entry[2]) + span('syn-punctuation', entry[3]) + escapeHtml(entry[4]) + highlighted;
+}
+
+const mermaidKeyword = /^(?:flowchart-elk|flowchart|graph|subgraph|end|direction|click|style|classDef|class|linkStyle|interpolate|call|href|callback)\b/;
+const mermaidLink = /^(?:[xo<](?=--|==|-\.))?(?:--+|==+|-\.+-?|~~~+)(?:>|[xo](?!\w))?/;
+const mermaidLinkEnd = /(?:--+|==+|\.+-+)(?:>|[xo](?!\w))?/;
+const mermaidShapes: [string, string[]][] = [
+  ['(((', [')))']], ['([', ['])']], ['[(', [')]']], ['[[', [']]']], ['((', ['))']], ['{{', ['}}']],
+  ['[/', ['/]', '\\]']], ['[\\', ['\\]', '/]']], ['[', [']']], ['(', [')']], ['{', ['}']],
+];
+
+function highlightMermaidLine(line: string, state: HighlightState) {
+  if (!state.started && line.trim()) {
+    state.started = true;
+    if (/^\s*---\s*$/.test(line)) {
+      state.frontmatter = true;
+      return span('syn-punctuation', line);
+    }
+  }
+  if (state.frontmatter) {
+    if (/^\s*---\s*$/.test(line)) {
+      state.frontmatter = false;
+      return span('syn-punctuation', line);
+    }
+    return highlightYamlLine(line);
+  }
+
+  let output = '';
+  let index = 0;
+  let afterNode = false;
+  let expectsDirection = false;
+  let styleTarget = 0;
+
+  const string = (closers: string[] = []) => {
+    const rest = line.slice(index);
+    let end = -1;
+    for (const closer of closers) {
+      const position = rest.indexOf(closer);
+      if (position >= 0 && (end < 0 || position < end)) end = position;
+    }
+    if (rest.startsWith('"')) {
+      const close = rest.indexOf('"', 1);
+      if (close < 0) {
+        state.quote = true;
+        output += quoted(rest);
+        index = line.length;
+        return;
+      }
+      output += quoted(rest.slice(0, close + 1));
+      index += close + 1;
+      return;
+    }
+    const text = end < 0 ? rest : rest.slice(0, end);
+    output += span('syn-string', text);
+    index += text.length;
+  };
+
+  if (state.quote) {
+    const close = line.indexOf('"');
+    if (close < 0) return span('syn-string', line);
+    state.quote = false;
+    output += span('syn-string', line.slice(0, close)) + span('syn-punctuation', '"');
+    index = close + 1;
+  }
+
+  while (index < line.length) {
+    const rest = line.slice(index);
+    const wasAfterNode = afterNode;
+    afterNode = false;
+    let match: RegExpMatchArray | null;
+
+    if (state.meta) {
+      if ((match = rest.match(/^\s+|^,/))) output += match[0] === ',' ? span('syn-punctuation', ',') : match[0];
+      else if (rest[0] === '}') { state.meta = false; match = ['}']; output += span('syn-punctuation', '}'); }
+      else if (rest[0] === '"') { string(); continue; }
+      else if ((match = rest.match(/^([\w-]+)(\s*:)/))) output += span('syn-variable', match[1]) + span('syn-punctuation', match[2]);
+      else if ((match = rest.match(/^[^\s,}"]+/))) output += span(/^(?:true|false)$/.test(match[0]) ? 'syn-constant' : /^-?\d/.test(match[0]) ? 'syn-number' : 'syn-string', match[0]);
+      index += match![0].length;
+      continue;
+    }
+
+    if ((match = rest.match(/^\s+/))) {
+      output += match[0];
+      afterNode = false;
+    } else if ((match = rest.match(/^%%\{.*?(?:\}%%|$)/))) {
+      output += span('syn-language', match[0]);
+    } else if (rest.startsWith('%%')) {
+      output += span('syn-comment', rest);
+      break;
+    } else if (rest[0] === '"') {
+      string();
+      continue;
+    } else if (rest.startsWith('@{')) {
+      state.meta = true;
+      match = ['@{'];
+      output += span('syn-punctuation', '@{');
+    } else if ((match = rest.match(/^(:::)([\w-]*)/))) {
+      output += span('syn-punctuation', match[1]) + span('syn-language', match[2]);
+    } else if (rest[0] === '|') {
+      const close = rest.indexOf('|', 1);
+      output += span('syn-punctuation', '|');
+      index += 1;
+      if (close > 0) {
+        string(['|']);
+        output += span('syn-punctuation', '|');
+        index += 1;
+      }
+      continue;
+    } else if ((match = rest.match(mermaidLink))) {
+      output += span('syn-punctuation', match[0]);
+      // "A -- text --> B": the words between an open link and its arrow are the label.
+      const label = /^(?:--|==|-\.)$/.test(match[0]) ? rest.slice(match[0].length).match(mermaidLinkEnd) : null;
+      if (label?.index) {
+        const text = rest.slice(match[0].length, match[0].length + label.index);
+        if (/\S/.test(text) && !/[[\](){}|]/.test(text)) {
+          output += span('syn-string', text) + span('syn-punctuation', label[0]);
+          index += match[0].length + text.length + label[0].length;
+          continue;
+        }
+      }
+    } else if (styleTarget > 1 && /^[\w-]+\s*:/.test(rest)) {
+      output += highlightDeclarations(rest);
+      break;
+    } else if ((match = rest.match(mermaidKeyword))) {
+      output += span('syn-keyword', match[0]);
+      expectsDirection = /^(?:flowchart|graph|direction)/.test(match[0]);
+      if (/^(?:style|classDef|linkStyle)$/.test(match[0])) styleTarget = 1;
+      index += match[0].length;
+      continue;
+    } else if (expectsDirection && (match = rest.match(/^(?:TB|TD|BT|RL|LR)\b/))) {
+      output += span('syn-constant', match[0]);
+    } else if ((match = rest.match(/^\d+(?:\.\d+)?\b/))) {
+      output += span('syn-number', match[0]);
+      if (styleTarget) styleTarget = 2;
+    } else if ((match = rest.match(/^[\p{L}_][\p{L}\p{N}_]*(?:[-.](?![-.])[\p{L}\p{N}_]+)*/u))) {
+      const call = rest[match[0].length] === '(' && /\bcall\s+$/.test(line.slice(0, index));
+      output += span(call ? 'syn-function' : 'syn-variable', match[0]);
+      afterNode = !call;
+      if (styleTarget) styleTarget = 2;
+    } else if (wasAfterNode && rest[0] === '>') {
+      output += span('syn-punctuation', '>');
+      index += 1;
+      string([']']);
+      continue;
+    } else {
+      const shape = mermaidShapes.find(([open]) => rest.startsWith(open));
+      if (shape) {
+        output += span('syn-punctuation', shape[0]);
+        index += shape[0].length;
+        string(shape[1]);
+        const closer = shape[1].find((close) => line.startsWith(close, index));
+        if (closer) {
+          output += span('syn-punctuation', closer);
+          index += closer.length;
+        }
+        continue;
+      }
+      match = [rest[0]];
+      output += span(/[\])}&;,:~/\\<>=.-]/.test(rest[0]) ? 'syn-punctuation' : undefined, rest[0]);
+    }
+    index += match[0].length;
+  }
+  return output;
+}
+
+const tsKeyword = /^(?:as|async|await|break|case|catch|class|const|continue|default|do|else|enum|export|extends|finally|for|function|if|implements|in|instanceof|interface|let|new|of|return|static|switch|throw|try|type|typeof|var|while|yield)$/;
+const tsType = /^(?:string|number|boolean|void|unknown|never|any|object|[A-Z][\w$]*)$/;
+
+function highlightTypeScriptLine(line: string, state: HighlightState) {
+  let output = '';
+  let rest = line;
+  if (state.comment) {
+    const end = line.indexOf('*/');
+    if (end < 0) return span('syn-comment', line);
+    state.comment = false;
+    output = span('syn-comment', line.slice(0, end + 2));
+    rest = line.slice(end + 2);
+  }
+  if (state.quote) {
+    // Inside a template literal that began on an earlier line.
+    const end = rest.search(/(?<!\\)`/);
+    if (end < 0) return output + span('syn-string', rest);
+    state.quote = false;
+    output += span('syn-string', rest.slice(0, end)) + span('syn-punctuation', '`');
+    rest = rest.slice(end + 1);
+  }
+  const tokens = rest.match(/\/\/.*$|\/\*[\s\S]*?(?:\*\/|$)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`?|\b\d[\d_]*(?:\.\d+)?\b|[A-Za-z_$][\w$]*|=>|===|!==|==|!=|<=|>=|&&|\|\||\?\?|\.\.\.|\s+|./g) ?? [];
+  return output + tokens.map((token, index) => {
+    if (token.startsWith('//')) return span('syn-comment', token);
+    if (token.startsWith('/*')) {
+      if (!token.endsWith('*/')) state.comment = true;
+      return span('syn-comment', token);
+    }
+    if (/^['"`]/.test(token)) {
+      if (token[0] === '`' && (token.length === 1 || token.at(-1) !== '`')) state.quote = true;
+      return quoted(token);
+    }
+    if (/^\d/.test(token)) return span('syn-number', token);
+    if (/^[A-Za-z_$]/.test(token)) {
+      if (token === 'import' || token === 'from') return span('syn-import', token);
+      if (/^(?:true|false|null|undefined)$/.test(token)) return span('syn-constant', token);
+      if (tsKeyword.test(token)) return span('syn-keyword', token);
+      const next = tokens.slice(index + 1).find((candidate) => !/^\s+$/.test(candidate));
+      if (next === '(' && !/^[A-Z]/.test(token)) return span('syn-function', token);
+      return span(tsType.test(token) ? 'syn-language' : 'syn-variable', token);
+    }
+    return span(/^\s+$/.test(token) ? undefined : 'syn-punctuation', token);
+  }).join('');
+}
+
+function highlightShellLine(line: string, state: HighlightState) {
+  // Keep shell words intact: paths, flags, and URLs are not identifiers.
+  const tokens = line.match(/\s+|#.*$|&&|\|\||[|;&<>]+|\\$|(?:\\.|"(?:\\.|[^"\\])*"|'[^']*'|[^\s|;&<>"'\\])+|./g) ?? [];
+  let { expectsCommand, expectsRedirect, expectsPath } = state;
+  let continued = false;
+
+  const highlighted = tokens.map((token) => {
+    if (/^\s+$/.test(token)) return escapeHtml(token);
+    if (token.startsWith('#')) return span('syn-comment', token);
+    continued = false;
+    if (/^[|;&]+$/.test(token)) {
+      expectsCommand = true;
+      expectsPath = false;
+      expectsRedirect = false;
+      continued = /^(?:\||\|\||&&)$/.test(token);
+      return span('syn-punctuation', token);
+    }
+    if (/^[<>]+$/.test(token)) {
+      expectsRedirect = true;
+      return span('syn-punctuation', token);
+    }
+    if (token === '\\') {
+      continued = true;
+      return span('syn-punctuation', token);
+    }
+
+    const assignment = token.match(/^(?:[A-Za-z_][\w]*|--[\w-]+)=/)?.[0];
+    const command = expectsCommand && !expectsRedirect && !expectsPath && !assignment && !token.startsWith('-');
+    const path = !command && !assignment && !token.startsWith('-')
+      && (expectsPath || expectsRedirect || token.includes('/') || /^\.?[\w-]+(?:\.[\w-]+)+$/.test(token));
+    expectsPath = /^(?:--output|-o)$/.test(token);
+    if (!assignment && !expectsRedirect && !token.startsWith('-')) expectsCommand = command && token === 'npx';
+    expectsRedirect = false;
+
+    const value = assignment ? token.slice(assignment.length) : token;
+    return escapeHtml(assignment ?? '') + value.split(/("(?:\\.|[^"\\])*"|'[^']*'|\$\{[^}]+\}|\$[A-Za-z_][\w]*)/g).filter(Boolean).map((part) => {
+      if (/^(['"])[\s\S]*\1$/.test(part)) return quoted(part);
+      if (part.startsWith('$')) return span('syn-variable', part);
+      return span(command ? 'syn-command' : path || assignment ? 'syn-string' : undefined, part);
+    }).join('');
+  }).join('');
+  Object.assign(state, continued
+    ? { expectsCommand, expectsRedirect, expectsPath }
+    : { expectsCommand: true, expectsRedirect: false, expectsPath: false });
+  return highlighted;
+}
+
+function highlightCssLine(line: string, state: HighlightState) {
+  let output = '';
+  let rest = line;
+  if (state.comment) {
+    const end = line.indexOf('*/');
+    if (end < 0) return span('syn-comment', line);
+    state.comment = false;
+    output = span('syn-comment', line.slice(0, end + 2));
+    rest = line.slice(end + 2);
+  }
+  return output + rest.split(/(\/\*[\s\S]*?(?:\*\/|$))/).map((part) => {
+    if (part.startsWith('/*')) {
+      if (!part.endsWith('*/')) state.comment = true;
+      return span('syn-comment', part);
+    }
+    const declaration = part.match(/^(\s*)([\w-]+)(\s*:\s*)([^{}]*?)(;?\s*)$/);
+    if (declaration) {
+      return escapeHtml(declaration[1]) + span('syn-variable', declaration[2]) + span('syn-punctuation', declaration[3])
+        + highlightStyleValue(declaration[4]) + span('syn-punctuation', declaration[5]);
+    }
+    return part.split(/([{},])/).map((piece) => /^[{},]$/.test(piece) ? span('syn-punctuation', piece) : span(piece.trim() ? 'syn-language' : undefined, piece)).join('');
+  }).join('');
+}
+
+function highlightXmlLine(line: string, state: HighlightState) {
+  let output = '';
+  let index = 0;
+  while (index < line.length) {
+    const rest = line.slice(index);
+    let length: number;
+    if (state.comment) {
+      const end = rest.indexOf('-->');
+      length = end < 0 ? rest.length : end + 3;
+      state.comment = end < 0;
+      output += span('syn-comment', rest.slice(0, length));
+    } else if (state.tag) {
+      const part = rest.match(/^\s+|^\/?>|^=|^"[^"]*"?|^'[^']*'?|^[^\s=>/"']+|^./)![0];
+      length = part.length;
+      if (part === '>' || part === '/>') {
+        state.tag = false;
+        output += span('syn-punctuation', part);
+      } else if (/^["']/.test(part)) output += quoted(part);
+      else output += span(part === '=' ? 'syn-punctuation' : /^\s+$/.test(part) ? undefined : 'syn-variable', part);
+    } else if (rest.startsWith('<!--')) {
+      state.comment = true;
+      length = 0;
+    } else {
+      const open = rest.match(/^(<\/?)([\w:.-]+)/);
+      if (open) {
+        state.tag = true;
+        length = open[0].length;
+        output += span('syn-punctuation', open[1]) + span('syn-tag', open[2]);
+      } else {
+        const next = rest.indexOf('<', 1);
+        length = next < 0 ? rest.length : next;
+        output += escapeHtml(rest.slice(0, length));
+      }
+    }
+    index += length;
+  }
+  return output;
+}
+
+export function highlightLine(line: string, language: CodeLanguage, state: HighlightState = createHighlightState()) {
+  if (line.length > maxHighlightLineLength) return escapeHtml(line);
+  if (language === 'ts') return highlightTypeScriptLine(line, state);
+  if (language === 'shell') return highlightShellLine(line, state);
+  if (language === 'css') return highlightCssLine(line, state);
+  if (language === 'xml') return highlightXmlLine(line, state);
+  return highlightMermaidLine(line, state);
+}
+
+export function highlightLines(lines: string[], language: CodeLanguage) {
+  const state = createHighlightState();
+  return lines.map((line) => highlightLine(line, language, state));
+}
+
+export function highlightCode(code: string, language: CodeLanguage, showLineNumbers = false) {
+  const normalized = code.replace(/^\n|\n$/g, '');
+  return highlightLines(normalized.split('\n'), language).map((line, index) => `<span class="doc-code-line"><span class="doc-line-number"${showLineNumbers ? '' : ' hidden'}>${index + 1}</span><span class="doc-code-source">${line}</span></span>`).join('');
+}

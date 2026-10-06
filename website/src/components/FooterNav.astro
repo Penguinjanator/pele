@@ -1,0 +1,9 @@
+---
+import { docsPages } from '../lib/site';
+---
+
+<nav class="footer-nav" aria-label="Footer navigation">
+  <a href="/">Home</a>
+  {docsPages.map((page) => <a href={`/${page.id}`}>{page.title}</a>)}
+  <a href="/playground">Playground</a>
+</nav>

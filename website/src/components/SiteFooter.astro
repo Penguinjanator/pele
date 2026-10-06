@@ -1,0 +1,13 @@
+---
+import FooterNav from './FooterNav.astro';
+import { repositoryUrl } from '../lib/site';
+---
+
+<footer class="site-footer">
+  <span>Pele is <a href={repositoryUrl} target="_blank" rel="noopener noreferrer">open source</a> under the MIT license.</span>
+  <FooterNav />
+  <a class="footer-author" href="https://stephango.com" target="_blank" rel="noopener noreferrer">
+    <img src="/kepano.svg" width="32" height="32" alt="" />
+    <span><span class="footer-author-by">by</span> kepano</span>
+  </a>
+</footer>

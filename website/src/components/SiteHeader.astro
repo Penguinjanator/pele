@@ -1,0 +1,26 @@
+---
+import Search from './Search.astro';
+import MobileDocsMenu from './MobileDocsMenu.astro';
+import type { DocsPageId, Heading } from '../lib/site';
+
+interface Props {
+  current?: DocsPageId;
+  headings?: Heading[];
+}
+
+const { current, headings = [] } = Astro.props;
+---
+
+<div class="site-header-slot" data-scroll-header-slot>
+  <nav class="site-header" aria-label="Main navigation" data-scroll-header>
+    <a class="wordmark" href="/" aria-label="Pele home">Pele</a>
+    <Search />
+    <a class="header-action sidebar-playground" href="/playground">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="6 3 20 12 6 21 6 3" />
+      </svg>
+      <span>Playground</span>
+    </a>
+    <MobileDocsMenu current={current} headings={headings} />
+  </nav>
+</div>
