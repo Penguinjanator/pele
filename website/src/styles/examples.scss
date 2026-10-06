@@ -47,6 +47,15 @@
   svg { display: block; }
 }
 
+// The drawing itself stays the grid item, so it is centered and shrinks as a lone one does.
+.example-wide { display: contents; }
+.example-narrow { display: none; }
+
+@media (max-width: 520px) {
+  .example-wide { display: none; }
+  .example-narrow { display: contents; }
+}
+
 @media (max-width: 760px) {
   .example-card { padding-inline: 16px; }
 }

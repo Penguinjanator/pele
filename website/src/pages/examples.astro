@@ -14,6 +14,16 @@ const hrefFor = (source: string): string | undefined => {
     return undefined;
   }
 };
+// A chart that can draw itself narrower is also drawn for a phone, and CSS shows the one that
+// suits the screen. Its text then stays at full size where the wide drawing would be shrunk.
+const PHONE_WIDTH = 320;
+// About the width a figure has in the docs column on a desktop screen.
+const COLUMN_WIDTH = 640;
+const drawings = (source: string, prefix: string) => {
+  const wide = render(source, { idPrefix: prefix, maxWidth: COLUMN_WIDTH });
+  const narrow = render(source, { idPrefix: `${prefix}narrow-`, maxWidth: PHONE_WIDTH });
+  return { wide: wide.svg, narrow: narrow.width < wide.width ? narrow.svg : undefined };
+};
 // The first line that is not front matter, a directive, or a comment: the diagram's own opening line.
 const opening = (source: string): string =>
   source.replace(/^---\n[\s\S]*?\n---\n/, '').split('\n').map((line) => line.trim())
@@ -27,6 +37,7 @@ const opening = (source: string): string =>
       {group.sources.map((source, index) => {
         const prefix = `${group.type}-${index}-`;
         const href = hrefFor(source);
+        const { wide, narrow } = drawings(source, prefix);
         return (
           <figure class="example-card">
             <figcaption class="example-label">
@@ -36,7 +47,11 @@ const opening = (source: string): string =>
                 <span><span class="playground-link-prefix">Open in </span>Playground</span>
               </a>}
             </figcaption>
-            <div class="example-figure" data-pele-theme="dark" role="img" aria-label={`${group.title} diagram rendered by Pele`} set:html={render(source, { idPrefix: prefix }).svg} />
+            <div class="example-figure" data-pele-theme="dark" role="img" aria-label={`${group.title} diagram rendered by Pele`}>
+              {narrow
+                ? <><div class="example-wide" set:html={wide} /><div class="example-narrow" set:html={narrow} /></>
+                : <Fragment set:html={wide} />}
+            </div>
           </figure>
         );
       })}

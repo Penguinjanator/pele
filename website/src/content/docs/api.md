@@ -3,10 +3,10 @@ title: API
 description: Render Mermaid text to SVG, inspect the parsed diagram, and handle errors.
 ---
 
-Pele exports four functions and one error class. Every function is synchronous, except the optional ones that [load diagram types on demand](#loading-only-what-you-need). The API is not final and is subject to change before a stable release.
+Pele exports five functions and one error class. Every function is synchronous, except the optional ones that [load diagram types on demand](#loading-only-what-you-need). The API is not final and is subject to change before a stable release.
 
 ```ts
-import { render, parse, detectType, supports, PeleError } from 'pele';
+import { render, mount, parse, detectType, supports, PeleError } from 'pele';
 ```
 
 ## Usage
@@ -112,6 +112,9 @@ All options are optional.
 | `fontSize` | `number` | Base font size in pixels. Defaults to `16`. |
 | `idPrefix` | `string` | Prefix for the ids of the accessible title and description. Use a different prefix for each diagram on a page that has them. |
 | `responsive` | `boolean` | Shrinks the SVG to fit a container narrower than the diagram. It never grows past its natural size. Defaults to `true`. Set `false` for a fixed pixel size. A diagram that sets Mermaid's `useMaxWidth: false` is also fixed. |
+| `maxWidth` | `number` | The width your app has for the diagram, in pixels. A chart that can draw itself narrower does, so its text keeps its size instead of shrinking with the diagram. See [Narrow screens](#narrow-screens). |
+| `autoDirection` | `boolean` | Lets a diagram that runs across be drawn running down when it does not fit `maxWidth`. Defaults to `true`. |
+| `directionBreakpoint` | `number` | The `maxWidth` under which `autoDirection` applies. Defaults to `640`. |
 | `now` | `number \| Date` | The time a Gantt chart treats as now, for the today marker and for tasks with no start date. Defaults to the current time. |
 | `padding` | `number` | Space around the diagram in pixels. |
 | `limit` | `number` | Maximum length of `text` in characters. The default is 50,000, as in Mermaid. Longer input throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
@@ -132,6 +135,68 @@ All options are optional.
 | `links` | `LinkInfo[]` | Links found in the diagram, so an app can attach its own navigation without querying the SVG. |
 
 Each `LinkInfo` has the `id` of the node that carries the link, its `href`, and `internal`. A node with a `click` link is reported with `internal: false`. A node with the class `internal-link` is reported with `internal: true` and its label text as the `href`. An address that is [not allowed](/security#links-and-images) is reported as `about:blank`.
+
+### Narrow screens
+
+A diagram wider than its container is scaled down to fit, and its text is scaled with it. On a phone that can make labels too small to read.
+
+Many charts do not need their full width. Pass the width you have as `maxWidth` and they are drawn to fit it, with text at its normal size:
+
+```ts
+const { svg } = render(source, { maxWidth: container.clientWidth });
+```
+
+What a diagram does with `maxWidth` depends on its type:
+
+| Diagram | When it does not fit |
+| --- | --- |
+| Sankey, XY chart, treemap, Gantt | Drawn at the width there is |
+| Pie, radar | Drawn at the width there is, with the legend below the chart |
+| Kanban | Columns fold into rows |
+| Quadrant chart, Wardley map | Drawn narrower, down to the size where the labels still have room |
+| Flowchart, class, state, entity relationship, requirement, use case, agentflow, timeline, git graph | Runs down the page instead of across. See [Direction](#direction). |
+| Flowchart, class | Also drawn with less space between nodes and around groups |
+| Other types | Sized by their text, and not affected |
+
+#### Direction
+
+A diagram that runs from left to right is often too wide for a phone, where the same diagram running from top to bottom fits. When `maxWidth` is under 640 pixels and the diagram does not fit it, Pele draws the diagram running down, if that makes it narrower. A `flowchart LR` is then drawn as `flowchart TB` would be.
+
+Set `autoDirection: false` to always keep the direction the diagram asks for. Change the width under which diagrams turn with `directionBreakpoint`. A direction set inside a subgraph is kept, and so is a diagram that already runs down or up. Swimlanes are not turned.
+
+[`mount()`](#mount) passes the width for you and draws again when it changes. If you call `render()` yourself, render again when the width changes. A page built ahead of time can render a diagram at two widths and show one of them with a media query.
+
+## mount
+
+```ts
+function mount(element: HTMLElement, text: string, options?: MountOptions): Mounted
+```
+
+Renders a diagram into an element and keeps it fitted to the element. Use it instead of `render()` when the diagram is shown in a page.
+
+```ts
+import { mount } from 'pele';
+
+const diagram = mount(container, source);
+```
+
+`mount()` does what an app otherwise has to do by hand:
+
+- It measures labels with the font of the element, unless you pass `fontFamily`.
+- It passes the width of the element as [`maxWidth`](#narrow-screens), unless you pass one.
+- It draws the diagram again when the element's width changes and the diagram would come out differently. A diagram that the width cannot change is drawn once.
+
+The element should be one whose width does not depend on its content, such as a block. `mount()` throws a [`PeleError`](#peleerror) as `render()` does.
+
+`MountOptions` are the [`RenderOptions`](#renderoptions), plus `onRender`, a function called with the [`RenderResult`](#renderresult) each time the diagram is put in the element. Use it for anything you attach to the SVG, such as link handlers.
+
+| Member | Description |
+| --- | --- |
+| `result` | The `RenderResult` for what the element shows now. |
+| `update(text, options?)` | Draws other text, or the same text with other options, in the same element. Returns the new result. |
+| `destroy()` | Stops watching the element. What it shows stays. |
+
+With [`pele/lazy`](#loading-only-what-you-need), `mountAsync()` takes the same arguments, fetches the diagram type first, and returns a promise.
 
 ## parse
 

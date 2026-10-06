@@ -106,6 +106,8 @@ function showError(error: unknown) {
   }
 }
 
+let drawnWidth = 0;
+
 function renderPele() {
   const source = input.value;
   inputCopy.refresh();
@@ -122,7 +124,11 @@ function renderPele() {
   }
   try {
     // Labels are measured with the font the preview uses, so text fits its nodes.
-    const options = { fontFamily: getComputedStyle(peleOutput).fontFamily, idPrefix: 'pele-' };
+    const style = getComputedStyle(peleOutput);
+    // The room the preview has, so a chart that can be drawn narrower keeps its text at full size.
+    drawnWidth = peleOutput.clientWidth;
+    const maxWidth = drawnWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const options = { fontFamily: style.fontFamily, idPrefix: 'pele-', maxWidth };
     const times: number[] = [];
     const started = performance.now();
     let result = render(source, options);
@@ -193,6 +199,14 @@ async function updateMermaid() {
   mermaidOutput.removeAttribute('aria-busy');
   showOutputStatus();
 }
+
+// Dragging the divider or turning a phone changes the room a chart is drawn for.
+let resizeFrame = 0;
+new ResizeObserver(() => {
+  if (peleOutput.clientWidth === drawnWidth || peleOutput.clientWidth === 0 || !input.value.trim()) return;
+  cancelAnimationFrame(resizeFrame);
+  resizeFrame = requestAnimationFrame(renderPele);
+}).observe(peleOutput);
 
 function renderNow() {
   window.clearTimeout(timer);

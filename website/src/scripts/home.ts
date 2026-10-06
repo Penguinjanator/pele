@@ -1,12 +1,10 @@
-import { renderAsync } from 'pele/lazy';
+import { mountAsync } from 'pele/lazy';
 
 // Only the diagram types on the page are fetched.
 document.querySelectorAll<HTMLElement>('[data-pele-example]').forEach((figure) => {
   const draw = async () => {
     try {
-      const { fontFamily } = getComputedStyle(figure);
-      const { svg } = await renderAsync(figure.dataset.peleExample ?? '', { fontFamily, idPrefix: figure.dataset.pelePrefix ?? 'home-' });
-      figure.innerHTML = svg;
+      await mountAsync(figure, figure.dataset.peleExample ?? '', { idPrefix: figure.dataset.pelePrefix ?? 'home-' });
     } catch {
       if (!figure.querySelector('svg')) figure.textContent = 'This diagram could not be rendered.';
     }

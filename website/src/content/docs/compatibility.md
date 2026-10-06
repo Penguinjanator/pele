@@ -66,7 +66,7 @@ Colors come from [theme tokens](/theming). Mermaid's named themes are not used.
 
 ### Sizing
 
-A diagram is drawn at its natural size and shrinks to fit a narrower container, as in Mermaid. Unlike Mermaid, the SVG keeps its `width` and `height` attributes, so it also has a size when used as an image. Mermaid's `useMaxWidth: false` setting gives a fixed size, as does the [`responsive`](/api#renderoptions) option.
+A diagram is drawn at its natural size and shrinks to fit a narrower container, as in Mermaid. An app can also tell Pele the width it has, and many diagrams are then [drawn to fit it](/api#narrow-screens), which Mermaid does not do. A diagram that runs across may be drawn running down on a narrow screen. Unlike Mermaid, the SVG keeps its `width` and `height` attributes, so it also has a size when used as an image. Mermaid's `useMaxWidth: false` setting gives a fixed size, as does the [`responsive`](/api#renderoptions) option.
 
 ### Subgraphs
 
