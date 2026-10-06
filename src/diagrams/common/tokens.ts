@@ -12,6 +12,9 @@ export interface TokenType {
   // Start of a construct that needs a closer. When this matches but the whole pattern does not,
   // no closer exists in the rest of the text, so the pattern is not tried again.
   opener?: RegExp;
+  // Regular expression token types tried when this one matches. The first to match more text
+  // replaces it, as Chevrotain's LONGER_ALT does, so a keyword does not split an identifier.
+  longer?: readonly TokenType[];
 }
 
 export interface Tokens {
@@ -46,8 +49,27 @@ export function tokenize(src: string, types: readonly TokenType[], diagram: stri
         }
       }
       if (end > p) {
-        if (!type.hidden) {
-          kinds.push(k);
+        let kind = k;
+        if (type.longer !== undefined) {
+          for (const alt of type.longer) {
+            const at = types.indexOf(alt);
+            if (dead[at]) continue;
+            const re = alt.pattern as RegExp;
+            re.lastIndex = p;
+            if (re.test(src)) {
+              if (re.lastIndex > end) {
+                kind = at;
+                end = re.lastIndex;
+                break;
+              }
+            } else if (alt.opener !== undefined) {
+              alt.opener.lastIndex = p;
+              if (alt.opener.test(src)) dead[at] = 1;
+            }
+          }
+        }
+        if (!types[kind].hidden) {
+          kinds.push(kind);
           starts.push(p);
           ends.push(end);
         }
