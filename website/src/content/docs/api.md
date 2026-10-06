@@ -6,7 +6,7 @@ description: Render Mermaid text to SVG, inspect the parsed diagram, and handle 
 Pele exports four functions and one error class. Every function is synchronous, except the optional ones that [load diagram types on demand](#loading-only-what-you-need). The API is not final and is subject to change before a stable release.
 
 ```ts
-import { render, parse, detectType, supports, PeleError } from '@kepano/pele';
+import { render, parse, detectType, supports, PeleError } from 'pele';
 ```
 
 ## Usage
@@ -14,7 +14,7 @@ import { render, parse, detectType, supports, PeleError } from '@kepano/pele';
 Pass Mermaid text to `render()` and insert the SVG it returns.
 
 ```ts
-import { render } from '@kepano/pele';
+import { render } from 'pele';
 
 const { svg } = render(`flowchart LR
   A[Mermaid text] --> B[SVG]`);
@@ -25,7 +25,7 @@ document.querySelector('#diagram').innerHTML = svg;
 `render()` throws when the text cannot be rendered. Check `supports()` first to decide whether Pele can handle a diagram, and catch `PeleError` to report syntax errors.
 
 ```ts
-import { PeleError, render, supports } from '@kepano/pele';
+import { PeleError, render, supports } from 'pele';
 
 function draw(source: string, element: HTMLElement) {
   if (!supports(source)) return false;
@@ -47,17 +47,17 @@ The main entry point includes every diagram type. An app that draws only a few t
 
 | Import | Contents |
 | --- | --- |
-| `@kepano/pele` | Everything, in one file. |
-| `@kepano/pele/core` | The API with no diagram types. Add types with `register()`. |
-| `@kepano/pele/diagrams/<type>` | One diagram type, as the default export. `<type>` is a name that [`detectType()`](#detecttype) returns, such as `flowchart` or `sequence`. |
-| `@kepano/pele/lazy` | The API, plus functions that fetch a type on demand. |
+| `pele` | Everything, in one file. |
+| `pele/core` | The API with no diagram types. Add types with `register()`. |
+| `pele/diagrams/<type>` | One diagram type, as the default export. `<type>` is a name that [`detectType()`](#detecttype) returns, such as `flowchart` or `sequence`. |
+| `pele/lazy` | The API, plus functions that fetch a type on demand. |
 
 Choose the types up front:
 
 ```ts
-import { register, render } from '@kepano/pele/core';
-import flowchart from '@kepano/pele/diagrams/flowchart';
-import sequence from '@kepano/pele/diagrams/sequence';
+import { register, render } from 'pele/core';
+import flowchart from 'pele/diagrams/flowchart';
+import sequence from 'pele/diagrams/sequence';
 
 register(flowchart, sequence);
 
@@ -67,7 +67,7 @@ const { svg } = render(source);
 Or let Pele fetch each type the first time a diagram needs it. `renderAsync()` takes the same arguments as `render()` and returns a promise.
 
 ```ts
-import { renderAsync } from '@kepano/pele/lazy';
+import { renderAsync } from 'pele/lazy';
 
 const { svg } = await renderAsync(source);
 ```
@@ -75,7 +75,7 @@ const { svg } = await renderAsync(source);
 `load(type)` fetches one type without rendering, and resolves to `false` for a type Pele does not draw. Once a type is loaded, `render()` from the same module draws it synchronously.
 
 ```ts
-import { detectType, load, render } from '@kepano/pele/lazy';
+import { detectType, load, render } from 'pele/lazy';
 
 await load(detectType(source));
 const { svg } = render(source);

@@ -43,11 +43,11 @@ The SVG has no colors of its own. Set a few CSS variables and every diagram foll
 Add Pele to your app using the [API](/api).
 
 ```shell
-npm install @kepano/pele
+npm install pele
 ```
 
 ```ts
-import { render } from '@kepano/pele';
+import { render } from 'pele';
 
 const { svg } = render(`flowchart LR
   A[Mermaid text] --> B[SVG]`);

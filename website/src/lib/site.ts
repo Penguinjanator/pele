@@ -1,6 +1,6 @@
 export const siteDescription = 'Pele renders Mermaid diagrams to SVG. It is small, synchronous, and themed with CSS custom properties.';
 export const repositoryUrl = 'https://github.com/kepano/pele';
-export const packageName = '@kepano/pele';
+export const packageName = 'pele';
 
 export const docsPages = [
   { id: 'introduction', title: 'Introduction' },

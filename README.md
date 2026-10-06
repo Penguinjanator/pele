@@ -7,13 +7,13 @@ Pele is at an early stage. It draws every diagram type built into Mermaid 12.1.0
 ## Install
 
 ```sh
-npm install @kepano/pele
+npm install pele
 ```
 
 ## Use
 
 ```ts
-import { render } from '@kepano/pele';
+import { render } from 'pele';
 
 const { svg } = render(`flowchart TD
   A[Mermaid text] --> B{Flowchart?}
@@ -28,14 +28,14 @@ document.querySelector('#diagram').innerHTML = svg;
 The main entry point includes every diagram type. To load less, register the types you need on the core, or let Pele fetch each type when it is first used:
 
 ```ts
-import { register, render } from '@kepano/pele/core';
-import flowchart from '@kepano/pele/diagrams/flowchart';
+import { register, render } from 'pele/core';
+import flowchart from 'pele/diagrams/flowchart';
 
 register(flowchart);
 ```
 
 ```ts
-import { renderAsync } from '@kepano/pele/lazy';
+import { renderAsync } from 'pele/lazy';
 
 const { svg } = await renderAsync(text);
 ```
