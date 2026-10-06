@@ -10,7 +10,7 @@ import { setupPlaygroundCopy } from './playground-copy';
 import { renderMermaid } from './playground-mermaid';
 import { setupPlaygroundSettings } from './playground-settings';
 import { setupPlaygroundShare } from './playground-share';
-import { setStatus } from './playground-status';
+import { diagnosis, setStatus } from './playground-status';
 import { setupPlaygroundTabs } from './playground-tabs';
 
 type View = 'pele' | 'mermaid' | 'svg' | 'compare';
@@ -80,17 +80,17 @@ function showEmpty(element: HTMLElement, message: string) {
 }
 
 function showError(error: unknown) {
-  const located = error instanceof PeleError && error.line > 0 ? error : undefined;
+  const found = diagnosis(error);
+  const located = found.line > 0 ? found : undefined;
   const message = error instanceof Error ? error.message : String(error);
-  const [summary = '', ...rest] = message.split('\n');
-  const title = summary.replace(/ on line \d+/, '').replace(/:$/, '');
+  const rest = message.split('\n').slice(1);
 
   input.element.setAttribute('aria-invalid', 'true');
   input.status.replaceChildren();
   input.status.dataset.state = 'error';
   const diagnostic = document.createElement(located ? 'button' : 'div');
   diagnostic.className = 'playground-diagnostic';
-  setStatus(diagnostic, located ? `Line ${located.line}, column ${located.column}: ${title}` : title, 'error');
+  setStatus(diagnostic, found.text, 'error');
   if (located && diagnostic instanceof HTMLButtonElement) {
     diagnostic.type = 'button';
     diagnostic.addEventListener('click', () => input.selectDiagnostic(located.line, located.column));

@@ -32,6 +32,8 @@ for (const block of document.querySelectorAll<HTMLElement>('[data-home-editor]')
   area.autocomplete = 'off';
   area.setAttribute('autocorrect', 'off');
   area.setAttribute('aria-label', block.dataset.homeEditor === 'css' ? 'CSS for the diagram' : 'Mermaid source of the diagram');
+  const status = block.querySelector('.home-example-status');
+  if (status?.id) area.setAttribute('aria-describedby', status.id);
   pre.append(area);
 
   for (const event of ['pointerenter', 'focusin', 'touchstart']) block.addEventListener(event, () => void load(), { once: true, passive: true });
@@ -40,7 +42,7 @@ for (const block of document.querySelectorAll<HTMLElement>('[data-home-editor]')
   area.addEventListener('input', () => {
     cancelAnimationFrame(pending);
     pending = requestAnimationFrame(() => {
-      void load().then((module) => module.edited(block.dataset.homeEditor === 'css' ? 'css' : 'mermaid', area.value, code, panel as HTMLElement));
+      void load().then((module) => module.edited(block.dataset.homeEditor === 'css' ? 'css' : 'mermaid', area, code, panel as HTMLElement));
     });
   });
 

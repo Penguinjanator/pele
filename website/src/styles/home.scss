@@ -123,20 +123,32 @@
   white-space: pre-wrap;
 }
 
-// In the block's own padding, so that an error moves nothing.
-.home-example-block { position: relative; }
-.home-example-error {
-  position: absolute;
-  right: 20px;
-  bottom: 5px;
-  left: 20px;
-  margin: 0;
-  overflow: hidden;
-  color: var(--syntax-red);
-  font-size: var(--font-size-small);
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+// A status line under the code, as under the playground's editor. Its row is there from the
+// start, so that a message coming and going moves nothing.
+.home-example-source:has(.home-example-status) { padding-bottom: 12px; }
+.home-example-status {
+  min-height: calc(12px + 1lh);
+  margin-top: auto;
+  padding-top: 12px;
+  color: var(--paper);
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+
+  button {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    @media (hover: hover) {
+      &:hover { text-decoration: underline; }
+    }
+  }
 }
 .home-example-block[data-error] .home-example-figure svg { opacity: 0.4; }
 
@@ -321,6 +333,5 @@
 
 @media (max-width: 480px) {
   .home-example-block { padding-inline: 16px; }
-  .home-example-error { right: 16px; left: 16px; }
   .home-example-label { margin-right: -6px; }
 }

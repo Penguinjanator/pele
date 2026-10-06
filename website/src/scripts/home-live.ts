@@ -3,6 +3,7 @@ import { metricsMeasurer } from '../../../src/text/measurer';
 import { highlightLines, type CodeLanguage } from '../lib/highlight';
 import { siteIcon } from '../lib/icons';
 import { playgroundHref } from '../lib/playground-link';
+import { diagnosis, setStatus } from './playground-status';
 
 function highlight(code: HTMLElement, value: string, language: CodeLanguage): void {
   code.innerHTML = highlightLines(value.split('\n'), language)
@@ -10,44 +11,59 @@ function highlight(code: HTMLElement, value: string, language: CodeLanguage): vo
     .join('');
 }
 
-// One line for an error: where it is, and the last line of the message, which says what was expected.
-function reason(error: unknown): string {
-  const lines = (error instanceof Error ? error.message : String(error)).split('\n').filter((line) => line.trim() !== '');
-  const said = lines.length > 1 ? lines[lines.length - 1] : (lines[0] ?? '').replace(/:$/, '');
-  const line = (error as { line?: number }).line;
-  return line ? `Line ${line}: ${said}` : said;
-}
-
 let drawing = 0;
 
-async function draw(value: string, panel: HTMLElement): Promise<void> {
+// Puts the caret where an error was found.
+function select(area: HTMLTextAreaElement, line: number, column: number): void {
+  const lines = area.value.split('\n');
+  let at = area.value.length;
+  // An error found at the end of the text is on a line past the last one.
+  if (line <= lines.length) {
+    at = 0;
+    for (let i = 0; i < line - 1; i++) at += lines[i].length + 1;
+    at += Math.min(lines[line - 1].length, Math.max(0, column - 1));
+  }
+  area.focus();
+  area.setSelectionRange(at, Math.min(at + 1, area.value.length));
+}
+
+async function draw(area: HTMLTextAreaElement, panel: HTMLElement): Promise<void> {
   const figure = panel.querySelector<HTMLElement>('.home-example-figure');
   const block = figure?.closest<HTMLElement>('.home-example-block');
+  const status = panel.querySelector<HTMLElement>('.home-example-status');
   if (!figure || !block) return;
+  const value = area.value;
   const turn = ++drawing;
-  let message = '';
-  let svg = '';
+  let failure: unknown;
+  let drawn: { svg: string; type: string } | undefined;
   try {
     // Measured as the build measured it, so the drawing the page came with does not move
     // when it is first edited.
-    svg = (await renderAsync(value, { idPrefix: 'home-', measurer: metricsMeasurer, icons: siteIcon })).svg;
+    drawn = await renderAsync(value, { idPrefix: 'home-', measurer: metricsMeasurer, icons: siteIcon });
   } catch (error) {
-    message = reason(error);
+    failure = error;
   }
   if (turn !== drawing) return;
-  if (svg) figure.innerHTML = svg;
 
-  // What was last drawn stays while the text does not parse.
-  let note = block.querySelector<HTMLElement>('.home-example-error');
-  if (!note) {
-    note = document.createElement('p');
-    note.className = 'home-example-error';
-    note.setAttribute('role', 'status');
-    block.append(note);
+  // What was last drawn stays, dimmed, while the text does not parse.
+  if (drawn) figure.innerHTML = drawn.svg;
+  block.toggleAttribute('data-error', !drawn);
+  area.setAttribute('aria-invalid', String(!drawn));
+  if (status) {
+    if (drawn) {
+      setStatus(status, `Valid ${drawn.type}`, 'success');
+    } else {
+      const found = diagnosis(failure);
+      const message = document.createElement(found.line > 0 ? 'button' : 'div');
+      setStatus(message, found.text, 'error');
+      if (message instanceof HTMLButtonElement) {
+        message.type = 'button';
+        message.addEventListener('click', () => select(area, found.line, found.column));
+      }
+      status.replaceChildren(message);
+      status.dataset.state = 'error';
+    }
   }
-  note.textContent = message;
-  note.title = message;
-  block.toggleAttribute('data-error', message !== '');
 
   const link = block.querySelector<HTMLAnchorElement>('.playground-link');
   if (link) {
@@ -88,8 +104,8 @@ function style(value: string, panel: HTMLElement): void {
   if (label) label.style.color = styles?.getPropertyValue('--pele-muted').trim() ?? '';
 }
 
-export function edited(kind: 'mermaid' | 'css', value: string, code: HTMLElement, panel: HTMLElement): void {
-  highlight(code, value, kind);
-  if (kind === 'css') style(value, panel);
-  else void draw(value, panel);
+export function edited(kind: 'mermaid' | 'css', area: HTMLTextAreaElement, code: HTMLElement, panel: HTMLElement): void {
+  highlight(code, area.value, kind);
+  if (kind === 'css') style(area.value, panel);
+  else void draw(area, panel);
 }

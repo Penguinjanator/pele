@@ -26,3 +26,11 @@ export function setStatus(element: HTMLElement, text: string, state = '') {
   message.append(icon, label);
   element.replaceChildren(message);
 }
+
+// Where an error is and what it is, in one line.
+export function diagnosis(error: unknown): { text: string; line: number; column: number } {
+  const message = error instanceof Error ? error.message : String(error);
+  const title = (message.split('\n')[0] ?? '').replace(/ on line \d+/, '').replace(/:$/, '');
+  const { line = 0, column = 0 } = error as { line?: number; column?: number };
+  return line > 0 ? { text: `Line ${line}, column ${column}: ${title}`, line, column } : { text: title, line: 0, column: 0 };
+}
