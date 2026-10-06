@@ -20,7 +20,7 @@ const headings = [
 ];
 
 // Rendered at build time. Drawing them again in the browser, with its own font measurements,
-// moves everything by a pixel or two as the page loads.
+// moves everything by a pixel or two as the page loads. An edit redraws with these measurements.
 const draw = (source: string, idPrefix: string): string => {
   try {
     return render(source, { idPrefix }).svg;
@@ -57,7 +57,7 @@ document.querySelector('#diagram').innerHTML = svg;`;
           </header>
           <p class="home-example-description">Pele renders SVG from Mermaid syntax.</p>
           <div class="home-example-panel">
-            <div class="home-example-block home-example-source" data-code-block>
+            <div class="home-example-block home-example-source" data-code-block data-home-editor="mermaid">
               <div class="home-example-label"><span>Mermaid</span><span class="doc-code-actions"><CopyButton /></span></div>
               <pre><code class="language-mermaid" data-language="mermaid" set:html={highlightCode(homeExample, 'mermaid')} /></pre>
             </div>
@@ -68,7 +68,7 @@ document.querySelector('#diagram').innerHTML = svg;`;
           </div>
           <p class="home-example-description">Use CSS variables to set colors and fonts. Diagrams automatically adapt to theme changes without being re-rendered.</p>
           <div class="home-example-panel">
-            <div class="home-example-block home-example-source" data-code-block>
+            <div class="home-example-block home-example-source" data-code-block data-home-editor="css">
               <div class="home-example-label"><span>CSS</span><span class="doc-code-actions"><CopyButton /></span></div>
               <pre><code class="language-css" data-language="css" set:html={highlightCode(themeCss, 'css')} /></pre>
             </div>
@@ -116,4 +116,8 @@ document.querySelector('#diagram').innerHTML = svg;`;
     </div>
   </main>
 </BaseLayout>
+
+<script>
+  import '../scripts/home';
+</script>
 

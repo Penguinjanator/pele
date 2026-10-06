@@ -100,6 +100,46 @@
   .doc-code-line { padding: 0; }
 }
 
+// Lies over the highlighted code and takes the typing. Only its caret and selection show.
+.home-example-source pre { position: relative; }
+.home-editor {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--paper);
+  font: inherit;
+  letter-spacing: inherit;
+  tab-size: inherit;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+// In the block's own padding, so that an error moves nothing.
+.home-example-block { position: relative; }
+.home-example-error {
+  position: absolute;
+  right: 20px;
+  bottom: 5px;
+  left: 20px;
+  margin: 0;
+  overflow: hidden;
+  color: var(--syntax-red);
+  font-size: var(--font-size-small);
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-example-block[data-error] .home-example-figure svg { opacity: 0.4; }
+
 .home-example-figure {
   // The diagram sits on the panel, so its tokens step up one level from the page.
   --pele-bg: var(--panel);
@@ -281,5 +321,6 @@
 
 @media (max-width: 480px) {
   .home-example-block { padding-inline: 16px; }
+  .home-example-error { right: 16px; left: 16px; }
   .home-example-label { margin-right: -6px; }
 }
