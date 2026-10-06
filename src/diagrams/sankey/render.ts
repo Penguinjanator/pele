@@ -5,6 +5,7 @@ import { resolveStyle, seriesColor } from '../../svg/theme.js';
 import { layoutLabel } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { fitWidth, titleRoom } from '../common/fit-width.js';
 import type { SankeyModel } from './db.js';
 import { layoutSankey, type Alignment } from './layout.js';
 
@@ -37,12 +38,15 @@ function fillStyle(color: unknown): string {
 
 export function renderSankey(model: SankeyModel, config: Config, options: RenderOptions): Rendered {
   const conf = isRecord(config.sankey) ? config.sankey : {};
+  return fitWidth(options, numberOption(conf, 'width', 600, 1, 10000), 160, (chartWidth) => draw(model, conf, options, chartWidth));
+}
+
+function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWidth: number): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
   const pad = options.padding ?? 8;
 
-  const chartWidth = numberOption(conf, 'width', 600, 1, 10000);
   const chartHeight = numberOption(conf, 'height', 400, 1, 10000);
   const nodeWidth = Math.min(numberOption(conf, 'nodeWidth', 10, 1, 200), chartWidth);
   const showValues = conf.showValues !== false;
@@ -138,7 +142,7 @@ export function renderSankey(model: SankeyModel, config: Config, options: Render
       `<title>${from} → ${to}: ${escText(prefix)}${rounded(link.value)}${escText(suffix)}</title></path>`;
   }
 
-  const title = layoutLabel(model.title, false, measurer, size, 4000, Style.Bold);
+  const title = layoutLabel(model.title, false, measurer, size, titleRoom(options), Style.Bold);
   const titleHeight = title.height > 0 ? title.height + 12 : 0;
   const inner = Math.max(maxX - minX, title.width);
   const ox = pad - minX + (inner - (maxX - minX)) / 2;

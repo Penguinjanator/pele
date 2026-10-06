@@ -10,6 +10,9 @@ export interface RenderOptions {
   fontSize?: number;
   idPrefix?: string;
   responsive?: boolean;
+  // The width the host has for the diagram, in pixels. A type that can draw itself narrower
+  // does, so that its text is not shrunk with it.
+  maxWidth?: number;
   padding?: number;
   limit?: number;
   outputLimit?: number;

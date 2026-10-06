@@ -6,6 +6,7 @@ import { RADIUS } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { fitWidth } from '../common/fit-width.js';
 import type { WardleyNode } from './builder.js';
 import type { WardleyModel } from './model.js';
 
@@ -54,18 +55,25 @@ function startLabel(label: Label, x: number, y: number, attrs: string): string {
   return body === '' ? '' : `<text${attrs} xml:space="preserve">${body}</text>`;
 }
 
+function dimension(config: Config, given: number | undefined, key: string, fallback: number): number {
+  const value = typeof given === 'number' && Number.isFinite(given) ? given : setting(config, key, fallback, 1, 1e6);
+  return clamp(value, 200, 10000) - 2 * CANVAS_MARGIN;
+}
+
 export function renderWardley(model: WardleyModel, config: Config, options: RenderOptions): Rendered {
+  const natural = dimension(config, model.size?.width, 'width', 900);
+  return fitWidth(options, natural, 360, (plotW) => draw(model, config, options, plotW, natural));
+}
+
+function draw(model: WardleyModel, config: Config, options: RenderOptions, plotW: number, naturalW: number): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.8125);
   const tiny = Math.round(size * 0.6875);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
   const pad = options.padding ?? 8;
 
-  const dimension = (given: number | undefined, key: string, fallback: number): number =>
-    clamp(typeof given === 'number' && Number.isFinite(given) ? given : setting(config, key, fallback, 1, 1e6), 200, 10000) -
-    2 * CANVAS_MARGIN;
-  const plotW = dimension(model.size?.width, 'width', 900);
-  const plotH = dimension(model.size?.height, 'height', 600);
+  // A narrower map is not as much shorter, so that components keep some room between them.
+  const plotH = dimension(config, model.size?.height, 'height', 600) * Math.max(0.75, plotW / naturalW);
   const showGrid = (config['wardley-beta'] as Config | undefined)?.showGrid === true;
 
   let minX = 0;
@@ -358,7 +366,7 @@ export function renderWardley(model: WardleyModel, config: Config, options: Rend
 
   let notes = '';
   for (const note of model.notes) {
-    notes += starting(text(note.text, small, 360), projectX(note.x), projectY(note.y), ` class="pele-wardley-note" font-size="${small}" font-weight="bold"`);
+    notes += starting(text(note.text, small, Math.min(360, plotW * 0.6)), projectX(note.x), projectY(note.y), ` class="pele-wardley-note" font-size="${small}" font-weight="bold"`);
   }
 
   // Accelerators point right, deaccelerators left.

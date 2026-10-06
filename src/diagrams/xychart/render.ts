@@ -6,6 +6,7 @@ import { seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { capWidth } from '../common/fit-width.js';
 import type { XyChartModel } from './db.js';
 import { tickIndex, tickStep, tickValue, ticksBetween } from './ticks.js';
 
@@ -63,8 +64,10 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
   const tiny = Math.round(size * 0.75);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
   const pad = options.padding ?? 8;
-  const width = dimension(chart.width, 700);
-  const height = dimension(chart.height, 500);
+  const natural = dimension(chart.width, 700);
+  const width = capWidth(options, natural, 240);
+  // A narrower chart is not as much shorter, so that the plot keeps room for its marks.
+  const height = Math.round(dimension(chart.height, 500) * Math.max(0.6, width / natural));
   const horizontal = (model.orientation ?? chart.chartOrientation) === 'horizontal';
   const showValues = on(chart, 'showDataLabel', false);
   const valuesOutside = showValues && on(chart, 'showDataLabelOutsideBar', false);

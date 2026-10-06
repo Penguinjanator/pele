@@ -6,6 +6,7 @@ import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { capWidth, titleRoom } from '../common/fit-width.js';
 import { fitText } from '../common/fit-text.js';
 import { formatter } from './format.js';
 import { layoutTreemap } from './layout.js';
@@ -30,7 +31,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
   const pad = options.padding ?? option(config, 'diagramPadding', 8, 0, 2000);
 
   // Mermaid sizes the diagram as ten times `nodeWidth` by ten times `nodeHeight`.
-  const width = Math.round(option(config, 'nodeWidth', 64, 1, 400) * 10);
+  const width = Math.round(capWidth(options, option(config, 'nodeWidth', 64, 1, 400) * 10, 200, 2 * pad));
   const height = Math.round(option(config, 'nodeHeight', 40, 1, 400) * 10);
   const showValues = treemap.showValues !== false;
   const format = formatter(typeof treemap.valueFormat === 'string' ? treemap.valueFormat : ',');
@@ -40,7 +41,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
     side: SIDE,
   });
 
-  const title = layoutLabel(model.title, false, measurer, size, 4000, Style.Bold);
+  const title = layoutLabel(model.title, false, measurer, size, titleRoom(options), Style.Bold);
   const titleHeight = title.height > 0 ? title.height + 8 : 0;
   const left = pad + Math.max(0, (title.width - width) / 2);
   const top = pad + titleHeight;

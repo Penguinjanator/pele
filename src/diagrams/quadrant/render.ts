@@ -5,6 +5,7 @@ import { RADIUS, classNames, resolveStyle, seriesColor } from '../../svg/theme.j
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { capWidth } from '../common/fit-width.js';
 import type { QuadrantModel, QuadrantText } from './db.js';
 
 const GAP = 4;
@@ -35,8 +36,9 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
   const axisSize = Math.round(size * 0.875);
   const pointSize = Math.round(size * 0.75);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
-  const width = Math.round(Math.max(100, length(config, 'chartWidth', 500, 4000)));
-  const height = Math.round(Math.max(100, length(config, 'chartHeight', 500, 4000)));
+  const natural = Math.round(Math.max(100, length(config, 'chartWidth', 500, 4000)));
+  const width = Math.round(capWidth(options, natural, 400));
+  const height = Math.round((Math.max(100, length(config, 'chartHeight', 500, 4000)) * width) / natural);
   const outer = length(config, 'quadrantPadding', options.padding ?? 8, 200);
   const xPad = length(config, 'xAxisLabelPadding', 5, 200);
   const yPad = length(config, 'yAxisLabelPadding', 5, 200);

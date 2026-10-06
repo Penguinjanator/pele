@@ -5,6 +5,7 @@ import { seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { fitWidth, titleRoom } from '../common/fit-width.js';
 import type { PieModel } from './model.js';
 
 const RADIUS = 120;
@@ -38,6 +39,11 @@ function slice(start: number, end: number, outer: number, inner: number): string
 }
 
 export function renderPie(model: PieModel, config: Config, options: RenderOptions): Rendered {
+  return fitWidth(options, RADIUS * 2, 140, (diameter, tight) => draw(model, config, options, diameter / 2, tight));
+}
+
+// `tight` is set when the chart does not fit the width it has with its legend beside it.
+function draw(model: PieModel, config: Config, options: RenderOptions, radius: number, tight: boolean): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
@@ -46,8 +52,9 @@ export function renderPie(model: PieModel, config: Config, options: RenderOption
   const position = option(config, 'textPosition');
   const textPosition = typeof position === 'number' && position >= 0 && position <= 1 ? position : 0.75;
   const hole = option(config, 'donutHole');
-  const inner = typeof hole === 'number' && hole > 0 && hole <= 0.9 ? hole * RADIUS : 0;
-  const legendPosition = String(option(config, 'legendPosition') ?? 'right');
+  const inner = typeof hole === 'number' && hole > 0 && hole <= 0.9 ? hole * radius : 0;
+  const placed = String(option(config, 'legendPosition') ?? 'right');
+  const legendPosition = tight && (placed === 'left' || placed === 'right') ? 'bottom' : placed;
 
   const entries = [...model.sections];
   let sum = 0;
@@ -61,7 +68,7 @@ export function renderPie(model: PieModel, config: Config, options: RenderOption
   legendWidth += legend.length > 0 ? SWATCH + 8 : 0;
   const legendHeight = legend.length * ROW;
 
-  const title = layoutLabel(model.title, false, measurer, size, 4000, Style.Bold);
+  const title = layoutLabel(model.title, false, measurer, size, titleRoom(options), Style.Bold);
   const titleHeight = title.height > 0 ? title.height + 16 : 0;
 
   // A slice too thin for its percentage gets the label outside the rim, which needs a margin.
@@ -71,14 +78,14 @@ export function renderPie(model: PieModel, config: Config, options: RenderOption
   });
   const narrow = shares.map((share) => {
     if (share === 0 || share >= 0.5) return false;
-    const chord = 2 * RADIUS * textPosition * Math.sin(share * Math.PI);
+    const chord = 2 * radius * textPosition * Math.sin(share * Math.PI);
     return chord < measurer.width((share * 100).toFixed(0) + '%', small, 0) + 6;
   });
   const margin = narrow.includes(true) ? OUTSIDE : 0;
 
   const side = legendPosition === 'left' || legendPosition === 'right' || legendPosition === 'center' ? legendPosition : '';
   const stacked = legendPosition === 'top' || legendPosition === 'bottom';
-  const diameter = (RADIUS + margin) * 2;
+  const diameter = (radius + margin) * 2;
   let width = diameter;
   let height = diameter;
   if (side === 'left' || side === 'right') {
@@ -102,20 +109,20 @@ export function renderPie(model: PieModel, config: Config, options: RenderOption
     const share = shares[index];
     if (share === 0) return;
     const end = angle + share * Math.PI * 2;
-    slices += `<path class="pele-slice" data-id="${escText(label)}" d="${slice(angle, end, RADIUS, inner)}" fill="${seriesColor(index)}"/>`;
+    slices += `<path class="pele-slice" data-id="${escText(label)}" d="${slice(angle, end, radius, inner)}" fill="${seriesColor(index)}"/>`;
     const mid = (angle + end) / 2;
     const text = (share * 100).toFixed(0) + '%';
     if (narrow[index]) {
-      const r = RADIUS + OUTSIDE / 2;
+      const r = radius + OUTSIDE / 2;
       outside += `<text x="${num(Math.sin(mid) * r)}" y="${num(-Math.cos(mid) * r + small * 0.35)}">${text}</text>`;
     } else {
-      const r = RADIUS * textPosition;
+      const r = radius * textPosition;
       labels += `<text x="${num(Math.sin(mid) * r)}" y="${num(-Math.cos(mid) * r + small * 0.35)}">${text}</text>`;
     }
     angle = end;
   });
   if (slices === '') {
-    slices = `<circle class="pele-slice" r="${RADIUS}" fill="none" stroke="var(--_b)"/>`;
+    slices = `<circle class="pele-slice" r="${radius}" fill="none" stroke="var(--_b)"/>`;
   }
 
   let legendOut = '';

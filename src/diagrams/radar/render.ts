@@ -5,6 +5,7 @@ import { seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
+import { fitWidth, titleRoom } from '../common/fit-width.js';
 import type { RadarModel } from './model.js';
 
 const SWATCH = 12;
@@ -49,13 +50,17 @@ function polygon(points: Point[]): string {
 }
 
 export function renderRadar(model: RadarModel, config: Config, options: RenderOptions): Rendered {
+  const natural = option(config, 'width', 320, 1, 4000);
+  return fitWidth(options, natural, 160, (width, tight) => draw(model, config, options, width, (option(config, 'height', 320, 1, 4000) * width) / natural, tight));
+}
+
+// `tight` is set when the chart does not fit the width it has with its legend beside it.
+function draw(model: RadarModel, config: Config, options: RenderOptions, width: number, height: number, tight: boolean): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
   const pad = options.padding ?? 8;
 
-  const width = option(config, 'width', 320, 1, 4000);
-  const height = option(config, 'height', 320, 1, 4000);
   const axisScale = option(config, 'axisScaleFactor', 1, 0, 10);
   const labelFactor = option(config, 'axisLabelFactor', 1.05, 0, 10);
   const tension = option(config, 'curveTension', 0.17, 0, 1);
@@ -128,15 +133,20 @@ export function renderRadar(model: RadarModel, config: Config, options: RenderOp
   let legendWidth = 0;
   for (const label of legend) legendWidth = Math.max(legendWidth, label.width);
   const legendHeight = legend.length * ROW;
-  const legendX = x1 + GAP;
-  if (legend.length > 0) {
+  const legendX = tight ? -(SWATCH + 8 + legendWidth) / 2 : x1 + GAP;
+  const legendTop = tight ? y1 + GAP / 2 : -legendHeight / 2;
+  if (legend.length > 0 && tight) {
+    x0 = Math.min(x0, legendX);
+    x1 = Math.max(x1, -legendX);
+    y1 = legendTop + legendHeight;
+  } else if (legend.length > 0) {
     x1 = legendX + SWATCH + 8 + legendWidth;
     y0 = Math.min(y0, -legendHeight / 2);
     y1 = Math.max(y1, legendHeight / 2);
   }
   let legendOut = '';
   legend.forEach((label, index) => {
-    const y = -legendHeight / 2 + index * ROW + ROW / 2;
+    const y = legendTop + index * ROW + ROW / 2;
     const color = seriesColor(index);
     legendOut +=
       `<g class="pele-legend-item" data-id="${escText(curves[index].name)}">` +
@@ -145,7 +155,7 @@ export function renderRadar(model: RadarModel, config: Config, options: RenderOp
       '</g>';
   });
 
-  const title = layoutLabel(model.title, false, measurer, size, 4000, Style.Bold);
+  const title = layoutLabel(model.title, false, measurer, size, titleRoom(options), Style.Bold);
   const titleHeight = title.height > 0 ? title.height + 8 : 0;
   const bodyWidth = Math.max(x1 - x0, title.width);
   const totalWidth = Math.ceil(bodyWidth + 2 * pad);
