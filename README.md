@@ -90,6 +90,8 @@ pnpm dev
 
 GitHub Actions checks the library and builds the website on pull requests and pushes to `main`. After the checks pass, pushes to `main` deploy the site to [pele.run](https://pele.run).
 
+CI reuses a successful full library test run when the library source, tests, tooling, locked dependencies, and Node version are unchanged. Website tests, typechecks, and both builds still run on every push. `npm test` always runs the complete suite locally.
+
 Add these repository secrets under **Settings → Secrets and variables → Actions**:
 
 - `CLOUDFLARE_ACCOUNT_ID` — the account that owns the `pele` Worker.
