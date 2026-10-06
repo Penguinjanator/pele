@@ -12,13 +12,22 @@ export interface TokenType {
   // Start of a construct that needs a closer. When this matches but the whole pattern does not,
   // no closer exists in the rest of the text, so the pattern is not tried again.
   opener?: RegExp;
-  // Chevrotain's LONGER_ALT, which Langium sets on a keyword that a terminal can also match:
-  // when this type matches, the others are tried at the same place and the first to match more text wins.
+  // Every ASCII character a match of a regular expression can start with, when that is known.
+  // The type is then tried only at those characters and at characters outside ASCII.
+  first?: string;
+  // Chevrotain's LONGER_ALT. When this type matches, these are tried at the same place, and the
+  // first one that matches more text becomes the token.
   longer?: readonly TokenType[];
-  // Matches in place of the pattern, for a pattern that would rescan text from every position.
-  // Returns the end of the match, or -1.
-  match?: (src: string, at: number) => number;
+  // Makes a matcher that answers as `pattern` does, for a pattern that could rescan the text.
+  // It is called once per text, so the matcher may remember what it has scanned. The matcher
+  // returns the end of the match, or -1.
+  scanner?: () => Scanner;
+  // Matches in place of the pattern, for a pattern that would rescan text from every position
+  // and needs no memory between calls. Returns the end of the match, or -1.
+  match?: Scanner;
 }
+
+export type Scanner = (src: string, at: number) => number;
 
 export interface Tokens {
   kinds: number[];
@@ -27,17 +36,30 @@ export interface Tokens {
   src: string;
 }
 
-function matchAt(type: TokenType, k: number, src: string, p: number, dead: Uint8Array): number {
-  if (type.match !== undefined) return type.match(src, p);
-  const pattern = type.pattern;
-  if (typeof pattern === 'string') return src.startsWith(pattern, p) ? p + pattern.length : -1;
-  pattern.lastIndex = p;
-  if (pattern.test(src)) return pattern.lastIndex;
-  if (type.opener !== undefined) {
-    type.opener.lastIndex = p;
-    if (type.opener.test(src)) dead[k] = 1;
+interface Table {
+  // For each ASCII character, the token types that can start with it, in matching order.
+  starting: number[][];
+  every: number[];
+  longer: (number[] | undefined)[];
+}
+
+const tables = new WeakMap<readonly TokenType[], Table>();
+
+function prepare(types: readonly TokenType[]): Table {
+  const every = types.map((_, k) => k);
+  const starting: number[][] = [];
+  for (let c = 0; c < 128; c++) {
+    const ch = String.fromCharCode(c);
+    starting.push(
+      every.filter((k) => {
+        const { pattern, first } = types[k];
+        return typeof pattern === 'string' ? pattern[0] === ch : first === undefined || first.includes(ch);
+      })
+    );
   }
-  return -1;
+  const table = { starting, every, longer: types.map((type) => type.longer?.map((alt) => types.indexOf(alt))) };
+  tables.set(types, table);
+  return table;
 }
 
 export function tokenize(src: string, types: readonly TokenType[], diagram: string): Tokens {
@@ -45,34 +67,51 @@ export function tokenize(src: string, types: readonly TokenType[], diagram: stri
   const starts: number[] = [];
   const ends: number[] = [];
   const dead = new Uint8Array(types.length);
+  const { starting, every, longer } = tables.get(types) ?? prepare(types);
+  const scanners: (Scanner | undefined)[] = [];
   const n = src.length;
+
+  const match = (k: number, p: number): number => {
+    if (dead[k]) return -1;
+    const type = types[k];
+    if (type.match !== undefined) return type.match(src, p);
+    if (type.scanner !== undefined) return (scanners[k] ??= type.scanner())(src, p);
+    const pattern = type.pattern;
+    if (typeof pattern === 'string') return src.startsWith(pattern, p) ? p + pattern.length : -1;
+    pattern.lastIndex = p;
+    if (pattern.test(src)) return pattern.lastIndex;
+    if (type.opener !== undefined) {
+      type.opener.lastIndex = p;
+      if (type.opener.test(src)) dead[k] = 1;
+    }
+    return -1;
+  };
+
   let p = 0;
   scan: while (p < n) {
-    for (let k = 0; k < types.length; k++) {
-      if (dead[k]) continue;
-      let type = types[k];
-      let end = matchAt(type, k, src, p, dead);
-      if (end > p) {
-        if (type.longer !== undefined) {
-          for (const alt of type.longer) {
-            const a = types.indexOf(alt);
-            const altEnd = dead[a] ? -1 : matchAt(alt, a, src, p, dead);
-            if (altEnd > end) {
-              end = altEnd;
-              type = alt;
-              k = a;
-              break;
-            }
+    const c = src.charCodeAt(p);
+    for (const k of c < 128 ? starting[c] : every) {
+      let end = match(k, p);
+      if (end <= p) continue;
+      let kind = k;
+      const alts = longer[k];
+      if (alts !== undefined) {
+        for (const alt of alts) {
+          const altEnd = match(alt, p);
+          if (altEnd > end) {
+            kind = alt;
+            end = altEnd;
+            break;
           }
         }
-        if (!type.hidden) {
-          kinds.push(k);
-          starts.push(p);
-          ends.push(end);
-        }
-        p = end;
-        continue scan;
       }
+      if (!types[kind].hidden) {
+        kinds.push(kind);
+        starts.push(p);
+        ends.push(end);
+      }
+      p = end;
+      continue scan;
     }
     throw syntaxError(diagram, src, p, '', true);
   }
@@ -120,6 +159,7 @@ export function keyword(word: string): TokenType {
   return {
     name: word,
     pattern: new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:(?=%%)|(?!\\S))', 'y'),
+    first: word[0],
   };
 }
 

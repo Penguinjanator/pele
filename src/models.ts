@@ -15,6 +15,7 @@ import type { PacketModel } from './diagrams/packet/model.js';
 import type { PieModel } from './diagrams/pie/model.js';
 import type { QuadrantModel } from './diagrams/quadrant/db.js';
 import type { RadarModel } from './diagrams/radar/model.js';
+import type { RailroadModel } from './diagrams/railroad/types.js';
 import type { RequirementModel } from './diagrams/requirement/types.js';
 import type { SankeyModel } from './diagrams/sankey/db.js';
 import type { SequenceModel } from './diagrams/sequence/types.js';
@@ -47,6 +48,7 @@ export type {
   GitModel,
   C4Model,
   BlockModel,
+  RailroadModel,
 };
 
 // The union of every implemented diagram's model; narrow it with its `type` field.
@@ -73,4 +75,5 @@ export type DiagramModel =
   | SequenceModel
   | GitModel
   | C4Model
-  | BlockModel;
+  | BlockModel
+  | RailroadModel;

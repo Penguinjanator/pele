@@ -16,6 +16,7 @@ import { packet } from './packet/index.js';
 import { pie } from './pie/index.js';
 import { quadrantChart } from './quadrant/index.js';
 import { radar } from './radar/index.js';
+import { railroad } from './railroad/index.js';
 import { requirement } from './requirement/index.js';
 import { sankey } from './sankey/index.js';
 import { sequence } from './sequence/index.js';
@@ -50,6 +51,7 @@ const all = [
   gitGraph,
   c4,
   block,
+  railroad,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));
