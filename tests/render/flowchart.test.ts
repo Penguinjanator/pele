@@ -194,14 +194,14 @@ describe('public api', () => {
   it('throws structured errors', () => {
     const unsupported = (() => {
       try {
-        render('pie\n "a": 1');
+        render('zenuml\n A->B: hi');
       } catch (error) {
         return error as PeleError;
       }
     })();
     expect(unsupported).toBeInstanceOf(PeleError);
     expect(unsupported?.code).toBe('unsupported-diagram');
-    expect(unsupported?.type).toBe('pie');
+    expect(unsupported?.type).toBe(null);
 
     const syntax = (() => {
       try {
