@@ -30,6 +30,9 @@ export function assertInert(svg: string, where: string): void {
       if (name === 'href') {
         expect(el.name === 'a' || el.name === 'image', `${where}: href on <${el.name}>`).toBe(true);
         expect(value, `${where}: href`).not.toMatch(/^[\s\u0000-\u001f]*(?:javascript|vbscript|data)\s*:/i);
+        // What a browser makes of the value: tabs and line breaks dropped, then leading spaces and controls.
+        const seen = value.replace(/[\t\n\r]/g, '').replace(/^[\u0000-\u0020]+/, '');
+        expect(seen, `${where}: href`).toMatch(/^(?:about:blank$|(?:https?|mailto|tel):|(?![\\/]{2}|[a-z][a-z0-9+.-]*:))/i);
       }
       if (name === 'target') expect(value, `${where}: target`).toMatch(/^_(?:self|blank|parent|top)$/);
       if (name === 'style') {
@@ -88,5 +91,10 @@ export const PAYLOADS = [
   '{{7*7}}',
   '${alert(1)}',
   '%0ajavascript:alert(1)',
+  'file:///etc/passwd',
+  '//evil.example/share',
+  '\\\\evil.example\\share',
+  'smb://evil.example/share',
+  'obsidian://open?vault=x',
   '\\"><script>',
 ];

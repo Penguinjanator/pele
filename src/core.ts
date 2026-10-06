@@ -26,6 +26,9 @@ export function registered(type: DiagramType): boolean {
 
 // Mermaid's default maxTextSize.
 const DEFAULT_LIMIT = 50000;
+// Mermaid has no limit on its output. A source within the limit can still describe a drawing
+// of many megabytes, which would stall the page it is put into.
+const DEFAULT_OUTPUT_LIMIT = 4_000_000;
 
 // Deep nesting can exhaust the stack in a few recursive spots. Report it as a limit, not a crash.
 function guarded<T>(run: () => T): T {
@@ -91,6 +94,10 @@ export function render(text: string, options: RenderOptions = {}): RenderResult 
     const resolve = options.icons;
     const icons = resolve && ((name: string) => resolve(decodeEntities(name)));
     const rendered = diagram.render(model, config, { ...options, responsive, icons });
+    const outputLimit = options.outputLimit ?? DEFAULT_OUTPUT_LIMIT;
+    if (rendered.svg.length > outputLimit) {
+      throw new PeleError(`Diagram output is longer than the limit of ${outputLimit} characters.`, 'limit', { type });
+    }
     for (const link of rendered.links) link.id = decodeEntities(link.id);
     return { type, ...rendered };
   });

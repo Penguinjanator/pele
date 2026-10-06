@@ -1,4 +1,6 @@
 import { decodeEntities } from '../text/entities.js';
+import type { RenderOptions } from '../types.js';
+
 const BLANK = 'about:blank';
 const RE_INVALID_PROTOCOL = /^([^\w]*)(javascript|data|vbscript)/im;
 const RE_HTML_ENTITIES = /&#(\w+)(^\w|;)?/g;
@@ -69,4 +71,27 @@ export function sanitizeUrl(url: string): string {
 // A URL as written in a diagram: entity codes are read first, so they cannot hide a scheme.
 export function safeUrl(url: string): string {
   return sanitizeUrl(decodeEntities(url));
+}
+
+const LINK_SCHEMES = ['http', 'https', 'mailto', 'tel'];
+const IMAGE_SCHEMES = ['http', 'https'];
+const RE_SCHEME_NAME = /^([a-z][a-z0-9+.-]*):/i;
+const RE_NETWORK_PATH = /^[\\/]{2}/;
+
+// Stricter than Mermaid, which lets any scheme but three through: a diagram in a shared note
+// could otherwise open a local file, a network share, or another application.
+function allow(url: string, schemes: readonly string[]): string {
+  if (RE_NETWORK_PATH.test(url)) return BLANK;
+  const scheme = RE_SCHEME_NAME.exec(url);
+  return !scheme || schemes.includes(scheme[1].toLowerCase()) ? url : BLANK;
+}
+
+// Both take a URL that sanitizeUrl has passed, and keep it only when it is relative or its
+// scheme is one the host allows.
+export function linkUrl(url: string, options: RenderOptions): string {
+  return allow(url, options.linkSchemes ?? LINK_SCHEMES);
+}
+
+export function imageUrl(url: string, options: RenderOptions): string {
+  return allow(url, options.imageSchemes ?? IMAGE_SCHEMES);
 }

@@ -8,7 +8,7 @@ import { classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js
 import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
-import { safeUrl } from '../../util/url.js';
+import { linkUrl, safeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { StateDb } from './db.js';
 import type { StateEdge, StateNode } from './graph.js';
@@ -520,7 +520,7 @@ export function renderState(db: StateDb, config: Config, options: RenderOptions)
     if (link) {
       // Entity codes are resolved first, so the URL is checked in the form a browser would follow.
       const tooltip = decodeEntities(unquote(link.tooltip));
-      const href = safeUrl(unquote(link.url));
+      const href = linkUrl(safeUrl(unquote(link.url)), options);
       body = `<a href="${esc(href)}" target="_blank" rel="noopener">${tooltip ? `<title>${esc(tooltip)}</title>` : ''}${body}</a>`;
       links.push({ id: node.id, href, internal: false });
     }

@@ -9,7 +9,7 @@ import { RADIUS, classNames, resolveStyle, seriesColor, type ResolvedStyle } fro
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
-import { sanitizeUrl } from '../../util/url.js';
+import { linkUrl, sanitizeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { canonicalShape } from '../flowchart/shapes.js';
 import { KIND_SLOT } from './colorSlots.js';
@@ -330,7 +330,7 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
     if (internal && node.label) {
       // The label is a note name, but it still ends up in an href, so it gets the same check as a URL.
       const name = decodeEntities(node.label);
-      const safe = sanitizeUrl(name) !== 'about:blank';
+      const safe = linkUrl(sanitizeUrl(name), options) !== 'about:blank';
       const target = esc(name);
       text = `<a class="internal-link"${safe ? ` href="${target}"` : ''} data-href="${target}">${text}</a>`;
       links.push({ id: node.id, href: name, internal: true });
@@ -339,8 +339,9 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
     if (node.tooltip) body = `<title>${escText(node.tooltip)}</title>` + body;
     if (node.link) {
       const target = node.linkTarget ? ` target="${esc(node.linkTarget)}"` : '';
-      body = `<a href="${esc(node.link)}"${target} rel="noopener">${body}</a>`;
-      links.push({ id: node.id, href: node.link, internal: false });
+      const href = linkUrl(node.link, options);
+      body = `<a href="${esc(href)}"${target} rel="noopener">${body}</a>`;
+      links.push({ id: node.id, href, internal: false });
     }
     nodesOut += `<g class="pele-node pele-shape-${view.shape}${kind}${classes}" data-id="${id}" transform="translate(${num(
       x

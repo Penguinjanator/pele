@@ -5,6 +5,7 @@ import { RADIUS, resolveStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
+import { linkUrl } from '../../util/url.js';
 import { autoTicks, intervalTicks, timeFormat } from './axis.js';
 import { add, addDays } from './dates.js';
 import { clock, type GanttDb } from './db.js';
@@ -331,8 +332,9 @@ export function renderGantt(model: GanttDb, config: Config, options: RenderOptio
     }
 
     let body = shape + labelSvg(bar.label, bar.labelX, cy, ` class="pele-label"${textFill}`);
-    const href = model.links.get(task.id);
-    if (href !== undefined) {
+    const url = model.links.get(task.id);
+    if (url !== undefined) {
+      const href = linkUrl(url, options);
       body = `<a href="${esc(href)}" rel="noopener">${body}</a>`;
       links.push({ id: task.id, href, internal: false });
     }

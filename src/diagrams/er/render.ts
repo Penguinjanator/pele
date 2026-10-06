@@ -8,7 +8,7 @@ import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
-import { sanitizeUrl } from '../../util/url.js';
+import { linkUrl, sanitizeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { ErDb } from './db.js';
 import { parseGenericTypes } from '../common/generics.js';
@@ -328,7 +328,7 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
     const display = decodeEntities(node.alias || node.label);
     if (/ internal-link(?: |$)/.test(classes + ' ') && name !== '') {
       // The name ends up in an href, so it gets the same check as a URL.
-      const safe = sanitizeUrl(display) !== 'about:blank';
+      const safe = linkUrl(sanitizeUrl(display), options) !== 'about:blank';
       const target = esc(display);
       name = `<a class="internal-link"${safe ? ` href="${target}"` : ''} data-href="${target}">${name}</a>`;
       links.push({ id: node.label, href: display, internal: true });

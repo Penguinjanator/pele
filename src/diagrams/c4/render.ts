@@ -8,7 +8,7 @@ import { RADIUS, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
-import { sanitizeUrl } from '../../util/url.js';
+import { linkUrl, sanitizeUrl } from '../../util/url.js';
 import type { C4Db } from './db.js';
 import { HEAD_LEFT, HEAD_TOP, layoutC4 } from './layout.js';
 import { HEAD, LANE, crosses, cylRy, queueRx, route, type Box } from './route.js';
@@ -30,10 +30,10 @@ function userStyle(fill: string | undefined, stroke: string | undefined, color: 
   return resolveStyle(declarations);
 }
 
-function link(body: string, url: string | undefined, id: string, links: LinkInfo[]): string {
+function link(body: string, url: string | undefined, id: string, links: LinkInfo[], options: RenderOptions): string {
   if (!url) return body;
   // Entity encoding has hidden any `#name;` in the address. Put it back, so that the check sees what a browser would.
-  const href = sanitizeUrl(url.includes('\u00b6\u00df') ? url.replace(/\ufb02\u00b0\u00b0?/g, '#').replace(/\u00b6\u00df/g, ';') : url);
+  const href = linkUrl(sanitizeUrl(url.includes('\u00b6\u00df') ? url.replace(/\ufb02\u00b0\u00b0?/g, '#').replace(/\u00b6\u00df/g, ';') : url), options);
   if (href === 'about:blank') return body;
   links.push({ id, href, internal: false });
   return `<a href="${esc(href)}" rel="noopener">${body}</a>`;
@@ -205,7 +205,8 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
           labelSvg(techn, cx, top + label.height + techn.height / 2, ` class="pele-c4-techn" fill="var(--_m)"${style.text}`),
         rel.link,
         id,
-        links
+        links,
+        options
       ) +
       '</g>';
   });
@@ -228,7 +229,7 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
         `<rect x="${num(group.x)}" y="${num(group.y)}" width="${num(group.w)}" height="${num(group.h)}" rx="${RADIUS}" fill="none" stroke="var(--_b)"${
           boundary.nodeType ? '' : ' stroke-dasharray="6 4"'
         }${style.shape}/>` +
-        link(text, boundary.link, boundary.alias, links) +
+        link(text, boundary.link, boundary.alias, links, options) +
         '</g>';
     }
     for (const node of group.nodes) {
@@ -256,7 +257,8 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
           drawShape(form, w, h, ` fill="var(${external ? '--_bg' : '--_s'})"${stroke}${style.shape}`, stroke + style.line) + text,
           shape.link,
           shape.alias,
-          links
+          links,
+          options
         ) +
         '</g>';
     }

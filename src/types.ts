@@ -12,6 +12,10 @@ export interface RenderOptions {
   responsive?: boolean;
   padding?: number;
   limit?: number;
+  outputLimit?: number;
+  // Schemes a link or an image may use besides a relative address.
+  linkSchemes?: string[];
+  imageSchemes?: string[];
   icons?: IconResolver;
   config?: Config;
   // The time gantt charts treat as now. Defaults to the current time.

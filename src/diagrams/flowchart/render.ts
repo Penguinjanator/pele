@@ -10,7 +10,7 @@ import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
-import { safeUrl, sanitizeUrl } from '../../util/url.js';
+import { imageUrl, linkUrl, safeUrl, sanitizeUrl } from '../../util/url.js';
 import type { IconResolver, LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { FlowDb } from './db.js';
 import { buildFlowGraph, type FlowGraph, type GraphEdge, type GraphNode } from './graph.js';
@@ -217,7 +217,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
       const aw = assetSize(node.assetWidth, 80);
       const ah = assetSize(node.assetHeight, 80);
       const top = view.label.height > 0 ? (node.pos === 't' ? h / 2 - ah : -h / 2) : -ah / 2;
-      inner = `<image href="${esc(safeUrl(node.img))}" x="${num(-aw / 2)}" y="${num(top)}" width="${num(
+      inner = `<image href="${esc(imageUrl(safeUrl(node.img), options))}" x="${num(-aw / 2)}" y="${num(top)}" width="${num(
         aw
       )}" height="${num(ah)}" preserveAspectRatio="${node.constraint === 'on' ? 'xMidYMid meet' : 'none'}"/>`;
     } else if (node.icon) {
@@ -248,7 +248,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     if (internal && node.label) {
       // The label is a note name, but it still ends up in an href, so it gets the same check as a URL.
       const name = decodeEntities(node.label);
-      const safe = sanitizeUrl(name) !== 'about:blank';
+      const safe = linkUrl(sanitizeUrl(name), options) !== 'about:blank';
       const target = esc(name);
       text = `<a class="internal-link"${safe ? ` href="${target}"` : ''} data-href="${target}">${text}</a>`;
       links.push({ id: node.id, href: name, internal: true });
@@ -257,8 +257,9 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     if (node.tooltip) body = `<title>${escText(node.tooltip)}</title>` + body;
     if (node.link) {
       const target = node.linkTarget ? ` target="${esc(node.linkTarget)}"` : '';
-      body = `<a href="${esc(node.link)}"${target} rel="noopener">${body}</a>`;
-      links.push({ id: node.id, href: node.link, internal: false });
+      const href = linkUrl(node.link, options);
+      body = `<a href="${esc(href)}"${target} rel="noopener">${body}</a>`;
+      links.push({ id: node.id, href, internal: false });
     }
     nodesOut += `<g class="pele-node pele-shape-${view.shape}${classes}" data-id="${id}" transform="translate(${num(
       x

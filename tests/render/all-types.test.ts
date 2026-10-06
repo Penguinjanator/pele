@@ -112,6 +112,90 @@ describe('every diagram type', () => {
     }
   });
 
+  const LINKS: [string, string][] = [
+    ['flowchart', 'flowchart LR\n  A --> B\n  click A "URL"'],
+    ['flowchart image', 'flowchart LR\n  A@{ img: "URL" }'],
+    ['flowchart note', 'flowchart LR\n  A["URL"]:::internal-link'],
+    ['agentflow', 'agentflow-beta\n  A --> B\n  click A "URL"'],
+    ['class', 'classDiagram\n  class A\n  click A href "URL"'],
+    ['state', 'stateDiagram-v2\n  A --> B\n  click A href "URL"'],
+    ['gantt', 'gantt\n  dateFormat YYYY-MM-DD\n  Task :a, 2024-01-01, 1d\n  click a href "URL"'],
+    ['kanban', "---\nconfig:\n  kanban:\n    ticketBaseUrl: 'URL'\n---\nkanban\n  todo\n    a[Card]@{ ticket: T1 }"],
+    ['c4', 'C4Context\n  Person(a, "A", $link="URL")'],
+    ['er', 'erDiagram\n  A["URL"]:::internal-link'],
+  ];
+  const hrefs = (svg: string): string[] => (svg.match(/ href="[^"]*"/g) ?? []).map((m) => m.slice(7, -1));
+
+  it('only follows web, mail and phone links, and only loads web images', () => {
+    const blocked = [
+      'file:///etc/passwd',
+      'FILE:///etc/passwd',
+      'fi%6ce:///etc/passwd',
+      'file#58;///etc/passwd',
+      '//evil.example/share',
+      '%2F%2Fevil.example/share',
+      '\\\\\\\\evil.example\\\\share',
+      'smb://evil.example/share',
+      'obsidian://open?vault=x',
+      'ms-msdt:/id',
+      'vscode://x/y',
+      'intent://x',
+      'ftp://example.com/x',
+      'blob:https://example.com/x',
+    ];
+    for (const [name, template] of LINKS) {
+      for (const url of blocked) {
+        // An ER name cannot hold a percent sign or a backslash.
+        if (name === 'er' && /[%\\]/.test(url)) continue;
+        const { svg, links } = render(template.replace('URL', () => url), options);
+        // Kanban and C4 do not read entity codes in an address, which leaves a relative one.
+        const left = name === 'kanban' || name === 'c4' ? /^(?:about:blank|file#58;.*)$/ : /^about:blank$/;
+        for (const href of hrefs(svg)) expect(href, `${name}: ${url}`).toMatch(left);
+        for (const link of links) if (!link.internal) expect(link.href, `${name}: ${url}`).toMatch(left);
+        assertInert(svg, `${name}: ${url}`);
+      }
+      const allowed = name.endsWith('note') || name === 'er' ? ['Note name', 'folder/Note#Heading'] : ['https://example.com/a', 'http://example.com/a', './a/b.html', '/a/b', 'a.html'];
+      if (name === 'flowchart' || name === 'class') allowed.push('mailto:a@example.com', 'tel:+15550100');
+      for (const url of allowed) {
+        const { svg } = render(template.replace('URL', () => url), options);
+        expect(hrefs(svg), `${name}: ${url}`).toEqual([url]);
+      }
+    }
+  });
+
+  it('lets the host allow more schemes', () => {
+    for (const [name, template] of LINKS) {
+      const image = name.endsWith('image');
+      const url = 'obsidian://open?vault=x';
+      const src = template.replace('URL', () => url);
+      expect(hrefs(render(src, { ...options, [image ? 'imageSchemes' : 'linkSchemes']: ['obsidian'] }).svg), name).toEqual([url]);
+      expect(hrefs(render(src, { ...options, [image ? 'linkSchemes' : 'imageSchemes']: ['obsidian'] }).svg), name).not.toContain(url);
+      // Naming the schemes replaces the defaults.
+      const web = template.replace('URL', 'https://example.com/a');
+      expect(hrefs(render(web, { ...options, linkSchemes: [], imageSchemes: [] }).svg), name).not.toContain('https://example.com/a');
+    }
+    for (const scheme of ['javascript', 'data', 'vbscript']) {
+      const { svg } = render(`flowchart LR\n  A --> B\n  click A "${scheme}:alert(1)"`, { ...options, linkSchemes: [scheme] });
+      expect(hrefs(svg), scheme).toEqual(['about:blank']);
+    }
+  });
+
+  it('stops at the output limit', () => {
+    const src = 'flowchart LR\n' + Array.from({ length: 200 }, (_, i) => `  n${i} --> n${i + 1}`).join('\n');
+    const { svg } = render(src, options);
+    expect(() => render(src, { ...options, outputLimit: svg.length })).not.toThrow();
+    let error: unknown;
+    try {
+      render(src, { ...options, outputLimit: svg.length - 1 });
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(PeleError);
+    expect((error as PeleError).code).toBe('limit');
+    expect((error as PeleError).type).toBe('flowchart');
+    expect(() => render('mindmap\nroot\n' + ' a\n'.repeat(16000), options)).toThrow(/output is longer than the limit/);
+  });
+
   it('turns entity codes into characters wherever text is read as text', { timeout: 300000 }, () => {
     // A value that is checked before it is written (a style, a colour, a URL) keeps a code as it is.
     const checked = new Set(['style', 'fill', 'stroke', 'href']);
