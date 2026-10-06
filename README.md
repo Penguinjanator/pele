@@ -4,6 +4,8 @@ Pele renders [Mermaid](https://mermaid.js.org) diagrams to SVG. It is small, syn
 
 Pele supports every diagram type built into Mermaid 12.1.0.
 
+Documentation, examples, and a playground are at [pele.run](https://pele.run).
+
 ## Install
 
 ```sh
@@ -21,6 +23,14 @@ const { svg } = render(`flowchart TD
   B -- No --> D[Mermaid]`);
 
 document.querySelector('#diagram').innerHTML = svg;
+```
+
+In a browser, `mount()` renders into an element, reads fonts from CSS, and adapts the layout to the container width:
+
+```ts
+import { mount } from 'pele';
+
+mount(document.querySelector('#diagram'), text);
 ```
 
 `supports(text)` checks whether a diagram type is available. `render()` throws a `PeleError` for unsupported types, syntax errors, and other rendering failures.
@@ -59,7 +69,7 @@ Set CSS variables on the diagram or a parent element to customize colors and fon
 }
 ```
 
-Charts use `--pele-series-1` through `--pele-series-8`. Diagrams automatically adapt to theme changes without being re-rendered.
+Charts use `--pele-series-1` through `--pele-series-8`. Colors adapt to theme changes without being re-rendered. See [Theming](https://pele.run/theming) for all variables, fonts, and class names.
 
 ## Security
 

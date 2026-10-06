@@ -4,6 +4,16 @@
   "description": "A fast, lightweight Mermaid renderer that outputs themeable SVG.",
   "license": "MIT",
   "author": "kepano",
+  "keywords": [
+    "mermaid",
+    "diagram",
+    "diagrams",
+    "flowchart",
+    "svg",
+    "renderer"
+  ],
+  "homepage": "https://pele.run",
+  "bugs": "https://github.com/obsidianmd/pele/issues",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/obsidianmd/pele.git"
