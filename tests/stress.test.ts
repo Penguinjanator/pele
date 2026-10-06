@@ -13,6 +13,9 @@ const big = { measurer: metricsMeasurer, limit: Infinity };
 const repeat = (count: number, line: (i: number) => string): string => Array.from({ length: count }, (_, i) => line(i)).join('');
 
 const CASES: [string, () => unknown][] = [
+  ['a quoted front matter value of blanks', () => preprocess('---\ntitle: "' + ' '.repeat(N - 100) + 'x"\n---\ngraph TD\nA')],
+  ['a single-quoted front matter value of tabs', () => preprocess("---\ntitle: '" + '\t'.repeat(N - 100) + "x'\n---\ngraph TD\nA")],
+  ['a quoted front matter value of blank lines', () => preprocess('---\ntitle: "' + (' '.repeat(98) + '\n').repeat(450) + 'x"\n---\ngraph TD\nA')],
   [
     'edges that each cross 1,000 nested subgraph borders',
     () =>

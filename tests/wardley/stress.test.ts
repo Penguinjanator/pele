@@ -11,6 +11,8 @@ const HEAD = 'wardley-beta\n';
 const frac = (i: number): string => (0.001 * (i % 1000)).toFixed(3);
 
 const CASES: [string, string][] = [
+  ['a run of zeros', HEAD + 'component A [0.5, 0.5]\n' + '0'.repeat(N - 100)],
+  ['digits and dots in turn', HEAD + 'component A [0.5, 0.5]\n' + '1.'.repeat(N / 2 - 100)],
   ['2,000 components', HEAD + repeat(2000, (i) => `component c${i} [${frac(i)}, ${frac(i * 7)}]\n`)],
   ['chain of 1,500 links', HEAD + repeat(1500, (i) => `component c${i} [${frac(i)}, ${frac(i * 7)}]\n`) + repeat(1500, (i) => `c${i} -> c${i + 1}\n`)],
   ['3,000 links to unknown names', HEAD + repeat(500, (i) => `component c${i} [0.5, ${frac(i)}]\n`) + repeat(3000, (i) => `u${i} -> v${i}\n`)],

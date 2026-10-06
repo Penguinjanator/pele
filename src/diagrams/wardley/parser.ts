@@ -14,6 +14,7 @@ import {
   stringValue,
   titleValue,
   tokenize,
+  type Scanner,
   type TokenType,
 } from '../common/tokens.js';
 
@@ -59,6 +60,28 @@ const enum T {
   newline,
 }
 
+function digits(src: string, from: number): number {
+  let i = from;
+  for (let c = src.charCodeAt(i); c >= 48 && c <= 57; c = src.charCodeAt(i)) i++;
+  return i;
+}
+
+// Answers as WARDLEY_NUMBER's pattern does. The pattern reads a whole run of digits before it
+// finds there is no fraction, and would do so again from every digit of a long run.
+function numberScanner(): Scanner {
+  let from = 0;
+  let end = 0;
+  return (src, p) => {
+    if (p < from || p >= end) {
+      from = p;
+      end = digits(src, p);
+    }
+    if (end === p || src.charCodeAt(end) !== 46) return -1;
+    const stop = digits(src, end + 1);
+    return stop > end + 1 ? stop : -1;
+  };
+}
+
 const ARROW: TokenType = { name: 'ARROW', pattern: /->/y, first: '-' };
 const LINK_ARROW: TokenType = { name: 'LINK_ARROW', pattern: /-->|-\.->|>|\+'[^']*'<>|\+'[^']*'<|\+'[^']*'>/y, first: '->+' };
 const word = (name: string, text: string): TokenType => ({ name, pattern: new RegExp(text, 'y'), first: text[0] });
@@ -74,7 +97,7 @@ export const WARDLEY_TOKENS: readonly TokenType[] = [
   { name: '-', pattern: '-', longer: [ARROW, LINK_ARROW, YAML] },
   { name: '{', pattern: '{' },
   { name: '}', pattern: '}' },
-  { name: 'WARDLEY_NUMBER', pattern: /[0-9]+\.[0-9]+/y, first: '0123456789' },
+  { name: 'WARDLEY_NUMBER', pattern: /[0-9]+\.[0-9]+/y, first: '0123456789', scanner: numberScanner },
   ARROW,
   { name: 'LINK_PORT', pattern: /\+<>|\+>|\+</y, first: '+' },
   LINK_ARROW,

@@ -13,6 +13,10 @@ const repeat = (count: number, line: (i: number) => string): string => Array.fro
 const head = 'stateDiagram-v2\n';
 
 const CASES: [string, () => unknown][] = [
+  [
+    'the same class statement and transitions 1,500 times',
+    () => render(head + 'classDef hot fill:#f00,color:white,font-weight:bold,stroke-width:2px,stroke:yellow\n' + repeat(1500, () => 'A --> B\nB --> A\nclass A hot\n'), big),
+  ],
   ['one line that mentions direction 3,000 times', () => tokenize(head + 'a direction XX '.repeat(N / 15))],
   ['one line of valid directions', () => tokenize(head + 'direction TB direction lr '.repeat(N / 26))],
   ['direction followed by blank lines, 2,000 times', () => tokenize(head + ('direction' + '\n'.repeat(24)).repeat(N / 33))],

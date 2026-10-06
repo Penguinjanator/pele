@@ -76,10 +76,15 @@ export function buildStateGraph(
     // The two literal ids are what DOMPurify leaves of `<<fork>>` and `<<choice>>` in Mermaid; kept for parity.
     if (!node.id || node.id === '</join></fork>' || node.id === '</choice>') return;
     if (node.cssClasses) {
+      // One copy, however many classes: a state named in a class statement many times has a long list.
+      let compiled: string[] | undefined;
       for (const name of node.cssClasses.split(' ')) {
         const def = classes.get(name);
-        if (def) node.cssCompiledStyles = node.cssCompiledStyles.concat(def.styles);
+        if (!def) continue;
+        compiled ??= node.cssCompiledStyles.slice();
+        for (const style of def.styles) compiled.push(style);
       }
+      if (compiled) node.cssCompiledStyles = compiled;
     }
     const existing = byId.get(node.id);
     if (existing) {

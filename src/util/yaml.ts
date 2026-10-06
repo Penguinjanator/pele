@@ -129,8 +129,22 @@ const ESCAPES: Record<string, string> = {
   P: '\u2029',
 };
 
+// Folds the line breaks of a scalar: blanks around a break go, one break becomes a space, and
+// each further break stays. The lines are trimmed by hand, because a pattern for blanks before
+// a line break rescans a long run of blanks from every one of them.
 function fold(text: string): string {
-  return text.replace(/[ \t]*\n[ \t]*/g, '\n').replace(/\n+/g, (m) => (m.length === 1 ? ' ' : '\n'.repeat(m.length - 1)));
+  if (!text.includes('\n')) return text;
+  const lines = text.split('\n');
+  const last = lines.length - 1;
+  for (let i = 0; i <= last; i++) {
+    const line = lines[i];
+    let from = 0;
+    let to = line.length;
+    if (i > 0) while (from < to && (line.charCodeAt(from) === 32 || line.charCodeAt(from) === 9)) from++;
+    if (i < last) while (to > from && (line.charCodeAt(to - 1) === 32 || line.charCodeAt(to - 1) === 9)) to--;
+    lines[i] = line.slice(from, to);
+  }
+  return lines.join('\n').replace(/\n+/g, (m) => (m.length === 1 ? ' ' : '\n'.repeat(m.length - 1)));
 }
 
 function unquoteDouble(body: string): string {

@@ -43,6 +43,7 @@
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
     "test:watch": "vitest",
     "bench": "node scripts/bench.mjs",
     "website": "cd website && pnpm dev"
