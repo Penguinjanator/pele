@@ -10,6 +10,7 @@ import { setupPlaygroundCopy } from './playground-copy';
 import { renderMermaid } from './playground-mermaid';
 import { setupPlaygroundSettings } from './playground-settings';
 import { setupPlaygroundShare } from './playground-share';
+import { formatTime, timed } from '../lib/timing';
 import { diagnosis, setStatus } from './playground-status';
 import { setupPlaygroundTabs } from './playground-tabs';
 
@@ -61,9 +62,6 @@ let mermaidStatus = '';
 let mermaidRevision = 0;
 let mermaidRendered: { source: string } | undefined;
 
-const formatTime = (milliseconds: number) => milliseconds < 0.05
-  ? '< 0.1 ms'
-  : `${milliseconds.toLocaleString(undefined, { maximumFractionDigits: milliseconds < 10 ? 2 : milliseconds < 100 ? 1 : 0 })} ms`;
 const showsMermaid = () => view === 'mermaid' || view === 'compare';
 
 function showOutputStatus() {
@@ -137,18 +135,7 @@ function renderPele() {
       maxWidth,
       icons: siteIcon,
     };
-    const times: number[] = [];
-    const started = performance.now();
-    let result = render(source, options);
-    times.push(performance.now() - started);
-    // One run is too noisy to report. Repeat within a small budget and take the median.
-    while (times.length < 7 && performance.now() - started < 60) {
-      const runStarted = performance.now();
-      result = render(source, options);
-      times.push(performance.now() - runStarted);
-    }
-    times.sort((a, b) => a - b);
-    const time = formatTime(times[Math.floor(times.length / 2)]);
+    const { result, time } = timed(() => render(source, options));
 
     peleOutput.innerHTML = result.svg;
     delete peleOutput.dataset.stale;

@@ -65,6 +65,7 @@ document.querySelector('#diagram').innerHTML = svg;`;
             <div class="home-example-block">
               <div class="home-example-label"><span>Pele</span><span class="doc-code-actions"><PlaygroundLink source={homeExample} /></span></div>
               <figure class="home-example-figure" data-pele-theme="dark" aria-label="Flowchart rendered by Pele" set:html={draw(homeExample, 'home-')} />
+              <div class="home-example-status home-example-time"></div>
             </div>
           </div>
           <p class="home-example-description">Use CSS variables to set colors and fonts. Diagrams automatically adapt to theme changes without being re-rendered.</p>

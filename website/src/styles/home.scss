@@ -123,9 +123,9 @@
   white-space: pre-wrap;
 }
 
-// A status line under the code, as under the playground's editor. Its row is there from the
-// start, so that a message coming and going moves nothing.
-.home-example-source:has(.home-example-status) { padding-bottom: 12px; }
+// A status line under the code and under the diagram, as in the playground. Its row is there
+// from the start, so that a message coming and going moves nothing.
+.home-example-block:has(> .home-example-status) { padding-bottom: 12px; }
 .home-example-status {
   min-height: calc(12px + 1lh);
   margin-top: auto;
@@ -149,6 +149,10 @@
       &:hover { text-decoration: underline; }
     }
   }
+}
+.home-example-time {
+  color: var(--muted);
+  text-align: right;
 }
 .home-example-block[data-error] .home-example-figure svg { opacity: 0.4; }
 

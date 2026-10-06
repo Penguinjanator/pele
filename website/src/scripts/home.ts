@@ -1,5 +1,5 @@
-// The home page's examples can be edited. The page arrives drawn; what an edit needs is only
-// fetched once someone shows an interest in a code block.
+// The home page's examples can be edited. The page arrives drawn; what an edit needs is
+// fetched once the page is idle, or sooner if someone goes to a code block.
 type Live = typeof import('./home-live');
 
 let live: Promise<Live> | undefined;
@@ -37,6 +37,14 @@ for (const block of document.querySelectorAll<HTMLElement>('[data-home-editor]')
   pre.append(area);
 
   for (const event of ['pointerenter', 'focusin', 'touchstart']) block.addEventListener(event, () => void load(), { once: true, passive: true });
+
+  // The first example says how long its drawing takes, which means drawing it once more.
+  if (panel.querySelector('.home-example-time')) {
+    const idle = window.requestIdleCallback ?? ((run: () => void) => window.setTimeout(run, 200));
+    const time = (): void => void idle(() => void load().then((module) => module.measure(area, panel as HTMLElement)));
+    if (document.readyState === 'complete') time();
+    else window.addEventListener('load', time, { once: true });
+  }
 
   let pending = 0;
   area.addEventListener('input', () => {

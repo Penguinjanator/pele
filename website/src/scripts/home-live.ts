@@ -1,8 +1,9 @@
-import { renderAsync } from 'pele/lazy';
+import { detectType, load, render } from 'pele/lazy';
 import { metricsMeasurer } from '../../../src/text/measurer';
 import { highlightLines, type CodeLanguage } from '../lib/highlight';
 import { siteIcon } from '../lib/icons';
 import { playgroundHref } from '../lib/playground-link';
+import { timed } from '../lib/timing';
 import { diagnosis, setStatus } from './playground-status';
 
 function highlight(code: HTMLElement, value: string, language: CodeLanguage): void {
@@ -27,23 +28,36 @@ function select(area: HTMLTextAreaElement, line: number, column: number): void {
   area.setSelectionRange(at, Math.min(at + 1, area.value.length));
 }
 
-async function draw(area: HTMLTextAreaElement, panel: HTMLElement): Promise<void> {
+// The width each edited example was last drawn for, and what redraws it when that changes.
+const drawnFor = new WeakMap<HTMLElement, number>();
+const watched = new WeakSet<HTMLElement>();
+
+// Draws the source beside its code. Without `show`, it only reports how long the drawing the
+// page came with takes, and leaves that drawing alone.
+async function draw(area: HTMLTextAreaElement, panel: HTMLElement, show = true): Promise<void> {
   const figure = panel.querySelector<HTMLElement>('.home-example-figure');
   const block = figure?.closest<HTMLElement>('.home-example-block');
   const status = panel.querySelector<HTMLElement>('.home-example-status');
+  const clock = panel.querySelector<HTMLElement>('.home-example-time');
   if (!figure || !block) return;
   const value = area.value;
   const turn = ++drawing;
+  const width = figure.clientWidth;
   let failure: unknown;
   let drawn: { svg: string; type: string } | undefined;
+  let time = '';
   try {
-    // Measured as the build measured it, so the drawing the page came with does not move
-    // when it is first edited.
-    drawn = await renderAsync(value, { idPrefix: 'home-', measurer: metricsMeasurer, icons: siteIcon });
+    await load(detectType(value));
+    if (turn !== drawing) return;
+    // Measured as the build measured it, so the drawing the page came with does not move when
+    // it is first edited. It is drawn for the room there is, as mount() would draw it.
+    const options = { idPrefix: 'home-', measurer: metricsMeasurer, icons: siteIcon, maxWidth: width || undefined };
+    ({ result: drawn, time } = timed(() => render(value, options)));
   } catch (error) {
     failure = error;
   }
-  if (turn !== drawing) return;
+  if (clock) clock.textContent = drawn ? `Pele ${time}` : '';
+  if (!show) return;
 
   // What was last drawn stays, dimmed, while the text does not parse.
   if (drawn) figure.innerHTML = drawn.svg;
@@ -63,6 +77,14 @@ async function draw(area: HTMLTextAreaElement, panel: HTMLElement): Promise<void
       status.replaceChildren(message);
       status.dataset.state = 'error';
     }
+  }
+
+  drawnFor.set(figure, width);
+  if (!watched.has(figure) && typeof ResizeObserver !== 'undefined') {
+    watched.add(figure);
+    new ResizeObserver(() => {
+      if (figure.clientWidth !== drawnFor.get(figure)) void draw(area, panel);
+    }).observe(figure);
   }
 
   const link = block.querySelector<HTMLAnchorElement>('.playground-link');
@@ -108,4 +130,8 @@ export function edited(kind: 'mermaid' | 'css', area: HTMLTextAreaElement, code:
   highlight(code, area.value, kind);
   if (kind === 'css') style(area.value, panel);
   else void draw(area, panel);
+}
+
+export function measure(area: HTMLTextAreaElement, panel: HTMLElement): void {
+  void draw(area, panel, false);
 }
