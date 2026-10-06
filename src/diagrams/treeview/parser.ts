@@ -10,6 +10,7 @@ import {
   tokenize,
   type TokenType,
 } from '../common/tokens.js';
+import { isBlank } from '../../util/chars.js';
 
 const enum T {
   keyword,
@@ -25,10 +26,6 @@ const enum T {
   comment,
   newline,
   bareName,
-}
-
-function isBlank(c: number): boolean {
-  return c === 32 || c === 9;
 }
 
 function annotationAt(src: string, at: number): boolean {

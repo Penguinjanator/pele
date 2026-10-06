@@ -1,3 +1,5 @@
+import { isSpace, isWord } from '../../util/chars.js';
+
 export const enum T {
   END,
   EOF,
@@ -16,25 +18,6 @@ export interface Tokens {
   ends: number[];
 }
 
-// What `\s` matches in a JavaScript regular expression.
-function isSpace(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || ((c | 32) >= 97 && (c | 32) <= 122) || c === 95;
-}
 
 function keyword(src: string, at: number): number {
   const word = 'ishikawa-beta';

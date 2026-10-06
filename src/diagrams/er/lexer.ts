@@ -1,4 +1,5 @@
 import { T } from './tokens.js';
+import { isDigit, isSpace, isWord } from '../../util/chars.js';
 
 export interface Tokens {
   types: number[];
@@ -44,29 +45,6 @@ const RE_DIRECTION = [
 ];
 const RE_DIR_WORD = /direction/gi;
 const RE_LINE_END = /[\n\r\u2028\u2029]/g;
-
-function isWs(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
-}
-
-function isDigit(c: number): boolean {
-  return c >= 48 && c <= 57;
-}
 
 // Mermaid's attribute pattern is case-insensitive, which lets the micro sign into its \u00c0-\uffff range.
 function isAttr(c: number, kind: number): boolean {
@@ -169,9 +147,9 @@ export function tokenize(src: string): Tokens {
       return;
     }
     if (c === 49) {
-      if (isWs(d)) {
+      if (isSpace(d)) {
         let r = p + 2;
-        while (isWs(src.charCodeAt(r))) r++;
+        while (isSpace(src.charCodeAt(r))) r++;
         const f = src.charCodeAt(r);
         if (isWord(f) || f === 34 || f === 39) {
           emit(T.ONLY_ONE, p, p + 1);
@@ -199,7 +177,7 @@ export function tokenize(src: string): Tokens {
         if (kwb('erdiagram')) emit(T.ER_DIAGRAM, p, p + 9);
         else if (kwb('end')) {
           let e = p + 3;
-          while (isWs(src.charCodeAt(e))) e++;
+          while (isSpace(src.charCodeAt(e))) e++;
           emit(T.END_KW, p, e);
         } else return false;
         return true;
@@ -351,7 +329,7 @@ export function tokenize(src: string): Tokens {
     }
     if (wsNext < p) {
       let q = p;
-      while (q < n && !isWs(src.charCodeAt(q))) q++;
+      while (q < n && !isSpace(src.charCodeAt(q))) q++;
       wsNext = q;
     }
     if (tildeNext >= wsNext) return false;
@@ -361,15 +339,15 @@ export function tokenize(src: string): Tokens {
     }
     if (tildeLast <= tildeNext) return false;
     let e = tildeLast + 1;
-    while (e < n && !isWs(src.charCodeAt(e))) e++;
+    while (e < n && !isSpace(src.charCodeAt(e))) e++;
     emit(T.ATTRIBUTE_WORD, p, e);
     return true;
   };
 
   const block = (c: number): void => {
-    if (isWs(c)) {
+    if (isSpace(c)) {
       p++;
-      while (isWs(src.charCodeAt(p))) p++;
+      while (isSpace(src.charCodeAt(p))) p++;
       return;
     }
     const lc = c | 32;
@@ -448,9 +426,9 @@ export function tokenize(src: string): Tokens {
           while (src.charCodeAt(e) === 10) e++;
           state = S.INITIAL;
           emit(T.NEWLINE, p, e);
-        } else if (isWs(c)) {
+        } else if (isSpace(c)) {
           p++;
-          while (isWs(src.charCodeAt(p))) p++;
+          while (isSpace(src.charCodeAt(p))) p++;
         } else if (c === 58) emit(T.COLON, p, p + 1);
         else if (c === 44) emit(T.COMMA, p, p + 1);
         else if (c === 35) emit(T.BRKT, p, p + 1);

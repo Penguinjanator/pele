@@ -1,4 +1,5 @@
 import { T } from './tokens.js';
+import { isDigit, isSpace, isWord } from '../../util/chars.js';
 
 export interface Tokens {
   types: number[];
@@ -26,7 +27,7 @@ const enum C {
   Menu = 32,
 }
 
-// Character classes of Mermaid's lexer rules, for ASCII. Other characters are tested by isWs.
+// Character classes of Mermaid's lexer rules, for ASCII. Other characters are tested by isSpace.
 const CLASS = new Uint8Array(128);
 for (let c = 0; c < 128; c++) {
   const ch = String.fromCharCode(c);
@@ -38,29 +39,6 @@ for (let c = 0; c < 128; c++) {
   if (!'#\n;'.includes(ch)) bits |= C.Line;
   if (!'/\\+()<>:\n,;-'.includes(ch) && !ws) bits |= C.Menu;
   CLASS[c] = bits;
-}
-
-function isWs(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
-}
-
-function isDigit(c: number): boolean {
-  return c >= 48 && c <= 57;
 }
 
 export function tokenize(src: string): Tokens {
@@ -102,7 +80,7 @@ export function tokenize(src: string): Tokens {
   const has = (q: number, bit: number): boolean => {
     const c = src.charCodeAt(q);
     if (c < 128) return (CLASS[c] & bit) !== 0;
-    return bit === C.Id || bit === C.Menu ? !isWs(c) : true;
+    return bit === C.Id || bit === C.Menu ? !isSpace(c) : true;
   };
   // Matches a lowercase literal without regard to the case of the source.
   const ci = (q: number, word: string): boolean => {
@@ -115,14 +93,14 @@ export function tokenize(src: string): Tokens {
   };
   const word = (lit: string): boolean => ci(p, lit) && !isWord(src.charCodeAt(p + lit.length));
   const skipWs = (q: number): number => {
-    while (q < n && isWs(src.charCodeAt(q))) q++;
+    while (q < n && isSpace(src.charCodeAt(q))) q++;
     return q;
   };
   const skipSameLine = (): boolean => {
     let q = p;
     while (q < n) {
       const c = src.charCodeAt(q);
-      if (c === 10 || !isWs(c)) break;
+      if (c === 10 || !isSpace(c)) break;
       q++;
     }
     if (q === p) return false;
@@ -244,7 +222,7 @@ export function tokenize(src: string): Tokens {
     let q = p + 5;
     const legacy = src.charCodeAt(q) === 58;
     if (legacy) q++;
-    if (!isWs(src.charCodeAt(q)) || q + 1 >= n || !has(q + 1, C.Line)) return false;
+    if (!isSpace(src.charCodeAt(q)) || q + 1 >= n || !has(q + 1, C.Line)) return false;
     emit(legacy ? T.legacy_title : T.title, p, lineRun(q + 1));
     return true;
   };
@@ -324,7 +302,7 @@ export function tokenize(src: string): Tokens {
       emit(T.NEWLINE, p, q);
       return;
     }
-    if (isWs(c)) {
+    if (isSpace(c)) {
       p = skipWs(p + 1);
       return;
     }
@@ -371,7 +349,7 @@ export function tokenize(src: string): Tokens {
         emit(T.ACTOR, p, a);
         return true;
       }
-      if (w > a && ci(w, 'as') && isWs(src.charCodeAt(w + 2))) {
+      if (w > a && ci(w, 'as') && isSpace(src.charCodeAt(w + 2))) {
         emit(T.ACTOR, p, a);
         push(S.ALIAS);
         return true;
@@ -442,7 +420,7 @@ export function tokenize(src: string): Tokens {
           return true;
         } else {
           const w = skipWs(p + 1);
-          const alias = w > p + 1 && ci(w, 'as') && isWs(src.charCodeAt(w + 2));
+          const alias = w > p + 1 && ci(w, 'as') && isSpace(src.charCodeAt(w + 2));
           emit(T.CONFIG_END, p, p + 1);
           pop();
           if (alias) push(S.ALIAS);

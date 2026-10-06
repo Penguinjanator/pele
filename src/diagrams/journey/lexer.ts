@@ -1,4 +1,5 @@
-import { accessibility, isSpace, isWord, keywordAt, skipTrivia, type Tokens } from '../common/scan.js';
+import { isSpace, isWord } from '../../util/chars.js';
+import { accessibility, keywordAt, skipTrivia, type Tokens } from '../common/scan.js';
 
 export const enum T {
   END,

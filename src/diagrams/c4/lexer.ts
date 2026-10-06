@@ -1,4 +1,5 @@
 import { T } from './tokens.js';
+import { isSpace, isWord } from '../../util/chars.js';
 
 // Token text is src.slice(starts[i], ends[i]); nothing is copied until the parser asks for it.
 export interface Tokens {
@@ -78,25 +79,6 @@ const RE_DIRECTION = [
 ];
 const RE_LINE_END = /[\n\r\u2028\u2029]/g;
 
-function isWs(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
-}
-
 // Follows the lexer Jison compiles from c4Diagram.jison: its rule order, its start conditions,
 // and what it returns once the input runs out in each of them.
 export function tokenize(src: string): Tokens {
@@ -122,7 +104,7 @@ export function tokenize(src: string): Tokens {
     p = e;
   };
   const skipWs = (q: number): number => {
-    while (q < n && isWs(src.charCodeAt(q))) q++;
+    while (q < n && isSpace(src.charCodeAt(q))) q++;
     return q;
   };
   const upTo = (ch: string, from: number): number => {
@@ -132,7 +114,7 @@ export function tokenize(src: string): Tokens {
   // `word\s[^#\n;]+`
   const statement = (word: string, type: number): boolean => {
     let q = p + word.length;
-    if (!src.startsWith(word, p) || !isWs(src.charCodeAt(q))) return false;
+    if (!src.startsWith(word, p) || !isSpace(src.charCodeAt(q))) return false;
     const from = ++q;
     while (q < n) {
       const c = src.charCodeAt(q);
@@ -208,12 +190,12 @@ export function tokenize(src: string): Tokens {
         p = q;
         continue;
       }
-      if (isWs(c)) {
+      if (isSpace(c)) {
         let q = p;
         let last = -1;
         while (q < n) {
           const d = src.charCodeAt(q);
-          if (!isWs(d)) break;
+          if (!isSpace(d)) break;
           if (d === 10) last = q;
           q++;
         }

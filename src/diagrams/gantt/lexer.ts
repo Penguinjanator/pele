@@ -1,4 +1,5 @@
 import { T } from './tokens.js';
+import { isSpace } from '../../util/chars.js';
 
 export interface Tokens {
   types: number[];
@@ -47,21 +48,6 @@ const KEYWORDS = new Map<number, [RegExp, number][]>([
   [101, [[/excludes\s[^#\n;]+/iy, T.excludes]]],
   [115, [[/section\s[^\n]+/iy, T.section]]],
 ]);
-
-function isWs(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
 
 export function tokenize(src: string): Tokens {
   const n = src.length;
@@ -208,9 +194,9 @@ export function tokenize(src: string): Tokens {
           let e = p + 1;
           while (src.charCodeAt(e) === 10) e++;
           emit(T.NL, p, e);
-        } else if (isWs(c)) {
+        } else if (isSpace(c)) {
           p++;
-          while (p < n && isWs(src.charCodeAt(p))) p++;
+          while (p < n && isSpace(src.charCodeAt(p))) p++;
         } else if (keyword(c)) {
           break;
         } else if (c >= 48 && c <= 57 && at(RE_DATE) >= 0) {
@@ -286,12 +272,12 @@ export function tokenize(src: string): Tokens {
         break;
 
       case S.click:
-        if (isWs(c)) {
+        if (isSpace(c)) {
           state = S.INITIAL;
           p++;
         } else {
           let e = p + 1;
-          while (e < n && !isWs(src.charCodeAt(e))) e++;
+          while (e < n && !isSpace(src.charCodeAt(e))) e++;
           emit(T.click, p, e);
         }
         break;

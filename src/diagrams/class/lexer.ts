@@ -1,5 +1,6 @@
 import { isUnicodeLetter } from '../../util/unicode.js';
 import { T } from './tokens.js';
+import { isSpace, isWord } from '../../util/chars.js';
 
 export interface Tokens {
   types: number[];
@@ -48,25 +49,6 @@ const RE_DIRECTION = [
 ];
 const RE_LINE_END = /[\n\r\u2028\u2029]/g;
 
-function isWs(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
-}
-
 export function tokenize(src: string): Tokens {
   const n = src.length;
   const types: number[] = [];
@@ -95,7 +77,7 @@ export function tokenize(src: string): Tokens {
   };
   const kw = (word: string): boolean => src.startsWith(word, p) && !isWord(src.charCodeAt(p + word.length));
   const skipWs = (q: number): number => {
-    while (q < n && isWs(src.charCodeAt(q))) q++;
+    while (q < n && isSpace(src.charCodeAt(q))) q++;
     return q;
   };
   const until = (ch: string): number => {
@@ -107,7 +89,7 @@ export function tokenize(src: string): Tokens {
   const space = (leaves: boolean): void => {
     let q = p;
     let k = -1;
-    for (let c = src.charCodeAt(q); q < n && isWs(c); c = src.charCodeAt(++q)) if (c === 10) k = q;
+    for (let c = src.charCodeAt(q); q < n && isSpace(c); c = src.charCodeAt(++q)) if (c === 10) k = q;
     if (k < 0) {
       p = q;
       return;
@@ -243,7 +225,7 @@ export function tokenize(src: string): Tokens {
 
   const initial = (c: number): boolean => {
     if (direction()) return true;
-    if (isWs(c)) {
+    if (isSpace(c)) {
       space(false);
       return true;
     }
@@ -276,7 +258,7 @@ export function tokenize(src: string): Tokens {
       case 99:
         if (kw('classDiagram-v2')) return emit(T.CLASS_DIAGRAM, p, p + 15);
         if (kw('classDiagram')) return emit(T.CLASS_DIAGRAM, p, p + 12);
-        if (src.startsWith('call', p) && isWs(src.charCodeAt(p + 4))) {
+        if (src.startsWith('call', p) && isSpace(src.charCodeAt(p + 4))) {
           p = skipWs(p + 4);
           push(S.callbackName);
           return true;
@@ -322,7 +304,7 @@ export function tokenize(src: string): Tokens {
         break;
 
       case S.cls:
-        if (isWs(c)) {
+        if (isSpace(c)) {
           space(true);
         } else if (c === 125) {
           pop();
@@ -361,7 +343,7 @@ export function tokenize(src: string): Tokens {
         break;
 
       case S.namespace:
-        if (isWs(c)) {
+        if (isSpace(c)) {
           space(true);
         } else if (c === 123) {
           push(S.namespaceBody);
@@ -378,7 +360,7 @@ export function tokenize(src: string): Tokens {
         break;
 
       case S.namespaceBody:
-        if (isWs(c)) {
+        if (isSpace(c)) {
           space(false);
         } else if (c === 125) {
           pop();

@@ -1,5 +1,6 @@
 import { PeleError } from '../../errors.js';
 import { T } from './tokens.js';
+import { isBlank, isDigit, isHex, isLetter } from '../../util/chars.js';
 
 export interface Tokens {
   types: number[];
@@ -20,22 +21,6 @@ const KEYWORD_LENGTH = [0, 12, 5, 14, 3, 9, 2, 2, 2, 2, 2, 4, 3, 4, 8, 5, 5, 7, 
 
 function isWord(c: number): boolean {
   return c < 128 && (CLASS[c] & WORD) !== 0;
-}
-
-function isBlank(c: number): boolean {
-  return c === 32 || c === 9;
-}
-
-function isDigit(c: number): boolean {
-  return c >= 48 && c <= 57;
-}
-
-function isLetter(c: number): boolean {
-  return (c | 32) >= 97 && (c | 32) <= 122;
-}
-
-function isHex(c: number): boolean {
-  return isDigit(c) || ((c | 32) >= 97 && (c | 32) <= 102);
 }
 
 // Mermaid's INCLUDE and EXTEND are the only keywords matched without regard to case.

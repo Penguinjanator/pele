@@ -1,3 +1,5 @@
+import { isLineEnd } from '../../util/chars.js';
+
 export type Visibility = '#' | '+' | '~' | '-' | '';
 
 function tildes(text: string): number {
@@ -36,10 +38,6 @@ export function parseGenericTypes(input: string): string {
     output.push(pairTildes(set));
   }
   return output.join('');
-}
-
-function isLineEnd(c: number): boolean {
-  return c === 10 || c === 13 || c === 0x2028 || c === 0x2029;
 }
 
 function isVisibility(ch: string): ch is Visibility {

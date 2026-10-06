@@ -1,4 +1,5 @@
 import { T } from './tokens.js';
+import { isSpace, isWord } from '../../util/chars.js';
 
 export interface Tokens {
   types: number[];
@@ -36,25 +37,6 @@ const RE_STEREOTYPE = /<<(?:fork|join|choice)>>|\[\[(?:fork|join|choice)\]\]/gi;
 const RE_LINE_END = /[\n\r\u2028\u2029]/g;
 const RE_PERCENT = /%%/g;
 const RE_BRACE = /\{/g;
-
-function isWs(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
-}
 
 // Finds the next match of a pattern at or after a position, remembering the answer so that
 // asking at each token costs one scan of the text in total.
@@ -128,7 +110,7 @@ export function tokenize(src: string): Tokens {
   };
   const wsEnd = (q: number): number => {
     let j = q;
-    while (j < n && isWs(src.charCodeAt(j))) j++;
+    while (j < n && isSpace(src.charCodeAt(j))) j++;
     return j;
   };
   const wordEnd = (q: number): number => {
@@ -281,13 +263,13 @@ export function tokenize(src: string): Tokens {
             emit(T.NL, p, j);
             continue;
           }
-          if (isWs(c)) {
+          if (isSpace(c)) {
             p = wsEnd(p);
             continue;
           }
-        } else if (c !== 10 && isWs(c)) {
+        } else if (c !== 10 && isSpace(c)) {
           let j = p + 1;
-          while (j < n && src.charCodeAt(j) !== 10 && isWs(src.charCodeAt(j))) j++;
+          while (j < n && src.charCodeAt(j) !== 10 && isSpace(src.charCodeAt(j))) j++;
           p = j;
           continue;
         }
@@ -397,7 +379,7 @@ export function tokenize(src: string): Tokens {
         let j = p;
         while (j < n) {
           const d = src.charCodeAt(j);
-          if (d === 58 || d === 45 || d === 123 || isWs(d)) break;
+          if (d === 58 || d === 45 || d === 123 || isSpace(d)) break;
           j++;
         }
         if (j > p) {
@@ -440,9 +422,9 @@ export function tokenize(src: string): Tokens {
       }
 
       case S.STATE: {
-        if (c !== 10 && isWs(c)) {
+        if (c !== 10 && isSpace(c)) {
           let j = p + 1;
-          while (j < n && src.charCodeAt(j) !== 10 && isWs(src.charCodeAt(j))) j++;
+          while (j < n && src.charCodeAt(j) !== 10 && isSpace(src.charCodeAt(j))) j++;
           p = j;
           continue;
         }
@@ -497,7 +479,7 @@ export function tokenize(src: string): Tokens {
         let j = p + 1;
         while (j < n) {
           const d = src.charCodeAt(j);
-          if (d === 123 || isWs(d)) break;
+          if (d === 123 || isSpace(d)) break;
           j++;
         }
         emit(T.COMPOSIT_STATE, p, j);
@@ -642,7 +624,7 @@ export function tokenize(src: string): Tokens {
         let j = q;
         while (j < n) {
           const d = src.charCodeAt(j);
-          if (d === 58 || d === 45 || isWs(d)) break;
+          if (d === 58 || d === 45 || isSpace(d)) break;
           j++;
         }
         if (j === q) return finish(T.ERROR);

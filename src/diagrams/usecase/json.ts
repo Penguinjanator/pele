@@ -1,4 +1,5 @@
 import { PeleError } from '../../errors.js';
+import { isDigit } from '../../util/chars.js';
 
 export interface OrderedJson {
   value: Record<string, unknown>;
@@ -27,10 +28,6 @@ const enum State {
   Value,
   Key,
   After,
-}
-
-function isDigit(c: number): boolean {
-  return c >= 48 && c <= 57;
 }
 
 // Walks JSON text that JSON.parse has accepted, to recover the order its keys were written in,

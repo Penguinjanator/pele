@@ -1,4 +1,5 @@
 import { T } from './tokens.js';
+import { isSpace, isWord } from '../../util/chars.js';
 
 export interface Tokens {
   types: number[];
@@ -31,25 +32,6 @@ const DIRECTIONS = ['right', 'left', 'x', 'y', 'up', 'down'];
 const ID_STOP = new Uint8Array(128);
 for (const c of [9, 10, 11, 12, 13, 32, 40, 41, 45, 58, 60, 61, 62, 91, 123, 125]) ID_STOP[c] = 1;
 
-function isWs(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
-}
-
 export function tokenize(src: string): Tokens {
   const n = src.length;
   const types: number[] = [];
@@ -75,7 +57,7 @@ export function tokenize(src: string): Tokens {
     if (stack.length > 0) state = stack.pop()!;
   };
   const ws = (q: number): number => {
-    while (q < n && isWs(src.charCodeAt(q))) q++;
+    while (q < n && isSpace(src.charCodeAt(q))) q++;
     return q;
   };
   const digits = (q: number): number => {
@@ -163,7 +145,7 @@ export function tokenize(src: string): Tokens {
   };
 
   const initial = (c: number): boolean => {
-    if (isWs(c)) {
+    if (isSpace(c)) {
       p = ws(p + 1);
       return true;
     }
@@ -286,7 +268,7 @@ export function tokenize(src: string): Tokens {
     q = p;
     while (q < n) {
       const ch = src.charCodeAt(q);
-      if (ch < 128 ? ID_STOP[ch] === 1 : isWs(ch)) break;
+      if (ch < 128 ? ID_STOP[ch] === 1 : isSpace(ch)) break;
       q++;
     }
     return q > p && emit(T.NODE_ID, q);

@@ -1,4 +1,5 @@
-import { isDigit, isLetter, isSpace, isWordChar, wordAt } from '../common/caseless.js';
+import { isDigit, isLetter, isLineEnd, isSpace, isWord } from '../../util/chars.js';
+import { wordAt } from '../common/caseless.js';
 import { T } from './tokens.js';
 
 export interface Tokens {
@@ -41,10 +42,6 @@ for (const [chars, type] of [
   ["!$%'`?\\/", T.PUNCTUATION],
 ] as const) {
   for (let k = 0; k < chars.length; k++) SINGLE[chars.charCodeAt(k)] = type;
-}
-
-function isLineEnd(c: number): boolean {
-  return c === 10 || c === 13 || c === 0x2028 || c === 0x2029;
 }
 
 export function tokenize(src: string): Tokens {
@@ -153,9 +150,9 @@ export function tokenize(src: string): Tokens {
         break lexing;
 
       case S.class_name:
-        if (isWordChar(c)) {
+        if (isWord(c)) {
           let e = p + 1;
-          while (isWordChar(src.charCodeAt(e))) e++;
+          while (isWord(src.charCodeAt(e))) e++;
           emit(T.class_name, p, e);
           pop();
           continue;
@@ -216,7 +213,7 @@ export function tokenize(src: string): Tokens {
     }
 
     const lower = c | 32;
-    if (lower === 116 && wordAt(src, p, 'title') && !isWordChar(src.charCodeAt(p + 5))) {
+    if (lower === 116 && wordAt(src, p, 'title') && !isWord(src.charCodeAt(p + 5))) {
       emit(T.title, p, p + 5);
       push(S.title);
       continue;
@@ -283,7 +280,7 @@ export function tokenize(src: string): Tokens {
       continue;
     }
 
-    if (lower === 99 && wordAt(src, p, 'classdef') && !isWordChar(src.charCodeAt(p + 8))) {
+    if (lower === 99 && wordAt(src, p, 'classdef') && !isWord(src.charCodeAt(p + 8))) {
       emit(T.CLASSDEF, p, p + 8);
       continue;
     }

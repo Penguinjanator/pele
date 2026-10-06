@@ -1,5 +1,6 @@
 import { isUnicodeLetter } from '../../util/unicode.js';
 import { T } from './tokens.js';
+import { isSpace, isWord } from '../../util/chars.js';
 
 export interface Tokens {
   types: number[];
@@ -62,25 +63,6 @@ const RE_SPACE = /[^\S\n\r]+/y;
 const RE_EMPTY_CALL = /\(\s*\)/y;
 const RE_BR = /\n\s*/g;
 
-function isWs(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
-}
-
 export function tokenize(src: string): Tokens {
   const n = src.length;
   const types: number[] = [];
@@ -124,8 +106,8 @@ export function tokenize(src: string): Tokens {
     let j = q;
     if (q >= wsFrom && q <= wsTo) {
       j = wsTo;
-    } else if (isWs(src.charCodeAt(q))) {
-      while (j < n && isWs(src.charCodeAt(j))) j++;
+    } else if (isSpace(src.charCodeAt(q))) {
+      while (j < n && isSpace(src.charCodeAt(j))) j++;
       wsFrom = q;
       wsTo = j;
     }
@@ -136,8 +118,8 @@ export function tokenize(src: string): Tokens {
     let j = q;
     if (q >= wsFrom && q <= wsTo) {
       j = wsTo;
-    } else if (isWs(src.charCodeAt(q))) {
-      while (j < n && isWs(src.charCodeAt(j))) j++;
+    } else if (isSpace(src.charCodeAt(q))) {
+      while (j < n && isSpace(src.charCodeAt(j))) j++;
       wsFrom = q;
       wsTo = j;
     }
@@ -368,7 +350,7 @@ export function tokenize(src: string): Tokens {
         }
         break;
       case 104:
-        if (src.startsWith('href', p) && isWs(src.charCodeAt(p + 4))) {
+        if (src.startsWith('href', p) && isSpace(src.charCodeAt(p + 4))) {
           emit(T.HREF, p, p + 5);
           return true;
         }
@@ -392,7 +374,7 @@ export function tokenize(src: string): Tokens {
       case 101:
         if (kw('end')) {
           e = p + 3;
-          while (e < n && isWs(src.charCodeAt(e))) e++;
+          while (e < n && isSpace(src.charCodeAt(e))) e++;
           emit(T.end, p, e);
           return true;
         }
@@ -438,13 +420,13 @@ export function tokenize(src: string): Tokens {
     }
 
     // A link id is a run of non-space characters up to its last `@` that is not followed by `{` or `"`.
-    if (atNext !== -1 && c !== 34 && !isWs(c)) {
+    if (atNext !== -1 && c !== 34 && !isSpace(c)) {
       if (p >= runEnd) {
         if (atNext < p) atNext = src.indexOf('@', p);
         let q = p;
         while (q < n) {
           const ch = src.charCodeAt(q);
-          if (ch === 34 || isWs(ch)) break;
+          if (ch === 34 || isSpace(ch)) break;
           q++;
         }
         runEnd = q;
@@ -546,7 +528,7 @@ export function tokenize(src: string): Tokens {
         return nodeString();
     }
 
-    if (isWs(c)) {
+    if (isSpace(c)) {
       if (link(c)) return true;
       if ((e = at(RE_NEWLINE, p)) >= 0) {
         emit(T.NEWLINE, p, e);
@@ -588,7 +570,7 @@ export function tokenize(src: string): Tokens {
       if (ch === 34) break;
       if (ch === a) {
         if (a !== 45 || src.charCodeAt(q + 1) === 45) break;
-      } else if (ch === 120 || ch === 111 || ch === 60 || ch === b || isWs(ch)) {
+      } else if (ch === 120 || ch === 111 || ch === 60 || ch === b || isSpace(ch)) {
         const dd = linkChar(q);
         if ((dd === a || dd === b) && at(linkRe, q) >= 0) break;
       }
@@ -741,7 +723,7 @@ export function tokenize(src: string): Tokens {
             emit(T.DIAMOND_STOP, p, p + 1);
             break;
           default: {
-            if ((c === 126 || isWs(c)) && invisLink()) break;
+            if ((c === 126 || isSpace(c)) && invisLink()) break;
             let q = p + 1;
             while (q < n) {
               const ch = src.charCodeAt(q);
@@ -769,7 +751,7 @@ export function tokenize(src: string): Tokens {
         const d = src.charCodeAt(p + 1);
         if (c === 34) {
           quote();
-        } else if ((c === 126 || isWs(c)) && invisLink()) {
+        } else if ((c === 126 || isSpace(c)) && invisLink()) {
           break;
         } else if ((c === 45 || c === 47 || c === 41) && d === 41) {
           pop();
@@ -784,7 +766,7 @@ export function tokenize(src: string): Tokens {
             const ch = src.charCodeAt(q);
             if (ch === 34 || ch === 40 || ch === 41 || ch === 91 || ch === 93 || ch === 123 || ch === 125) break;
             if ((ch === 45 || ch === 47) && src.charCodeAt(q + 1) === 41) break;
-            if ((ch === 126 || isWs(ch)) && invisAhead(q) && at(RE_INVIS_LINK, q) >= 0) break;
+            if ((ch === 126 || isSpace(ch)) && invisAhead(q) && at(RE_INVIS_LINK, q) >= 0) break;
             q++;
           }
           emit(T.TEXT, p, q);
@@ -798,7 +780,7 @@ export function tokenize(src: string): Tokens {
           quote();
           break;
         }
-        if ((c === 126 || isWs(c)) && invisLink()) break;
+        if ((c === 126 || isSpace(c)) && invisLink()) break;
         switch (c) {
           case 40:
             if (d === 45 || d === 91 || (d === 40 && src.charCodeAt(p + 2) === 40)) {
@@ -884,12 +866,12 @@ export function tokenize(src: string): Tokens {
       case S.click:
         if (c === 34) {
           quote();
-        } else if (isWs(c)) {
+        } else if (isSpace(c)) {
           pop();
           p++;
         } else {
           let q = p + 1;
-          while (q < n && !isWs(src.charCodeAt(q))) q++;
+          while (q < n && !isSpace(src.charCodeAt(q))) q++;
           emit(T.CLICK, p, q);
         }
         break;

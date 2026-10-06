@@ -1,3 +1,5 @@
+import { isWord } from '../../util/chars.js';
+
 export const enum T {
   END,
   // Not a Jison token: the reference lexer would return the same empty token forever from here.
@@ -33,10 +35,6 @@ const enum S {
   INITIAL,
   csv,
   escaped_text,
-}
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
 }
 
 // RFC 4180 TEXTDATA: printable ASCII except the double quote and the comma.

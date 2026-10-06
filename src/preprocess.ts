@@ -1,5 +1,6 @@
 import { PeleError } from './errors.js';
 import { parseYaml, type YamlValue } from './util/yaml.js';
+import { isSpace as isWhitespace } from './util/chars.js';
 
 export type Config = { [key: string]: YamlValue };
 
@@ -170,21 +171,6 @@ export function preprocess(source: string): Preprocessed {
 const RE_ENTITY = /#\w+;/g;
 const RE_INT = /^\+?\d+$/;
 const RE_LINE_BREAK = new RegExp('[\\n\\r' + String.fromCharCode(0x2028, 0x2029) + ']', 'g');
-
-function isWhitespace(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
 
 // Does what Mermaid's `text.replace(/keyword.*:\S*#.*;/g, drop the last character)` does:
 // on a line where the keyword is followed by a colon, a color-like `#`, and later a semicolon,

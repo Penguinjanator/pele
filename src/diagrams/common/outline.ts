@@ -1,4 +1,5 @@
 import { syntaxError } from '../../errors.js';
+import { isWord } from '../../util/chars.js';
 
 // The indented outline grammar that Mermaid's mindmap and kanban diagrams share.
 // Kanban adds `@{ ... }` metadata after a node and keeps `@` out of node ids.
@@ -104,10 +105,6 @@ const RE_DESCR = /[^)\](}]+/y;
 const RE_MD = /[^`"]+/y;
 const RE_DATA = /[^}^"]+/y;
 const RE_BR = /\n\s*/g;
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
-}
 
 // Jison's case-insensitive flag folds ASCII letters only.
 function letters(src: string, p: number, word: string): boolean {

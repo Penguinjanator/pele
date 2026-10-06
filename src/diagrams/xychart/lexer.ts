@@ -1,4 +1,5 @@
-import { isDigit, isLetter, isSpace, isWordChar, wordAt } from '../common/caseless.js';
+import { isDigit, isLetter, isSpace, isWord } from '../../util/chars.js';
+import { wordAt } from '../common/caseless.js';
 import { T } from './tokens.js';
 
 export interface Tokens {
@@ -82,7 +83,7 @@ export function tokenize(src: string): Tokens {
     while (isDigit(src.charCodeAt(q))) q++;
     return q;
   };
-  const keyword = (word: string): boolean => wordAt(src, p, word) && !isWordChar(src.charCodeAt(p + word.length));
+  const keyword = (word: string): boolean => wordAt(src, p, word) && !isWord(src.charCodeAt(p + word.length));
 
   while (p < n) {
     const c = src.charCodeAt(p);

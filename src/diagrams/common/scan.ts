@@ -1,3 +1,5 @@
+import { isSpace } from '../../util/chars.js';
+
 // Lexer rules that Mermaid's journey and timeline grammars have in common, ported from the
 // compiled Jison rules: comments, whitespace, and the accTitle and accDescr statements.
 
@@ -5,25 +7,6 @@ export interface Tokens {
   types: number[];
   texts: string[];
   starts: number[];
-}
-
-export function isSpace(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
-
-export function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
 }
 
 export function lineEnd(src: string, from: number): number {

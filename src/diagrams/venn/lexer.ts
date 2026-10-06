@@ -1,3 +1,5 @@
+import { isDigit, isHex, isSpace, isWord } from '../../util/chars.js';
+
 export const enum T {
   END,
   ERROR,
@@ -59,33 +61,6 @@ const KEYWORDS: [string, number][] = [
   ['style', T.STYLE],
 ];
 
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || ((c | 32) >= 97 && (c | 32) <= 122) || c === 95;
-}
-
-function isDigit(c: number): boolean {
-  return c >= 48 && c <= 57;
-}
-
-function isHex(c: number): boolean {
-  return isDigit(c) || ((c | 32) >= 97 && (c | 32) <= 102);
-}
-
-// What `\s` matches in a JavaScript regular expression.
-function isSpace(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
 
 // Reads tokens one at a time, as Mermaid's Jison lexer for venn diagrams does: every rule
 // ignores case, the first rule that matches wins, and a keyword must end at a word boundary.

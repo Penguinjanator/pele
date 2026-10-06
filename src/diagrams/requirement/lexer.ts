@@ -1,4 +1,5 @@
 import { KEYWORDS, T } from './tokens.js';
+import { isLineEnd, isSpace, isWord } from '../../util/chars.js';
 
 export interface Tokens {
   types: number[];
@@ -25,29 +26,6 @@ const LONGEST_KEYWORD = 22;
 // Characters that end an unquoted string: `:,{<>-=` and line breaks.
 const STOP = new Uint8Array(128);
 for (const ch of ':,\r\n{<>-=') STOP[ch.charCodeAt(0)] = 1;
-
-function isWs(c: number): boolean {
-  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
-  return (
-    c === 0xa0 ||
-    c === 0x1680 ||
-    (c >= 0x2000 && c <= 0x200a) ||
-    c === 0x2028 ||
-    c === 0x2029 ||
-    c === 0x202f ||
-    c === 0x205f ||
-    c === 0x3000 ||
-    c === 0xfeff
-  );
-}
-
-function isWord(c: number): boolean {
-  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
-}
-
-function isLineEnd(c: number): boolean {
-  return c === 10 || c === 13 || c === 0x2028 || c === 0x2029;
-}
 
 // Produces the token stream of Mermaid's requirement lexer. Its rules are tried in order and
 // the first match wins, so a line that holds a direction statement anywhere is one token.
@@ -120,7 +98,7 @@ export function tokenize(src: string): Tokens {
 
   const initial = (c: number): boolean => {
     const lower = c | 32;
-    if (lower === 116 && src.slice(p + 1, p + 5).toLowerCase() === 'itle' && isWs(src.charCodeAt(p + 5))) {
+    if (lower === 116 && src.slice(p + 1, p + 5).toLowerCase() === 'itle' && isSpace(src.charCodeAt(p + 5))) {
       let q = p + 6;
       while (q < n) {
         const d = src.charCodeAt(q);
@@ -163,9 +141,9 @@ export function tokenize(src: string): Tokens {
       emit(T.NEWLINE, p, q);
       return true;
     }
-    if (isWs(c)) {
+    if (isSpace(c)) {
       p++;
-      while (p < n && isWs(src.charCodeAt(p))) p++;
+      while (p < n && isSpace(src.charCodeAt(p))) p++;
       return true;
     }
     if (c === 35 || c === 37) {
