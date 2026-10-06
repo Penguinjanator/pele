@@ -39,6 +39,9 @@ export interface RenderResult extends Rendered {
 // and ends with a newline, as Mermaid's parsers expect.
 export interface Diagram<Model> {
   type: DiagramType;
-  parse(source: string, config: Config, title: string | undefined): Model;
+  // A diagram that reports source positions is given the text with its `%%` comment lines kept.
+  // `lineOffset` is the number of front matter lines that were removed before that text.
+  keepComments?: boolean;
+  parse(source: string, config: Config, title: string | undefined, lineOffset: number): Model;
   render(model: Model, config: Config, options: RenderOptions): Rendered;
 }

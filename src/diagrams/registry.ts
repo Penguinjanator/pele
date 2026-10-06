@@ -1,5 +1,6 @@
 import type { DiagramType } from '../detect.js';
 import type { Diagram } from '../types.js';
+import { agentflow } from './agentflow/index.js';
 import { architecture } from './architecture/index.js';
 import { block } from './block/index.js';
 import { c4 } from './c4/index.js';
@@ -52,6 +53,7 @@ const all = [
   c4,
   block,
   railroad,
+  agentflow,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));

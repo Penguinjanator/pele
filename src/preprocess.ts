@@ -7,6 +7,9 @@ export interface Preprocessed {
   text: string;
   title: string | undefined;
   config: Config;
+  // The text before its comment lines are removed, and the number of front matter lines before it.
+  withComments: string;
+  lineOffset: number;
 }
 
 const RE_COMMENT = /^\s*%%(?!{)[^\n]+\n?/gm;
@@ -124,6 +127,7 @@ export function preprocess(source: string): Preprocessed {
 
   const config: Config = {};
   let title: string | undefined;
+  let lineOffset = 0;
 
   const front = text.includes('---') ? matchFrontMatter(text) : undefined;
   if (front) {
@@ -147,11 +151,12 @@ export function preprocess(source: string): Preprocessed {
         gantt.displayMode = String(parsed.displayMode);
       }
     }
+    for (let i = text.indexOf('\n'); i !== -1 && i < front.length; i = text.indexOf('\n', i + 1)) lineOffset++;
     text = text.slice(front.length);
   }
 
   text = directives(text, config);
-  return { text: cleanupComments(text), title, config };
+  return { text: cleanupComments(text), title, config, withComments: text, lineOffset };
 }
 
 const RE_ENTITY = /#\w+;/g;

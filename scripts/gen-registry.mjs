@@ -28,6 +28,7 @@ const DIAGRAMS = [
   ['c4', 'c4', 'C4Model', 'types'],
   ['block', 'block', 'BlockModel', 'types'],
   ['railroad', 'railroad', 'RailroadModel', 'types'],
+  ['agentflow', 'agentflow', 'AgentflowModel', 'types'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();

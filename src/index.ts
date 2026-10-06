@@ -46,7 +46,8 @@ function parseSource(text: string, limit: number = DEFAULT_LIMIT, extra: Config 
     throw new PeleError(`Diagram type "${type}" is not supported yet.`, 'unsupported-diagram', { type });
   }
   const config = extra ? { ...extra, ...pre.config } : pre.config;
-  const model = diagram.parse(encodeEntities(pre.text) + '\n', config, pre.title);
+  const source = diagram.keepComments ? pre.withComments : pre.text;
+  const model = diagram.parse(encodeEntities(source) + '\n', config, pre.title, pre.lineOffset);
   return { type, diagram, model, config };
 }
 
