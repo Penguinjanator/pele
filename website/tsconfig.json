@@ -3,7 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "pele": ["../src/index.ts"]
+      "pele": ["../src/index.ts"],
+      "pele/lazy": ["../src/lazy.ts"]
     },
     "resolveJsonModule": true,
     "types": ["node"]

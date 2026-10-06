@@ -81,7 +81,12 @@ export default defineConfig({
   build: { format: 'file' },
   vite: {
     plugins: [refreshDevCss()],
-    resolve: { alias: { pele: fileURLToPath(new URL('../src/index.ts', import.meta.url)) } },
+    resolve: {
+      alias: [
+        { find: /^pele\/lazy$/, replacement: fileURLToPath(new URL('../src/lazy.ts', import.meta.url)) },
+        { find: /^pele$/, replacement: fileURLToPath(new URL('../src/index.ts', import.meta.url)) },
+      ],
+    },
     // The library source and its sample corpus live one directory up.
     server: { fs: { allow: ['..'] } },
   },
