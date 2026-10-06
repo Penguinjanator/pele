@@ -6,9 +6,9 @@ import { renderFlowchart } from './render.js';
 
 export const flowchart: Diagram<FlowDb> = {
   type: 'flowchart',
-  parse(source, config, title) {
+  parse(source, config, title, _lineOffset, limits) {
     const flow = (config.flowchart ?? {}) as Config;
-    const db = new FlowDb({ inheritDir: flow.inheritDir === true });
+    const db = new FlowDb({ inheritDir: flow.inheritDir === true, maxEdges: limits.maxEdges });
     if (title) db.title = title;
     parseFlowchart(source, db);
     return db;

@@ -73,7 +73,7 @@ A subgraph with no name is accepted. Mermaid 12.1.0 fails on it.
 
 ### Limits
 
-Pele has no limit on the number of edges. Mermaid stops at 500 unless configured otherwise.
+Flowcharts are limited to 5,000 edges. Mermaid stops at 500. Change the limit with [`maxEdges`](/api#renderoptions). A `maxEdges` value in the diagram's configuration is ignored.
 
 The default source limit is 50,000 characters, matching Mermaid. Pele also limits SVG output to 4,000,000 characters. Change these with [`limit` and `outputLimit`](/api#renderoptions).
 

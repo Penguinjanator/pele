@@ -14,7 +14,7 @@ A report is in scope if a diagram can make Pele's output run script, load a reso
 - Diagram text is escaped. Styles are limited to a fixed list of properties and cannot contain `url(`.
 - `click … call` and `click … callback` statements are ignored. Pele never runs code from a diagram.
 - A link is kept only if it is relative or uses `http`, `https`, `mailto`, or `tel`. An image is kept only if it is relative or uses `http` or `https`. Any other address becomes `about:blank`. The `linkSchemes` and `imageSchemes` options change the lists. `javascript:`, `data:`, and `vbscript:` are always refused.
-- Source longer than 50,000 characters and output longer than 4,000,000 characters are refused with a `PeleError` of code `limit`. The `limit` and `outputLimit` options change this.
+- Source longer than 50,000 characters, output longer than 4,000,000 characters, and flowcharts with more than 5,000 edges are refused with a `PeleError` of code `limit`. The `limit`, `outputLimit`, and `maxEdges` options change this.
 
 ## App responsibilities
 

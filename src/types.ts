@@ -23,6 +23,8 @@ export interface RenderOptions {
   padding?: number;
   limit?: number;
   outputLimit?: number;
+  // The most edges a flowchart may have. One short line can ask for millions of them.
+  maxEdges?: number;
   // Schemes a link or an image may use besides a relative address.
   linkSchemes?: string[];
   imageSchemes?: string[];
@@ -51,6 +53,11 @@ export interface RenderResult extends Rendered {
 
 // What a diagram type provides. `source` has been through preprocessing and entity encoding
 // and ends with a newline, as Mermaid's parsers expect.
+// Limits set by the host. A diagram's own configuration cannot change them.
+export interface ParseLimits {
+  maxEdges: number;
+}
+
 export interface Diagram<Model> {
   type: DiagramType;
   // The name of this type's section in Mermaid's config, when it is not the type's own name.
@@ -58,6 +65,6 @@ export interface Diagram<Model> {
   // A diagram that reports source positions is given the text with its `%%` comment lines kept.
   // `lineOffset` is the number of front matter lines that were removed before that text.
   keepComments?: boolean;
-  parse(source: string, config: Config, title: string | undefined, lineOffset: number): Model;
+  parse(source: string, config: Config, title: string | undefined, lineOffset: number, limits: ParseLimits): Model;
   render(model: Model, config: Config, options: RenderOptions): Rendered;
 }

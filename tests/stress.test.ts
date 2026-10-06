@@ -9,7 +9,7 @@ import { metricsMeasurer } from '../src/text/measurer.js';
 // The bounds are loose; a regression here is seconds or a hang, not milliseconds.
 
 const N = 50000;
-const big = { measurer: metricsMeasurer, limit: Infinity };
+const big = { measurer: metricsMeasurer, limit: Infinity, maxEdges: Infinity };
 const repeat = (count: number, line: (i: number) => string): string => Array.from({ length: count }, (_, i) => line(i)).join('');
 
 const CASES: [string, () => unknown][] = [
@@ -73,6 +73,30 @@ describe('worst cases', () => {
       expect(performance.now() - started).toBeLessThan(3000);
     }, 30_000);
   }
+
+  it('refuses more edges than the limit before making them', () => {
+    const ids = (prefix: string, count: number): string => Array.from({ length: count }, (_, i) => prefix + i).join(' & ');
+    // Two thousand names on each side of one arrow ask for four million edges.
+    const product = `${ids('a', 2000)} --> ${ids('b', 2000)}`;
+    for (const source of [`flowchart LR\n${product}`, `agentflow-beta LR\n${product}`]) {
+      const started = performance.now();
+      expect(() => render(source, { measurer: metricsMeasurer }), source.slice(0, 14)).toThrow(/Edge limit exceeded.*limit is 5000/);
+      expect(performance.now() - started, source.slice(0, 14)).toBeLessThan(2000);
+    }
+    const chain = (count: number): string => 'flowchart LR\n' + repeat(count, (i) => `N${i} --> N${i + 1}\n`);
+    expect(render(chain(5000), { measurer: metricsMeasurer, limit: Infinity }).svg).toContain('<svg');
+    expect(() => render(chain(5001), { measurer: metricsMeasurer, limit: Infinity })).toThrow(PeleError);
+    expect(() => render(chain(11), { measurer: metricsMeasurer, maxEdges: 10 })).toThrow(/limit is 10\b/);
+    expect(() => parse(chain(11), { maxEdges: 10 })).toThrow(/limit is 10\b/);
+    try {
+      render(chain(11), { maxEdges: 10 });
+    } catch (error) {
+      expect((error as PeleError).code).toBe('limit');
+    }
+    // A diagram cannot raise the limit for itself.
+    const raised = `---\nconfig:\n  maxEdges: 100000\n  flowchart:\n    maxEdges: 100000\n---\n%%{init: {'maxEdges': 100000}}%%\n${chain(11)}`;
+    expect(() => render(raised, { measurer: metricsMeasurer, maxEdges: 10 })).toThrow(/limit is 10\b/);
+  });
 
   it('refuses source over the default limit', () => {
     expect(() => render('graph TD\n' + 'A-->B\n'.repeat(10000))).toThrow(/limit of 50000/);

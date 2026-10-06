@@ -42,8 +42,11 @@ Links have `rel="noopener"`. A `target` is written only when it is `_self`, `_bl
 | --- | --- | --- |
 | Length of the source | 50,000 characters | [`limit`](/api#renderoptions) |
 | Length of the SVG | 4,000,000 characters | [`outputLimit`](/api#renderoptions) |
+| Edges in a flowchart | 5,000 | [`maxEdges`](/api#renderoptions) |
 
-A diagram over either limit, or one nested too deeply to process, throws a [`PeleError`](/api#peleerror) with the code `limit`. Mermaid limits source size but not output size. Short source can produce a large SVG that stalls the page.
+A diagram over a limit, or one nested too deeply to process, throws a [`PeleError`](/api#peleerror) with the code `limit`. Mermaid limits source size but not output size. Short source can produce a large SVG that stalls the page.
+
+In a flowchart, `A & B --> C & D` creates an edge for every pair, so a short line can describe millions of edges. The edge limit stops this while the source is parsed.
 
 `render()` is synchronous and has no time limit. If you raise the limits for untrusted source, render in a worker that can be terminated.
 

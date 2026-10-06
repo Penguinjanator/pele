@@ -101,6 +101,7 @@ All options are optional.
 | `padding` | `number` | Space around the diagram in pixels. |
 | `limit` | `number` | Maximum length of `text` in characters. The default is 50,000, as in Mermaid. Longer input throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
 | `outputLimit` | `number` | Maximum length of the SVG in characters. The default is 4,000,000. A larger diagram throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
+| `maxEdges` | `number` | Maximum number of edges in a flowchart. The default is 5,000. A diagram with more throws a `PeleError` with the code `limit`. Diagram configuration cannot change it. Pass `Infinity` for no limit. |
 | `linkSchemes` | `string[]` | URL schemes a link may use. The default is `['http', 'https', 'mailto', 'tel']`. Relative addresses are always kept. See [Security](/security#links-and-images). |
 | `imageSchemes` | `string[]` | URL schemes an image may use. The default is `['http', 'https']`. |
 | `icons` | `(name: string) => string \| null \| undefined` | Returns the inner SVG markup for an icon name such as `fa:fa-car`. Icons without markup are omitted. The markup is inserted without filtering, so return only markup you trust. |
@@ -184,7 +185,7 @@ With [`pele/lazy`](#imports), `mountAsync()` takes the same arguments, fetches t
 ## parse
 
 ```ts
-function parse(text: string, options?: { limit?: number }): DiagramModel
+function parse(text: string, options?: { limit?: number; maxEdges?: number }): DiagramModel
 ```
 
 Parses Mermaid text and returns the diagram model without laying it out or rendering it. Throws a `PeleError` for unsupported diagram types and syntax errors.
@@ -249,7 +250,7 @@ supports('Hello');                         // false
 | `unsupported-diagram` | No diagram type detected, or the type is not registered. |
 | `syntax` | The diagram could not be parsed. `line`, `column`, and `snippet` locate the problem. |
 | `semantic` | The diagram parsed but describes something invalid. |
-| `limit` | The text is longer than the `limit` option, the SVG is longer than the `outputLimit` option, or the diagram is nested too deeply to process. |
+| `limit` | The text is longer than the `limit` option, the SVG is longer than the `outputLimit` option, a flowchart has more edges than the `maxEdges` option, or the diagram is nested too deeply to process. |
 
 ```ts
 try {

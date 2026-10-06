@@ -32,6 +32,9 @@ const DEFAULT_LIMIT = 50000;
 // Mermaid has no limit on its output. A source within the limit can still describe a drawing
 // of many megabytes, which would stall the page it is put into.
 const DEFAULT_OUTPUT_LIMIT = 4_000_000;
+// Mermaid stops at 500. Pele draws 5,000 edges in tens of milliseconds, and `A & B --> C & D`
+// multiplies: without a limit, a few kilobytes of source ask for millions of edges.
+const DEFAULT_MAX_EDGES = 5000;
 
 // Deep nesting can exhaust the stack in a few recursive spots. Report it as a limit, not a crash.
 function guarded<T>(run: () => T): T {
@@ -50,7 +53,12 @@ interface Parsed {
   config: Config;
 }
 
-function parseSource(text: string, limit: number = DEFAULT_LIMIT, extra: Config | undefined): Parsed {
+function parseSource(
+  text: string,
+  limit: number = DEFAULT_LIMIT,
+  maxEdges: number = DEFAULT_MAX_EDGES,
+  extra: Config | undefined
+): Parsed {
   if (text.length > limit) {
     throw new PeleError(`Diagram source is longer than the limit of ${limit} characters.`, 'limit');
   }
@@ -65,7 +73,7 @@ function parseSource(text: string, limit: number = DEFAULT_LIMIT, extra: Config 
   }
   const config = extra ? { ...extra, ...pre.config } : pre.config;
   const source = diagram.keepComments ? pre.withComments : pre.text;
-  const model = diagram.parse(encodeEntities(source) + '\n', config, pre.title, pre.lineOffset);
+  const model = diagram.parse(encodeEntities(source) + '\n', config, pre.title, pre.lineOffset, { maxEdges });
   return { type, diagram, model, config };
 }
 
@@ -82,13 +90,13 @@ export function supports(text: string): boolean {
   }
 }
 
-export function parse(text: string, options: { limit?: number } = {}): DiagramModel {
-  return guarded(() => parseSource(text, options.limit, undefined).model as DiagramModel);
+export function parse(text: string, options: { limit?: number; maxEdges?: number } = {}): DiagramModel {
+  return guarded(() => parseSource(text, options.limit, options.maxEdges, undefined).model as DiagramModel);
 }
 
 export function render(text: string, options: RenderOptions = {}): RenderResult {
   return guarded(() => {
-    const { type, diagram, model, config } = parseSource(text, options.limit, options.config);
+    const { type, diagram, model, config } = parseSource(text, options.limit, options.maxEdges, options.config);
     const section = config[diagram.section ?? type];
     const fixed = typeof section === 'object' && section !== null && !Array.isArray(section) && section.useMaxWidth === false;
     const responsive = options.responsive ?? !fixed;
