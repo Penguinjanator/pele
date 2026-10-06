@@ -165,6 +165,18 @@
   color: var(--pele-fg);
 
   &[data-pele-theme="light"] { color-scheme: light; }
+
+  // The dark preview has no surface of its own: the diagram sits on the panel,
+  // so its tokens step up one level from the page, as on the home page.
+  &[data-pele-theme="dark"] {
+    --pele-bg: var(--panel);
+    --pele-surface: var(--line);
+    --pele-surface-alt: var(--line-hover);
+    --pele-border: var(--line-active);
+    margin: 0;
+    border-radius: 0;
+    background: transparent;
+  }
 }
 .playground-diagram {
   display: flex;
