@@ -123,4 +123,11 @@ describe('pie rendering', () => {
       expect(performance.now() - started, src.slice(0, 30)).toBeLessThan(2000);
     }
   });
+  it('reads a long run of digits in linear time', () => {
+    for (const tail of ['0'.repeat(49000), '0'.repeat(49000) + '.', '9'.repeat(49000) + '..', '-' + '1.'.repeat(24000)]) {
+      const started = performance.now();
+      expect(() => render('pie\n"a": ' + tail, options)).toThrow(PeleError);
+      expect(performance.now() - started).toBeLessThan(500);
+    }
+  });
 });
