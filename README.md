@@ -78,6 +78,25 @@ npm run build
 npm run bench
 ```
 
+The documentation site and playground are in `website/`:
+
+```sh
+cd website
+pnpm install
+pnpm dev
+```
+
+## Deploy the website
+
+GitHub Actions checks the library and builds the website on pull requests and pushes to `main`. After the checks pass, pushes to `main` deploy the site to [pele.run](https://pele.run).
+
+Add these repository secrets under **Settings → Secrets and variables → Actions**:
+
+- `CLOUDFLARE_ACCOUNT_ID` — the account that owns the `pele` Worker.
+- `CLOUDFLARE_API_TOKEN` — an API token with permission to deploy Workers in that account. Cloudflare's **Edit Cloudflare Workers** token template provides the required permissions.
+
+For a manual deployment of the website and redirect Worker, run `pnpm run deploy` from `website/`.
+
 ## License
 
 MIT. The specs under `tests/compat` and the grammar files beside them come from Mermaid, which is also MIT licensed.
