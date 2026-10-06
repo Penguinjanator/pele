@@ -27,7 +27,7 @@ export function editorHighlightRanges(line: string, language: CodeLanguage, stat
 }
 
 const tokenTable = Object.fromEntries([
-  'syn-language', 'syn-punctuation', 'syn-string', 'syn-number', 'syn-import',
+  'syn-language', 'syn-type', 'syn-selector', 'syn-punctuation', 'syn-string', 'syn-number', 'syn-import',
   'syn-constant', 'syn-keyword', 'syn-variable', 'syn-function', 'syn-command',
   'syn-yaml-key', 'syn-comment', 'syn-tag',
 ].map((name) => [name, Tag.define()]));

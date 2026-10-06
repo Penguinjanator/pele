@@ -106,8 +106,12 @@
 .syn-punctuation {
   color: var(--syntax-muted);
 }
-.syn-language {
+// Flexoki keeps magenta for language features: a built-in type, a directive. Named types are yellow.
+.syn-language, .syn-selector {
   color: var(--syntax-magenta);
+}
+.syn-type {
+  color: var(--syntax-yellow);
 }
 .syn-keyword {
   color: var(--syntax-green);

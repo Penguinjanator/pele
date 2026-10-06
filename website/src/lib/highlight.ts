@@ -236,7 +236,9 @@ function highlightMermaidLine(line: string, state: HighlightState) {
 }
 
 const tsKeyword = /^(?:as|async|await|break|case|catch|class|const|continue|default|do|else|enum|export|extends|finally|for|function|if|implements|in|instanceof|interface|let|new|of|return|static|switch|throw|try|type|typeof|var|while|yield)$/;
-const tsType = /^(?:string|number|boolean|void|unknown|never|any|object|[A-Z][\w$]*)$/;
+// Types built into the language are language features, which Flexoki colors magenta. Named types are yellow.
+const tsBuiltinType = /^(?:string|number|boolean|void|unknown|never|any|object|this|super)$/;
+const tsType = /^[A-Z][\w$]*$/;
 
 function highlightTypeScriptLine(line: string, state: HighlightState) {
   let output = '';
@@ -274,7 +276,8 @@ function highlightTypeScriptLine(line: string, state: HighlightState) {
       if (tsKeyword.test(token)) return span('syn-keyword', token);
       const next = tokens.slice(index + 1).find((candidate) => !/^\s+$/.test(candidate));
       if (next === '(' && !/^[A-Z]/.test(token)) return span('syn-function', token);
-      return span(tsType.test(token) ? 'syn-language' : 'syn-variable', token);
+      if (tsBuiltinType.test(token)) return span('syn-language', token);
+      return span(tsType.test(token) ? 'syn-type' : 'syn-variable', token);
     }
     return span(/^\s+$/.test(token) ? undefined : 'syn-punctuation', token);
   }).join('');
@@ -327,6 +330,18 @@ function highlightShellLine(line: string, state: HighlightState) {
   return highlighted;
 }
 
+// A selector, with an attribute test inside it set apart: the attribute's name, and its value as a string.
+function highlightSelector(selector: string) {
+  return selector.split(/(\[[^\]]*\]?)/).map((piece) => {
+    const test = piece.match(/^\[\s*([\w-]+)\s*(?:([~|^$*]?=)\s*("[^"]*"?|'[^']*'?|[^\]\s]*))?([^\]]*)(\]?)$/);
+    if (!test) return span(piece.trim() ? 'syn-selector' : undefined, piece);
+    const value = test[3] ?? '';
+    return span('syn-punctuation', '[') + span('syn-variable', test[1]) + span('syn-punctuation', test[2] ?? '')
+      + (/^["']/.test(value) ? quoted(value) : span('syn-string', value))
+      + escapeHtml(test[4]) + span('syn-punctuation', test[5]);
+  }).join('');
+}
+
 function highlightCssLine(line: string, state: HighlightState) {
   let output = '';
   let rest = line;
@@ -347,7 +362,13 @@ function highlightCssLine(line: string, state: HighlightState) {
       return escapeHtml(declaration[1]) + span('syn-variable', declaration[2]) + span('syn-punctuation', declaration[3])
         + highlightStyleValue(declaration[4]) + span('syn-punctuation', declaration[5]);
     }
-    return part.split(/([{},])/).map((piece) => /^[{},]$/.test(piece) ? span('syn-punctuation', piece) : span(piece.trim() ? 'syn-language' : undefined, piece)).join('');
+    // What comes before a block: an at-rule, whose name is a keyword, or a selector.
+    const rule = part.match(/^(\s*)(@[\w-]+)(.*)$/);
+    if (rule) {
+      return escapeHtml(rule[1]) + span('syn-keyword', rule[2])
+        + rule[3].split(/([{}():])/).map((piece) => /^[{}():]$/.test(piece) ? span('syn-punctuation', piece) : escapeHtml(piece)).join('');
+    }
+    return part.split(/([{},])/).map((piece) => /^[{},]$/.test(piece) ? span('syn-punctuation', piece) : highlightSelector(piece)).join('');
   }).join('');
 }
 
