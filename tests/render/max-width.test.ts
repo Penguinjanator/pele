@@ -91,6 +91,11 @@ describe('the maxWidth option', () => {
     expect(render(map, { ...options, maxWidth: PHONE, autoDirection: false }).svg).toBe(across.svg);
     expect(render(map, { ...options, maxWidth: 700 }).svg).toBe(across.svg);
     assertInert(outline.svg, 'mindmap');
+    // The root heads the outline as a pill, whatever round shape the source gave it. A box stays a box.
+    expect(across.svg).toMatch(/pele-shape-circle pele-root/);
+    expect(outline.svg).toMatch(/pele-shape-stadium pele-root/);
+    expect(render(map.replace('root((Plan))', 'root)Plan('), { ...options, maxWidth: PHONE }).svg).toMatch(/pele-shape-stadium pele-root/);
+    expect(render(map.replace('root((Plan))', 'root[Plan]'), { ...options, maxWidth: PHONE }).svg).toMatch(/pele-shape-rect pele-root/);
     // A deep map keeps to the width by wrapping its labels.
     const deep = 'mindmap\n  root\n' + Array.from({ length: 7 }, (_, i) => `${' '.repeat(4 + 2 * i)}Level ${i} with a fairly long label to wrap`).join('\n');
     expect(render(deep, { ...options, maxWidth: PHONE }).width).toBeLessThanOrEqual(PHONE + 40);

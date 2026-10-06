@@ -17,9 +17,13 @@ const ROOT_SHAPE = 'stadium';
 
 const GAP_X = 36;
 const GAP_Y = 8;
+// Between two subtrees, of which at least one has children of its own.
+const GROUP_GAP = 18;
 const BRANCH_GAP_X = 52;
-const BRANCH_GAP_Y = 20;
+const BRANCH_GAP_Y = 28;
 const TEXT_PAD = 6;
+const PILL_PAD = 12;
+const TINT = 0.22;
 const ICON_GAP = 6;
 // Running down, each level is set in by this much, and links leave a node this far from its left edge.
 const INDENT = 28;
@@ -71,7 +75,7 @@ function draw(model: MindmapModel, config: Config, options: RenderOptions, down:
   const w = new Float64Array(n);
   const h = new Float64Array(n);
   const dy = new Float64Array(n);
-  // Where links meet the node, measured down from its top: the middle of a shape, the line under plain text.
+  // Where links meet the node, measured down from its top: its middle.
   const anchor = new Float64Array(n);
   // Whether the host has the node's icon. One it does not have takes no room.
   const drawn = new Uint8Array(n);
@@ -83,11 +87,18 @@ function draw(model: MindmapModel, config: Config, options: RenderOptions, down:
     const label = (labels[i] = layoutLabel(node.descr, true, measurer, size, fit));
     const tw = label.width + (drawn[i] ? glyph + (label.width > 0 ? ICON_GAP : 0) : 0);
     const th = Math.max(label.height, Math.round(size * 1.5));
-    const shape = (shapes[i] = SHAPES[node.type] || (i === 0 ? ROOT_SHAPE : ''));
+    let shape = SHAPES[node.type] || (i === 0 ? ROOT_SHAPE : '');
+    // In an outline the root heads a column, and the trunk drops from under its left end. A circle
+    // or a cloud would stand wide of that, so the root is a pill there unless it is a box already.
+    if (down && i === 0 && shape !== 'rect' && shape !== 'rounded') shape = ROOT_SHAPE;
+    shapes[i] = shape;
     if (shape === '') {
-      w[i] = tw + 2 * TEXT_PAD;
-      h[i] = anchor[i] = th + 6;
-      dy[i] = -1;
+      // A node with no shape of its own is plain text when it ends a branch, and text in a
+      // tinted pill when the branch goes on from it, which sets the levels apart.
+      const pill = node.children.length > 0;
+      w[i] = tw + 2 * (pill ? PILL_PAD : TEXT_PAD);
+      h[i] = th + (pill ? 6 : 0);
+      anchor[i] = h[i] / 2;
     } else {
       const s = shapeSize(shape, tw, th);
       w[i] = s.w;
@@ -108,12 +119,15 @@ function draw(model: MindmapModel, config: Config, options: RenderOptions, down:
   // Stacks subtrees top to bottom and returns the height at which their parent's anchor belongs.
   const stack = (list: MindmapNode[], from: number, to: number, gap: number): number => {
     let y = 0;
+    let last = 0;
     for (let k = from; k < to; k++) {
       const c = list[k].id;
       rel[c] = y;
-      y += extent[c] + gap;
+      const grouped = list[k].children.length > 0 || (k + 1 < to && list[k + 1].children.length > 0);
+      last = grouped ? Math.max(gap, GROUP_GAP) : gap;
+      y += extent[c] + last;
     }
-    stacked = y - gap;
+    stacked = y - last;
     const a = list[from].id;
     const b = list[to - 1].id;
     return (rel[a] + own[a] + anchor[a] + rel[b] + own[b] + anchor[b]) / 2;
@@ -194,15 +208,14 @@ function draw(model: MindmapModel, config: Config, options: RenderOptions, down:
   let maxY = 0;
   let out = '';
   let edges = '';
-  let joints = '';
   let body = '';
   let color = '';
   const flush = (section: number | undefined): void => {
     if (body === '') return;
     out +=
       `<g class="pele-branch pele-section-${section ?? 0}">` +
-      `<g class="pele-edges" fill="none" stroke="${color}" stroke-width="1.5">${edges}${joints}</g>${body}</g>`;
-    edges = joints = body = '';
+      `<g class="pele-edges" fill="none" stroke="${color}" stroke-width="1.5">${edges}</g>${body}</g>`;
+    edges = body = '';
   };
 
   // The root is drawn last, on top of the links that leave it.
@@ -224,19 +237,17 @@ function draw(model: MindmapModel, config: Config, options: RenderOptions, down:
       const p = parent[i];
       // The link drops from under its parent and turns in to the node's left. It starts where
       // the link to the sibling above turned in, so each stretch of a shared trunk has one color.
-      const x1 = x[p] - w[p] / 2 + Math.min(STEM, w[p] / 2);
-      const y1 = trunk[p] || y[p] + (shapes[p] ? h[p] : anchor[p]);
-      trunk[p] = top + anchor[i];
+      // Under the root's rounded end, the trunk starts where that end has come down to the bottom.
+      const stem = p === 0 ? Math.min(Math.max(STEM, h[0] / 2), INDENT - BEND) : STEM;
+      const x1 = x[p] - w[p] / 2 + Math.min(stem, w[p] / 2);
+      const y1 = trunk[p] || y[p] + h[p];
       const left = cx - w[i] / 2;
       const x2 = left + (shape ? shapeInset(shape, w[i], h[i], 3) : 0);
       const y2 = top + anchor[i];
       const bend = Math.max(0, Math.min(BEND, x2 - x1, y2 - y1));
-      edges +=
-        `<path class="pele-edge" d="M${num(x1)},${num(y1)}V${num(y2 - bend)}Q${num(x1)},${num(y2)} ${num(x1 + bend)},${num(y2)}` +
-        `H${num(shape ? x2 : cx + w[i] / 2)}"/>`;
-      if (!shape && node.children.length > 0) {
-        joints += `<circle class="pele-marker" cx="${num(left + Math.min(STEM, w[i] / 2))}" cy="${num(y2)}" r="2.5" fill="var(--_bg)"/>`;
-      }
+      // The next link carries on from where this one leaves the trunk, so the trunk has no gap.
+      trunk[p] = y2 - bend;
+      edges += `<path class="pele-edge" d="M${num(x1)},${num(y1)}V${num(y2 - bend)}Q${num(x1)},${num(y2)} ${num(x1 + bend)},${num(y2)}H${num(x2)}"/>`;
     } else if (i > 0) {
       if (parent[i] === 0) color = seriesColor(node.section ?? 0);
       const p = parent[i];
@@ -248,25 +259,24 @@ function draw(model: MindmapModel, config: Config, options: RenderOptions, down:
       const x2 = near + (shape ? dir * shapeInset(shape, w[i], h[i], 4 - from) : 0);
       const y2 = top + anchor[i];
       const mid = num((x1 + x2) / 2);
-      edges +=
-        `<path class="pele-edge" d="M${num(x1)},${num(y1)}C${mid},${num(y1)} ${mid},${num(y2)} ${num(x2)},${num(y2)}` +
-        (shape ? '' : `H${num(cx + (dir * w[i]) / 2)}`) +
-        '"/>';
-      // A dot where a text node's children leave its line shows where one node ends and the next begins.
-      if (!shape && node.children.length > 0) {
-        joints += `<circle class="pele-marker" cx="${num(cx + (dir * w[i]) / 2)}" cy="${num(y2)}" r="2.5" fill="var(--_bg)"/>`;
-      }
+      edges += `<path class="pele-edge" d="M${num(x1)},${num(y1)}C${mid},${num(y1)} ${mid},${num(y2)} ${num(x2)},${num(y2)}"/>`;
     }
 
-    const stroke = i > 0 ? color : 'var(--_b)';
-    let inner = shape ? drawShape(shape, w[i], h[i], ` fill="var(--_s)" stroke="${stroke}"`, ` stroke="${stroke}"`) : '';
+    const pill = !shape && node.children.length > 0;
+    // Every node off the root is filled with a tint of its branch's color and outlined in it,
+    // whether its shape was given in the source or is the pill of a node that branches.
+    // The root is neutral.
+    const tint = ` fill="${color}" fill-opacity="${TINT}" stroke="${color}"`;
+    let inner = '';
+    if (shape) inner = i > 0 ? drawShape(shape, w[i], h[i], tint, ` stroke="${color}"`) : drawShape(shape, w[i], h[i], ' fill="var(--_s)" stroke="var(--_b)"', ' stroke="var(--_b)"');
+    else if (pill) inner = `<rect x="${num(-w[i] / 2)}" y="${num(-h[i] / 2)}" width="${num(w[i])}" height="${num(h[i])}" rx="${num(h[i] / 2)}"${tint}/>`;
     let shift = 0;
     if (node.icon && drawn[i]) {
       shift = (glyph + (label.width > 0 ? ICON_GAP : 0)) / 2;
       inner += iconSvg(node.icon, -shift - label.width / 2, dy[i] - glyph / 2, glyph, icons);
     }
     const group =
-      `<g class="pele-node pele-shape-${shape || 'text'}${i > 0 ? '' : ' pele-root'}${classNames(node.class ?? '')}" data-id="${escText(
+      `<g class="pele-node pele-shape-${shape || (pill ? 'branch' : 'text')}${i > 0 ? '' : ' pele-root'}${classNames(node.class ?? '')}" data-id="${escText(
         node.nodeId
       )}" transform="translate(${num(cx)},${num(top + h[i] / 2)})">` +
       inner +

@@ -52,9 +52,12 @@ describe('mindmap rendering', () => {
     const { svg } = render('mindmap\n  [root]\n    [a]\n      [a1]\n    [b]\n    [c]', options);
     expect(svg).toMatch(/pele-root" data-id="root"[^>]*><rect[^>]*stroke="var\(--_b\)"/);
     expect(svg).toMatch(/class="pele-branch pele-section-0"><g class="pele-edges" fill="none" stroke="var\(--pele-series-1,/);
-    expect(svg).toMatch(/data-id="a1"[^>]*><rect[^>]*stroke="var\(--pele-series-1,/);
-    expect(svg).toMatch(/data-id="b"[^>]*><rect[^>]*stroke="var\(--pele-series-2,/);
-    expect(svg).toMatch(/data-id="c"[^>]*><rect[^>]*stroke="var\(--pele-series-3,/);
+    // A shaped node is filled with a tint of its branch's color, as a pill is, and outlined in that color.
+    expect(svg).toMatch(/data-id="a1"[^>]*><rect[^>]*fill="var\(--pele-series-1,[^"]*\)" fill-opacity="0.22" stroke="var\(--pele-series-1,/);
+    expect(svg).toMatch(/data-id="b"[^>]*><rect[^>]*fill="var\(--pele-series-2,[^"]*\)" fill-opacity="0.22" stroke="var\(--pele-series-2,/);
+    expect(svg).toMatch(/data-id="c"[^>]*><rect[^>]*fill="var\(--pele-series-3,[^"]*\)" fill-opacity="0.22" stroke="var\(--pele-series-3,/);
+    // So is a pill, which the source gave no shape.
+    expect(render('mindmap\n  root\n    a\n      b', options).svg).toMatch(/pele-shape-branch" data-id="a"[^>]*><rect[^>]*fill-opacity="0.22" stroke="var\(--pele-series-1,/);
   });
 
   it('wraps section numbers after eleven branches, as Mermaid does', () => {
@@ -173,6 +176,25 @@ describe('mindmap rendering', () => {
   it('renders a mindmap with no nodes and one with only a root', () => {
     expect(render('mindmap\n\n', options).svg).toContain('<svg');
     expect(render('mindmap\nroot', options).svg.match(/class="pele-node/g)?.length).toBe(1);
+  });
+
+  it('sets the levels apart: a pill for a node that branches, plain text for one that ends a branch', () => {
+    const { svg } = render('mindmap\n  root\n    Plan\n      Research\n        Read\n        Ask\n      Build\n    Ship', options);
+    const kinds = new Map([...svg.matchAll(/class="pele-node pele-shape-(\w+)[^"]*" data-id="([^"]*)"/g)].map((m) => [m[2], m[1]]));
+    expect(kinds.get('Plan')).toBe('branch');
+    expect(kinds.get('Research')).toBe('branch');
+    for (const leaf of ['Read', 'Ask', 'Build', 'Ship']) expect(kinds.get(leaf), leaf).toBe('text');
+    // A pill is tinted with its branch's color and outlined in it; a leaf has no box at all.
+    expect(svg).toMatch(/pele-shape-branch" data-id="Plan"[^>]*><rect[^>]* fill="var\(--pele-series-\d,[^"]*\)" fill-opacity="0.22" stroke="var\(--pele-series-\d,[^"]*\)"\/>/);
+    expect(svg).toMatch(/pele-shape-text" data-id="Read"[^>]*><text/);
+    expect(svg).not.toContain('pele-marker');
+    // Nodes on one level start at the same place, whatever their length.
+    const box = new Map([...svg.matchAll(/data-id="([^"]*)" transform="translate\((-?[\d.]+),[^)]*\)">(?:<rect x="(-?[\d.]+)")?/g)].map((m) => [m[1], Number(m[2])]));
+    const side = Math.sign(box.get('Read')! - box.get('Research')!);
+    expect(side).not.toBe(0);
+    const widths = new Map([['Read', metricsMeasurer.width('Read', 16, 0)], ['Ask', metricsMeasurer.width('Ask', 16, 0)]]);
+    const near = (id: string): number => box.get(id)! - (side * (widths.get(id)! + 12)) / 2;
+    expect(near('Read')).toBeCloseTo(near('Ask'), 1);
   });
 
   it('is deterministic and emits only finite numbers', () => {
