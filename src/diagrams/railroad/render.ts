@@ -66,7 +66,6 @@ function shown(text: string): string {
   return s.replace(RE_CONTROL, (c) => (c === '\n' ? '\\n' : c === '\r' ? '\\r' : '\\t'));
 }
 
-// Reverses a list from an index on.
 function reverse<T>(list: T[], from: number): void {
   for (let i = from, j = list.length - 1; i < j; i++, j--) {
     const held = list[i];

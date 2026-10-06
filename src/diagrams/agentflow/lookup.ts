@@ -5,7 +5,6 @@ import type { AgentNode, AgentflowModel, ElementMapping } from './types.js';
 
 const TOOL_SHAPES = new Set(['subroutine', 'subprocess', 'subproc', 'framed-rectangle', 'tool']);
 
-// A node whose shape marks it as a tool definition.
 export function isToolDefinition(vertex: AgentNode): boolean {
   return TOOL_SHAPES.has(vertex.type as string);
 }

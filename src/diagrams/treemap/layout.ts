@@ -15,7 +15,6 @@ export interface Box {
 }
 
 export interface Insets {
-  // Space between sibling boxes.
   gap: number;
   // Space a section keeps for its header, and around its children on the other three sides.
   header: number;

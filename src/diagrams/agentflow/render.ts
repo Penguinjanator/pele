@@ -258,7 +258,6 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
     const n = cnodes[i];
     const end = FLOW_END[g.dir ?? flowOf(outer)];
     const first = out ? end : (end + 2) & 3;
-    // Sides are numbered clockwise from the top.
     const toward = (side: number): number[] => {
       const upright = (side & 1) === 0;
       const sign = side === 0 || side === 3 ? -1 : 1;

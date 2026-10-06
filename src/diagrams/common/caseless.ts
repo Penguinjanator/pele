@@ -24,7 +24,6 @@ export function isLetter(c: number): boolean {
   return (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
 }
 
-// A character of `\w`.
 export function isWordChar(c: number): boolean {
   return isLetter(c) || isDigit(c) || c === 95;
 }

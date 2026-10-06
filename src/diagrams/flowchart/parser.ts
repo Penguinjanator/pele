@@ -468,7 +468,6 @@ export function parseFlowchart(source: string, db: FlowDb): void {
     }
   };
 
-  // Reads a subgraph header up to the separator that starts its body.
   const subgraphHeader = (): Frame => {
     i++;
     let t = types[i];

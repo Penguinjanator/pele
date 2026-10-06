@@ -584,7 +584,6 @@ function titleX(c: CNode, width: number, crossings: Map<number, number[]>): numb
   return best;
 }
 
-// Writes a label with each of its lines starting at x.
 function leftLabel(label: Label, x: number, cy: number, attrs: string, icons: IconResolver | undefined): string {
   if (label.lines.length < 2) return labelSvg(label, x + label.width / 2, cy, attrs, icons);
   let out = '';

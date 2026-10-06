@@ -19,7 +19,6 @@ export function parseVenn(src: string, db: VennDb): void {
     throw syntaxError('venn', src, lexer.start, `Expecting ${expected}, got '${TOKEN_NAMES[type]}'`);
   };
 
-  // Takes the token that was looked at, and returns its text.
   const take = (): string => {
     type = -1;
     return lexer.text;

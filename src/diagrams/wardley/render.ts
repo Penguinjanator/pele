@@ -90,7 +90,6 @@ export function renderWardley(model: WardleyModel, config: Config, options: Rend
   const projectX = (value: number): number => (value / 100) * plotW;
   const projectY = (value: number): number => plotH - (value / 100) * plotH;
 
-  // Axes, stages and grid.
   const stages = model.axes.stages && model.axes.stages.length > 0 ? model.axes.stages : DEFAULT_STAGES;
   const boundaries = model.axes.stageBoundaries;
   const custom = boundaries !== undefined && boundaries.length === stages.length;
@@ -316,7 +315,6 @@ export function renderWardley(model: WardleyModel, config: Config, options: Rend
     )}">${shape}${caption}</g>`;
   }
 
-  // Numbered annotations, and the list of their texts.
   let annotations = '';
   for (const annotation of model.annotations) {
     const label = text(String(annotation.number), tiny, 4000, Style.Bold);

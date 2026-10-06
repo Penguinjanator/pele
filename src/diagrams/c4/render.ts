@@ -39,7 +39,6 @@ function link(body: string, url: string | undefined, id: string, links: LinkInfo
   return `<a href="${esc(href)}" rel="noopener">${body}</a>`;
 }
 
-// Writes a label with every line starting at x.
 function leftLabel(label: Label, x: number, top: number, attrs: string): string {
   let out = '';
   for (let i = 0; i < label.lines.length; i++) {

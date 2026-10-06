@@ -15,7 +15,6 @@ export interface Cell {
   col: number;
   row: number;
   cols: number;
-  // Height each row of a container needs.
   heights: number[];
   x: number;
   y: number;

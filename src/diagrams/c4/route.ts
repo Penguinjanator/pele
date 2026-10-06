@@ -116,7 +116,6 @@ function hit(box: Box, px: number, py: number, qx: number, qy: number): number {
   return hitRect(x, y, x + w, y + h, px, py, dx, dy);
 }
 
-// Whether a routed line passes through the rectangle.
 export function crosses(points: number[], x0: number, y0: number, x1: number, y1: number): boolean {
   for (let i = 2; i < points.length; i += 2) {
     const px = points[i - 2];
