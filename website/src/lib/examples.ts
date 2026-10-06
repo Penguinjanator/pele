@@ -94,6 +94,7 @@ const TYPE_TITLES = new Map([
   ['architecture', 'Architecture'],
   ['c4', 'C4'],
   ['block', 'Block'],
+  ['agentflow', 'Agentflow'],
   ['railroad', 'Railroad'],
   ['packet', 'Packet'],
   ['radar', 'Radar'],

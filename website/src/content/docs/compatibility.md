@@ -34,6 +34,7 @@ See [Examples](/examples) for a drawing of each implemented type.
 | Architecture | `architecture-beta` | Implemented |
 | C4 | `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` | Implemented |
 | Block | `block`, `block-beta` | Implemented |
+| Agentflow | `agentflow-beta` | Implemented |
 | Railroad | `railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta` | Implemented |
 | Packet | `packet`, `packet-beta` | Implemented |
 | Radar | `radar-beta` | Implemented |
