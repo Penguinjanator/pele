@@ -71,4 +71,4 @@ try {
 
 ## Reporting a vulnerability
 
-Report a security problem privately through [GitHub](https://github.com/kepano/pele/security/advisories/new), not in a public issue.
+Report a security problem privately through [GitHub](https://github.com/obsidianmd/pele/security/advisories/new), not in a public issue.

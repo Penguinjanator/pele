@@ -4,7 +4,7 @@ Pele accepts untrusted diagram source and filters the SVG it returns. Apps can i
 
 ## Reporting a vulnerability
 
-Report a security problem privately through [GitHub](https://github.com/kepano/pele/security/advisories/new), not in a public issue.
+Report a security problem privately through [GitHub](https://github.com/obsidianmd/pele/security/advisories/new), not in a public issue.
 
 A report is in scope if a diagram can make Pele's output run script, load a resource other than an allowed link or image, break out of the SVG, or take unreasonably long to render at the default limits.
 

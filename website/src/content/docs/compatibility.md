@@ -95,4 +95,4 @@ An icon reference in a label, such as `fa:fa-car`, reserves space for the icon. 
 
 ## Reporting differences
 
-If Mermaid accepts a diagram that Pele rejects, or Pele parses it differently, that is a bug. Compare the two in the [Playground](/playground) and [report it](https://github.com/kepano/pele/issues).
+If Mermaid accepts a diagram that Pele rejects, or Pele parses it differently, that is a bug. Compare the two in the [Playground](/playground) and [report it](https://github.com/obsidianmd/pele/issues).

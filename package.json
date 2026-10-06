@@ -6,7 +6,7 @@
   "author": "kepano",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kepano/pele.git"
+    "url": "git+https://github.com/obsidianmd/pele.git"
   },
   "type": "module",
   "main": "./dist/pele.js",

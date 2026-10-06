@@ -1,5 +1,5 @@
 export const siteDescription = 'Pele is a lightweight library that renders Mermaid diagrams to SVG, themed with CSS variables.';
-export const repositoryUrl = 'https://github.com/kepano/pele';
+export const repositoryUrl = 'https://github.com/obsidianmd/pele';
 export const packageName = 'pele';
 
 export const docsPages = [
