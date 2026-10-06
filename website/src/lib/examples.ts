@@ -73,7 +73,7 @@ export function sampleGroups(corpora: Record<string, unknown>): SampleGroup[] {
     .sort((a, b) => Number(b.type === 'flowchart') - Number(a.type === 'flowchart') || a.type.localeCompare(b.type));
 }
 
-// Names for the examples page, in the order the types are shown.
+// Names for the examples page, which lists the types by name.
 const TYPE_TITLES = new Map([
   ['flowchart', 'Flowchart'],
   ['swimlane', 'Swimlane'],
@@ -141,8 +141,6 @@ const ownColors = (source: string, svg: string): boolean => RE_OWN_PAINT.test(sv
 // and a larger one that is not a variation of it. Examples that leave their colors to the theme
 // come first; one that sets its own is shown only when the type has no other.
 export function exampleGroups(corpora: Record<string, unknown>, draw: (source: string) => string | undefined): ExampleGroup[] {
-  const order = [...TYPE_TITLES.keys()];
-  const rank = (type: string): number => (order.includes(type) ? order.indexOf(type) : order.length);
   return Object.entries(corpora)
     .map(([path, corpus]) => {
       const type = path.match(/([\w-]+)-docs\.json$/)?.[1] ?? path;
@@ -159,7 +157,7 @@ export function exampleGroups(corpora: Record<string, unknown>, draw: (source: s
       return { type, title, slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), sources };
     })
     .filter((group) => group.sources.length > 0)
-    .sort((a, b) => rank(a.type) - rank(b.type) || a.type.localeCompare(b.type));
+    .sort((a, b) => a.title.localeCompare(b.title));
 }
 
 export const examplesTitle = 'Examples';
