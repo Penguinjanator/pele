@@ -2,12 +2,14 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Search from '../components/Search.astro';
 import MobileDocsMenu from '../components/MobileDocsMenu.astro';
-import corpus from '../../../tests/corpus/flowchart-docs.json';
-import { playgroundExample, playgroundSamples } from '../lib/examples';
+import { playgroundExample, sampleGroups } from '../lib/examples';
 import { storageKey, minimumWidth } from '../scripts/playground-columns';
 import '../styles/playground.scss';
 
-const samples = playgroundSamples(corpus);
+const corpora = import.meta.glob<unknown>('../../../tests/corpus/*-docs.json', { eager: true, import: 'default' });
+const groups = sampleGroups(corpora);
+const samples = groups.flatMap((group) => group.samples);
+const firstIndex = new Map(groups.map((group) => [group.type, samples.indexOf(group.samples[0])]));
 const views = [
   { id: 'pele', label: 'Pele' },
   { id: 'mermaid', label: 'Mermaid' },
@@ -76,8 +78,13 @@ const resizeTitle = 'Drag to resize. Use arrow keys when focused. Double-click t
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg>
               </button>
               <div id="playground-samples-menu" class="menu" role="menu" aria-labelledby="open-sample" hidden>
-                {samples.map((sample, index) => (
-                  <button type="button" role="menuitem" tabindex="-1" data-playground-sample={index}><span class="menu-label">{sample.label}</span></button>
+                {groups.map((group) => (
+                  <>
+                    <div class="menu-heading" role="presentation">{group.type}</div>
+                    {group.samples.map((sample, index) => (
+                      <button type="button" role="menuitem" tabindex="-1" data-playground-sample={firstIndex.get(group.type)! + index}><span class="menu-label">{sample.label}</span></button>
+                    ))}
+                  </>
                 ))}
               </div>
             </div>
