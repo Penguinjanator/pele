@@ -132,14 +132,6 @@
   > p + p {
     margin-top: -5px;
   }
-  :not(pre) > code {
-    border-radius: 0.38em;
-    background: var(--panel);
-    color: var(--link-color, var(--paper));
-    padding: 0.12em 0.24em;
-    font-family: var(--font-mono);
-    font-size: var(--font-size-small);
-  }
   > ul, > ol {
     margin: 20px 0 26px;
     padding-left: 1.25rem;

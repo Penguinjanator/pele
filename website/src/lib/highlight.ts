@@ -408,3 +408,25 @@ export function highlightCode(code: string, language: CodeLanguage, showLineNumb
   const normalized = code.replace(/^\n|\n$/g, '');
   return highlightLines(normalized.split('\n'), language).map((line, index) => `<span class="doc-code-line"><span class="doc-line-number"${showLineNumbers ? '' : ' hidden'}>${index + 1}</span><span class="doc-code-source">${line}</span></span>`).join('');
 }
+
+const RE_INLINE_TYPE = [
+  // An arrow, a type with brackets or alternatives.
+  /=>/,
+  /^[A-Za-z_$][\w$]*\[\]$/,
+  /^[A-Za-z_$][\w$[\]]*(?: \| [A-Za-z_$][\w$[\]]*)+$/,
+  // A primitive type, or a type name in several capitalized words.
+  /^(?:string|number|boolean|object|Error)$/,
+  /^(?:[A-Z][a-z]+){2,}$/,
+];
+const RE_INLINE_CSS_CALL = /^(var)\((--[\w-]+)\)$/;
+
+// Inline code in prose gets color in two cases only: a TypeScript type and a CSS variable.
+// Names, calls, values, tags, and Mermaid syntax are left as they are.
+export function highlightInline(value: string): string | undefined {
+  if (value.length > 120) return undefined;
+  if (RE_INLINE_TYPE.some((pattern) => pattern.test(value))) return highlightLine(value, 'ts');
+  if (/^--[\w-]+$/.test(value)) return span('syn-variable', value);
+  const match = value.match(RE_INLINE_CSS_CALL);
+  if (match) return span(undefined, match[1]) + span('syn-punctuation', '(') + span('syn-variable', match[2]) + span('syn-punctuation', ')');
+  return undefined;
+}

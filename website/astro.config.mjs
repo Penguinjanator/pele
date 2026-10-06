@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'astro/config';
 import { unified } from '@astrojs/markdown-remark';
 import remarkGfm from 'remark-gfm';
-import { highlightCode } from './src/lib/highlight.ts';
+import { highlightCode, highlightInline } from './src/lib/highlight.ts';
 import { refreshDevCss } from './lib/dev-css.mjs';
 
 const copyIcon = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>';
@@ -36,6 +36,14 @@ function staticCodeBlocks() {
             rel: 'noopener noreferrer',
           },
         };
+      }
+      if (node?.type === 'inlineCode' && parent && typeof index === 'number') {
+        const highlighted = highlightInline(node.value);
+        // A single short word, such as sans-serif, is kept on one line instead of breaking at a hyphen.
+        const word = !/\s/.test(node.value) && node.value.length <= 32;
+        if (highlighted) parent.children[index] = { type: 'html', value: `<code class="inline-syntax${word ? ' code-word' : ''}">${highlighted}</code>` };
+        else if (word) node.data = { ...node.data, hProperties: { ...node.data?.hProperties, className: ['code-word'] } };
+        return;
       }
       if (node?.type === 'code' && parent && typeof index === 'number') {
         parent.children[index] = {

@@ -143,3 +143,18 @@
 .syn-comment {
   color: var(--syntax-comment);
 }
+
+// Inline code in prose: the docs, and the home page.
+.markdown-doc :not(pre) > code,
+.install-note code {
+  border-radius: 0.38em;
+  background: var(--panel);
+  color: var(--link-color, var(--paper));
+  padding: 0.12em 0.24em;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+}
+
+.code-word {
+  white-space: nowrap;
+}
