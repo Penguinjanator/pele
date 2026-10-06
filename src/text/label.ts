@@ -65,6 +65,7 @@ function pushIcons(line: Span[], text: string, style: number): void {
 // Splits inline HTML and, for markdown labels, emphasis markers into styled spans.
 function inline(line: Span[], source: string, markdown: boolean, base: number): void {
   let style = base;
+  let marked = 0;
   let text = '';
   let i = 0;
   const n = source.length;
@@ -92,7 +93,7 @@ function inline(line: Span[], source: string, markdown: boolean, base: number): 
       const double = source[i + 1] === ch;
       const bit = double ? Style.Bold : Style.Italic;
       const len = double ? 2 : 1;
-      const open = (style & bit) === 0 || (base & bit) !== 0;
+      const open = (marked & bit) === 0;
       const prev = i > 0 ? source[i - 1] : ' ';
       const next = i + len < n ? source[i + len] : ' ';
       const canOpen = open && next.trim() !== '' && source.indexOf(double ? ch + ch : ch, i + len) !== -1;
@@ -100,7 +101,8 @@ function inline(line: Span[], source: string, markdown: boolean, base: number): 
       const wordy = ch === '_' && /\w/.test(prev) && /\w/.test(next);
       if ((canOpen || canClose) && !wordy) {
         flush();
-        style = canOpen ? style | bit : style & ~bit;
+        marked = canOpen ? marked | bit : marked & ~bit;
+        style = canOpen ? style | bit : (style & ~bit) | (base & bit);
         i += len;
         continue;
       }

@@ -85,6 +85,12 @@ describe('flowchart rendering', () => {
     expect(svg).toContain('<tspan font-style="italic">Markdown</tspan>');
   });
 
+  it('closes markdown emphasis in a label that is already bold', () => {
+    const { svg } = render('flowchart TD\n  A["`one **two** three`"]\n  style A font-weight:bold', options);
+    expect(svg).not.toContain('**');
+    expect(svg).toContain('two');
+  });
+
   it('applies style, classDef and linkStyle', () => {
     const { svg } = render(
       'flowchart TD\n  A --> B\n  style A fill:#f9f,stroke:#333,stroke-width:4px,color:#fff\n  classDef warn fill:#ff0\n  class B warn\n  linkStyle 0 stroke:#f00,stroke-width:3px',
