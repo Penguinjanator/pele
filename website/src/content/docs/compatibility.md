@@ -32,11 +32,12 @@ Pele targets the syntax of Mermaid 12.1.0. Newer Mermaid syntax is adopted when 
 | Architecture | `architecture-beta` | Implemented |
 | C4 | `C4Context`, `C4Container`, `C4Component`, `C4Dynamic`, `C4Deployment` | Implemented |
 | Block | `block`, `block-beta` | Implemented |
+| Railroad | `railroad-beta`, `railroad-ebnf-beta`, `railroad-abnf-beta`, `railroad-peg-beta` | Implemented |
 | Packet | `packet`, `packet-beta` | Implemented |
 | Radar | `radar-beta` | Implemented |
 | Treemap | `treemap`, `treemap-beta` | Implemented |
 | Info | `info` | Implemented |
-| Other Mermaid diagram types | `swimlane-beta`, `railroad-beta`, `venn-beta`, and the rest | Planned |
+| Other Mermaid diagram types | `swimlane-beta`, `venn-beta`, `treeView-beta`, and the rest | Planned |
 
 For a type that is not implemented, [`supports()`](/api#supports) returns `false` and [`render()`](/api#render) throws a `PeleError` with the code `unsupported-diagram`. An app can use this to fall back to Mermaid for those diagrams.
 
