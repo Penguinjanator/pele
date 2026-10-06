@@ -15,6 +15,7 @@ import { quadrantChart } from './quadrant/index.js';
 import { radar } from './radar/index.js';
 import { requirement } from './requirement/index.js';
 import { sankey } from './sankey/index.js';
+import { sequence } from './sequence/index.js';
 import { state } from './state/index.js';
 import { timeline } from './timeline/index.js';
 import { treemap } from './treemap/index.js';
@@ -42,6 +43,7 @@ const all = [
   radar,
   treemap,
   info,
+  sequence,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));

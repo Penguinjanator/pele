@@ -171,6 +171,12 @@ function skip(s: string, pos: number, commas: boolean): number {
   return pos;
 }
 
+// Entries of a flow collection are separated by exactly one comma, as js-yaml requires.
+function entryStart(ch: string, separated: boolean): void {
+  if (!separated) throw new Error('YAML: missed comma between flow collection entries');
+  if (ch === ',') throw new Error("YAML: expected the node content, but found ','");
+}
+
 // Parses a flow value starting at s[pos]; returns the value and the index after it.
 function flow(s: string, pos: number, stops: string, depth = 0): [YamlValue, number] {
   if (depth > MAX_DEPTH) throw new Error('YAML: nesting is too deep');
@@ -179,28 +185,38 @@ function flow(s: string, pos: number, stops: string, depth = 0): [YamlValue, num
   if (ch === '{') {
     const out: { [key: string]: YamlValue } = {};
     pos++;
+    let separated = true;
     while (true) {
-      pos = skip(s, pos, true);
+      pos = skip(s, pos, false);
       if (pos >= s.length) throw new Incomplete('YAML: unexpected end of the stream within a flow collection');
       if (s[pos] === '}') return [out, pos + 1];
+      entryStart(s[pos], separated);
       let key: YamlValue;
       [key, pos] = flow(s, pos, ':,}', depth + 1);
       pos = skip(s, pos, false);
       let value: YamlValue = null;
       if (s[pos] === ':') [value, pos] = flow(s, pos + 1, ',}', depth + 1);
       assign(out, String(key), value);
+      pos = skip(s, pos, false);
+      separated = s[pos] === ',';
+      if (separated) pos++;
     }
   }
   if (ch === '[') {
     const out: YamlValue[] = [];
     pos++;
+    let separated = true;
     while (true) {
-      pos = skip(s, pos, true);
+      pos = skip(s, pos, false);
       if (pos >= s.length) throw new Incomplete('YAML: unexpected end of the stream within a flow collection');
       if (s[pos] === ']') return [out, pos + 1];
+      entryStart(s[pos], separated);
       let value: YamlValue;
       [value, pos] = flow(s, pos, ',]', depth + 1);
       out.push(value);
+      pos = skip(s, pos, false);
+      separated = s[pos] === ',';
+      if (separated) pos++;
     }
   }
   if (ch === '"') {

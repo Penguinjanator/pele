@@ -197,7 +197,7 @@ describe('public api', () => {
 
   it('says what it can render', () => {
     expect(supports('flowchart TD\n A')).toBe(true);
-    expect(supports('sequenceDiagram\n A->>B: hi')).toBe(false);
+    expect(supports('sequenceDiagram\n A->>B: hi')).toBe(true);
     expect(supports('nothing')).toBe(false);
   });
 
