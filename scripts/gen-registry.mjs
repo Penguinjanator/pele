@@ -17,6 +17,8 @@ const DIAGRAMS = [
   ['state', 'state', 'StateModel', 'types'],
   ['gantt', 'gantt', 'GanttModel', 'types'],
   ['architecture', 'architecture', 'ArchitectureModel', 'db'],
+  ['requirement', 'requirement', 'RequirementModel', 'types'],
+  ['sankey', 'sankey', 'SankeyModel', 'db'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();

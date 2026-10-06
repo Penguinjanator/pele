@@ -9,6 +9,8 @@ import type { KanbanModel } from './diagrams/kanban/db.js';
 import type { MindmapModel } from './diagrams/mindmap/db.js';
 import type { PieModel } from './diagrams/pie/model.js';
 import type { QuadrantModel } from './diagrams/quadrant/db.js';
+import type { RequirementModel } from './diagrams/requirement/types.js';
+import type { SankeyModel } from './diagrams/sankey/db.js';
 import type { StateModel } from './diagrams/state/types.js';
 import type { TimelineModel } from './diagrams/timeline/db.js';
 import type { XyChartModel } from './diagrams/xychart/db.js';
@@ -27,6 +29,8 @@ export type {
   StateModel,
   GanttModel,
   ArchitectureModel,
+  RequirementModel,
+  SankeyModel,
 };
 
 // The union of every implemented diagram's model; narrow it with its `type` field.
@@ -43,4 +47,6 @@ export type DiagramModel =
   | XyChartModel
   | StateModel
   | GanttModel
-  | ArchitectureModel;
+  | ArchitectureModel
+  | RequirementModel
+  | SankeyModel;

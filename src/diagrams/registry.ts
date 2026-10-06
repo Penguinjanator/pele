@@ -10,6 +10,8 @@ import { kanban } from './kanban/index.js';
 import { mindmap } from './mindmap/index.js';
 import { pie } from './pie/index.js';
 import { quadrantChart } from './quadrant/index.js';
+import { requirement } from './requirement/index.js';
+import { sankey } from './sankey/index.js';
 import { state } from './state/index.js';
 import { timeline } from './timeline/index.js';
 import { xychart } from './xychart/index.js';
@@ -30,6 +32,8 @@ const all = [
   state,
   gantt,
   architecture,
+  requirement,
+  sankey,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));
