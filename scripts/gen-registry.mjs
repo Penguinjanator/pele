@@ -14,6 +14,7 @@ const DIAGRAMS = [
   ['classDiagram', 'class', 'ClassModel', 'types'],
   ['quadrantChart', 'quadrant', 'QuadrantModel', 'db'],
   ['xychart', 'xychart', 'XyChartModel', 'db'],
+  ['state', 'state', 'StateModel', 'types'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();

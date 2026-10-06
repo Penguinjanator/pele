@@ -8,6 +8,7 @@ import { kanban } from './kanban/index.js';
 import { mindmap } from './mindmap/index.js';
 import { pie } from './pie/index.js';
 import { quadrantChart } from './quadrant/index.js';
+import { state } from './state/index.js';
 import { timeline } from './timeline/index.js';
 import { xychart } from './xychart/index.js';
 
@@ -24,6 +25,7 @@ const all = [
   classDiagram,
   quadrantChart,
   xychart,
+  state,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));
