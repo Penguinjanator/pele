@@ -3,6 +3,7 @@ import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
 import { routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
+import { withTitle } from '../../svg/title.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -598,21 +599,22 @@ export function renderClass(db: ClassDb, config: Config, options: RenderOptions)
     cardsOut += `<text class="pele-cardinality" x="${num(item.x + ox)}" y="${num(item.y + oy + tiny * 0.35)}" text-anchor="middle">${esc(item.text)}</text>`;
   }
 
-  const svg = svgDocument(
-    'class',
+  const titled = withTitle(
+    db.title,
+    measurer,
+    size,
+    pad,
     width,
     height,
-    size,
-    options,
-    db,
     (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="${LINE}" stroke-linecap="round">${edgesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${small}">${labelsOut}</g>` : '') +
       (cardsOut ? `<g class="pele-cardinalities" font-size="${tiny}" fill="var(--_m)">${cardsOut}</g>` : '') +
       `<g class="pele-nodes">${nodesOut}</g>`
   );
+  const svg = svgDocument('class', titled.width, titled.height, size, options, db, titled.content);
 
-  return { svg, width, height, links };
+  return { svg, width: titled.width, height: titled.height, links };
 }
 
 // Picks where a namespace title sits along the top edge so that edges entering there do not cross it.

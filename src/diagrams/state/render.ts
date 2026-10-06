@@ -3,6 +3,7 @@ import type { Config } from '../../preprocess.js';
 import { esc, labelSvg, num } from '../../svg/builder.js';
 import { marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
+import { withTitle } from '../../svg/title.js';
 import { classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -670,21 +671,22 @@ export function renderState(db: StateDb, config: Config, options: RenderOptions)
     }
   }
 
-  const svg = svgDocument(
-    'state',
+  const titled = withTitle(
+    db.title,
+    measurer,
+    size,
+    pad,
     width,
     height,
-    size,
-    options,
-    db,
     (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (dividers ? `<g class="pele-dividers" stroke-dasharray="4 4"${RULE}>${dividers}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${small}">${labelsOut}</g>` : '') +
       `<g class="pele-nodes">${nodesOut}${notesOut}</g>`
   );
+  const svg = svgDocument('state', titled.width, titled.height, size, options, db, titled.content);
 
-  return { svg, width, height, links };
+  return { svg, width: titled.width, height: titled.height, links };
 }
 
 // Picks where a composite's title sits in its title bar so that edges entering from above do not cross it.

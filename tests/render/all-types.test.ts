@@ -43,6 +43,32 @@ describe('every diagram type', () => {
     expect(count).toBeGreaterThan(500);
   });
 
+  it('draws a title given in front matter', () => {
+    // Types whose documentation examples all carry a title of their own.
+    const plain: Record<string, string> = {
+      c4: 'C4Context\n  Person(a, "A")',
+      cynefin: 'cynefin-beta\n  complex\n    "x"',
+      journey: 'journey\n  section S\n    Task: 5: Me',
+      packet: 'packet\n  0-15: "Source"',
+      pie: 'pie\n  "a": 1\n  "b": 2',
+      quadrant: 'quadrantChart\n  x-axis Low --> High\n  y-axis Low --> High\n  A: [0.3, 0.6]',
+      radar: 'radar-beta\n  axis a, b, c\n  curve x{1,2,3}',
+      timeline: 'timeline\n  2001 : a',
+      wardley: 'wardley-beta\n  component A [0.5, 0.5]',
+      xychart: 'xychart\n  x-axis [a, b]\n  bar [1, 2]',
+    };
+    const drawn = new Set<string>();
+    for (const { name, sources } of corpora) {
+      const src = plain[name] ?? sources.find((s) => !s.startsWith('---') && !/^\s*title\b/m.test(s));
+      expect(src, name).toBeDefined();
+      const { svg, type } = render(`---\ntitle: Zebra crossing\n---\n${src}`, options);
+      expect(svg, name).toContain('Zebra crossing');
+      assertInert(svg, name);
+      drawn.add(type);
+    }
+    expect(drawn.size).toBe(all.length);
+  });
+
   it('only gives ids that start with the prefix, so two diagrams on a page do not clash', () => {
     for (const { name, sources } of corpora) {
       for (const src of sources) {
