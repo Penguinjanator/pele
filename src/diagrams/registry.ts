@@ -2,6 +2,8 @@ import type { DiagramType } from '../detect.js';
 import type { Diagram } from '../types.js';
 import { er } from './er/index.js';
 import { flowchart } from './flowchart/index.js';
+import { kanban } from './kanban/index.js';
+import { mindmap } from './mindmap/index.js';
 import { pie } from './pie/index.js';
 
 // Every implemented diagram type. Detection covers more types than this; the rest are unsupported.
@@ -10,6 +12,8 @@ const all = [
   flowchart,
   pie,
   er,
+  mindmap,
+  kanban,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));
