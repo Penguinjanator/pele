@@ -70,6 +70,8 @@ interface Level {
   y: number;
 }
 
+const MAX_PORTS = 40000;
+
 export function cnode(w: number, h: number, parent = -1): CNode {
   return { w, h, parent, isGroup: false, dir: undefined, padX: 0, padTop: 0, padBottom: 0, minW: 0, seq: 0, x: 0, y: 0 };
 }
@@ -151,6 +153,28 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
     if (seq !== Infinity) nodes[level.id].seq = seq;
   }
   for (const level of order) level.items.sort((a, b) => nodes[a].seq - nodes[b].seq || a - b);
+
+  // Every group border an edge crosses costs a port. Past the budget, an edge is drawn between
+  // the groups that hold its ends, at the level they share.
+  let ports = 0;
+  for (const e of edges) {
+    let a = e.src;
+    let b = e.dst;
+    let crossed = 0;
+    for (; depth[a] > depth[b]; crossed++) a = nodes[a].parent;
+    for (; depth[b] > depth[a]; crossed++) b = nodes[b].parent;
+    for (; a !== b && nodes[a].parent !== nodes[b].parent; crossed += 2) {
+      a = nodes[a].parent;
+      b = nodes[b].parent;
+    }
+    if (a === b) continue;
+    if (ports + crossed > MAX_PORTS) {
+      e.src = a;
+      e.dst = b;
+    } else {
+      ports += crossed;
+    }
+  }
 
   const loops: number[] = [];
   const stray: number[] = [];

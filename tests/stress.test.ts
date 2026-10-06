@@ -13,6 +13,15 @@ const big = { measurer: metricsMeasurer, limit: Infinity };
 const repeat = (count: number, line: (i: number) => string): string => Array.from({ length: count }, (_, i) => line(i)).join('');
 
 const CASES: [string, () => unknown][] = [
+  [
+    'edges that each cross 1,000 nested subgraph borders',
+    () =>
+      render(
+        'flowchart TD\n' + repeat(1000, (i) => `subgraph g${i}\n`) + 'inner\n' + 'end\n'.repeat(1000) + repeat(2000, (i) => `out${i % 50} --> inner\n`),
+        big
+      ),
+  ],
+  ['a markdown label that is already bold, with 10,000 markers', () => render('flowchart TD\n  A["`' + '**a** '.repeat(5000) + '`"]\n  style A font-weight:bold\n', big)],
   ['comment stripping over blank lines', () => preprocess('graph TD\n' + ('\n' + ' '.repeat(4)).repeat(10000) + '%% c\nA')],
   ['unterminated comment markers', () => preprocess('graph TD\nA\n%%' + 'x%%'.repeat(16000))],
   ['tag-like text with no closing bracket', () => preprocess('graph TD\nA["' + '<a'.repeat(N / 2) + '"]')],
