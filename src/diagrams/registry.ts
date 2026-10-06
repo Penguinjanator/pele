@@ -12,6 +12,7 @@ import { flowchart } from './flowchart/index.js';
 import { gantt } from './gantt/index.js';
 import { gitGraph } from './git/index.js';
 import { info } from './info/index.js';
+import { ishikawa } from './ishikawa/index.js';
 import { journey } from './journey/index.js';
 import { kanban } from './kanban/index.js';
 import { mindmap } from './mindmap/index.js';
@@ -27,6 +28,8 @@ import { state } from './state/index.js';
 import { timeline } from './timeline/index.js';
 import { treeView } from './treeview/index.js';
 import { treemap } from './treemap/index.js';
+import { usecase } from './usecase/index.js';
+import { venn } from './venn/index.js';
 import { wardley } from './wardley/index.js';
 import { xychart } from './xychart/index.js';
 
@@ -62,6 +65,9 @@ const all = [
   cynefin,
   wardley,
   eventmodeling,
+  usecase,
+  venn,
+  ishikawa,
 ] as Diagram<unknown>[];
 
 export const diagrams = new Map<DiagramType, Diagram<unknown>>(all.map((d) => [d.type, d]));

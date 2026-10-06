@@ -33,6 +33,9 @@ const DIAGRAMS = [
   ['cynefin', 'cynefin', 'CynefinModel', 'model'],
   ['wardley', 'wardley', 'WardleyModel', 'model'],
   ['eventmodeling', 'eventmodeling', 'EventModelingModel', 'model'],
+  ['usecase', 'usecase', 'UsecaseModel', 'types'],
+  ['venn', 'venn', 'VennModel', 'types'],
+  ['ishikawa', 'ishikawa', 'IshikawaModel', 'types'],
 ];
 
 const imports = DIAGRAMS.map(([name, folder]) => `import { ${name} } from './${folder}/index.js';`).sort();

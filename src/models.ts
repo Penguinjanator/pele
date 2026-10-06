@@ -11,6 +11,7 @@ import type { FlowchartModel } from './diagrams/flowchart/types.js';
 import type { GanttModel } from './diagrams/gantt/types.js';
 import type { GitModel } from './diagrams/git/db.js';
 import type { InfoModel } from './diagrams/info/model.js';
+import type { IshikawaModel } from './diagrams/ishikawa/types.js';
 import type { JourneyModel } from './diagrams/journey/db.js';
 import type { KanbanModel } from './diagrams/kanban/db.js';
 import type { MindmapModel } from './diagrams/mindmap/db.js';
@@ -26,6 +27,8 @@ import type { StateModel } from './diagrams/state/types.js';
 import type { TimelineModel } from './diagrams/timeline/db.js';
 import type { TreeViewModel } from './diagrams/treeview/model.js';
 import type { TreemapModel } from './diagrams/treemap/model.js';
+import type { UsecaseModel } from './diagrams/usecase/types.js';
+import type { VennModel } from './diagrams/venn/types.js';
 import type { WardleyModel } from './diagrams/wardley/model.js';
 import type { XyChartModel } from './diagrams/xychart/db.js';
 
@@ -59,6 +62,9 @@ export type {
   CynefinModel,
   WardleyModel,
   EventModelingModel,
+  UsecaseModel,
+  VennModel,
+  IshikawaModel,
 };
 
 // The union of every implemented diagram's model; narrow it with its `type` field.
@@ -91,4 +97,7 @@ export type DiagramModel =
   | TreeViewModel
   | CynefinModel
   | WardleyModel
-  | EventModelingModel;
+  | EventModelingModel
+  | UsecaseModel
+  | VennModel
+  | IshikawaModel;
