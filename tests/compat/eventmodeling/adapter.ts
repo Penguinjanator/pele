@@ -1,6 +1,6 @@
 import { buildEventModel, type EventModelingModel } from '../../../src/diagrams/eventmodeling/model.js';
 import { parseEventModel, type EventModelAst } from '../../../src/diagrams/eventmodeling/parser.js';
-import { checkSourceFrameTypes, type Accept, type CheckedFrame } from '../../../src/diagrams/eventmodeling/validator.js';
+import { checkSourceFrameTypes, type Accept, type CheckedFrame } from './validator.js';
 import { parse as peleParse } from '../../../src/index.js';
 import { toResult } from '../../support/langium.js';
 

@@ -1,4 +1,4 @@
-import { Arrow, type Direction, type GraphStatement, type Span, type UsecaseModel } from './types.js';
+import { Arrow, type Direction, type GraphStatement, type Span, type UsecaseModel } from '../../src/diagrams/usecase/types.js';
 
 export interface GraphNode {
   label?: string;

@@ -3,7 +3,7 @@ import * as slots from '../../../src/diagrams/agentflow/colorSlots.js';
 import { AgentflowDb, type AgentflowDbOptions } from '../../../src/diagrams/agentflow/db.js';
 import { AgentflowWarning as Vocabulary, EMITTED, RESERVED } from '../../../src/diagrams/agentflow/diagnostics.js';
 import { buildAgentGraph, type GraphEdge, type GraphNode } from '../../../src/diagrams/agentflow/graph.js';
-import * as lookup from '../../../src/diagrams/agentflow/lookup.js';
+import * as lookup from './lookup.js';
 import { parseAgentflow } from '../../../src/diagrams/agentflow/parser.js';
 import { normaliseNodeShapes, type ShapeSink } from '../../../src/diagrams/agentflow/shapes.js';
 import type { AgentEdge, AgentNode, Diagnostic, SemanticModel } from '../../../src/diagrams/agentflow/types.js';

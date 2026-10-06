@@ -1,7 +1,7 @@
 // The source rules of Mermaid's event modeling language: which kind of frame may feed which.
 // Mermaid registers them with Langium's validator but never runs it when parsing a diagram,
-// so a diagram that breaks them still renders, in Mermaid and here. They are kept for hosts
-// that want to report them.
+// so a diagram that breaks them still renders, in Mermaid and here. They are kept here
+// because Mermaid's specs test them.
 
 const COMMAND = new Set(['cmd', 'command']);
 const EVENT = new Set(['evt', 'event']);

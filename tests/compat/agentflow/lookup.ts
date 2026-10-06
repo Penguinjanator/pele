@@ -1,13 +1,9 @@
-import type { AgentNode, AgentflowModel, ElementMapping } from './types.js';
+import { isToolDefinition } from '../../../src/diagrams/agentflow/db.js';
+import type { AgentNode, AgentflowModel, ElementMapping } from '../../../src/diagrams/agentflow/types.js';
 
-// Lookups over a parsed agentflow, for editors and other tools. They stay out of the bundle
-// unless a tool imports them.
+// Mermaid's lookups over a parsed agentflow, which its specs call. Pele itself does not use them.
 
-const TOOL_SHAPES = new Set(['subroutine', 'subprocess', 'subproc', 'framed-rectangle', 'tool']);
-
-export function isToolDefinition(vertex: AgentNode): boolean {
-  return TOOL_SHAPES.has(vertex.type as string);
-}
+export { isToolDefinition };
 
 export function tools(model: AgentflowModel): AgentNode[] {
   const out: AgentNode[] = [];

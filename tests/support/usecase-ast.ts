@@ -1,4 +1,4 @@
-import { buildUsecaseAst } from '../../src/diagrams/usecase/ast.js';
+import { buildUsecaseAst } from './usecase-graph-ast.js';
 import type { UsecaseModel } from '../../src/diagrams/usecase/types.js';
 
 // Mermaid keeps nodes, groups, class definitions and JSON key orders as plain objects keyed by id,

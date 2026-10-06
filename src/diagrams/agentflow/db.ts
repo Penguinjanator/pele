@@ -1,7 +1,6 @@
 import { PeleError } from '../../errors.js';
 import { safeUrl } from '../../util/url.js';
 import { parseYaml, type YamlValue } from '../../util/yaml.js';
-import { isToolDefinition } from './lookup.js';
 import { isValidShape, resolveShapeAlias } from './shapes.js';
 import type {
   AgentClassDef,
@@ -52,6 +51,12 @@ const PRESENTATION_KEYS = new Set([
   'style',
   'labelType',
 ]);
+
+const TOOL_SHAPES = new Set(['subroutine', 'subprocess', 'subproc', 'framed-rectangle', 'tool']);
+
+export function isToolDefinition(vertex: AgentNode): boolean {
+  return TOOL_SHAPES.has(vertex.type as string);
+}
 
 function labelType(type: unknown): LabelType {
   return type === 'markdown' || type === 'string' || type === 'text' ? type : 'markdown';
