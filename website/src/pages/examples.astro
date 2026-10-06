@@ -36,14 +36,10 @@ const opening = (source: string): string =>
                 <span><span class="playground-link-prefix">Open in </span>Playground</span>
               </a>}
             </figcaption>
-            <div class="example-figure" data-pele-theme="dark" data-pele-example={source} data-pele-prefix={prefix} role="img" aria-label={`${group.title} diagram rendered by Pele`} set:html={render(source, { idPrefix: prefix }).svg} />
+            <div class="example-figure" data-pele-theme="dark" role="img" aria-label={`${group.title} diagram rendered by Pele`} set:html={render(source, { idPrefix: prefix }).svg} />
           </figure>
         );
       })}
     </>
   ))}
 </DocsLayout>
-
-<script>
-  import '../scripts/home';
-</script>
