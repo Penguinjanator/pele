@@ -281,18 +281,15 @@ export function resolveUsecase(
   };
 
   const publish = (state: ElementState): void => {
-    const shared = {
-      id: state.id,
-      label: state.label.text,
-      labelType: state.label.type,
-      business: state.business ?? false,
-      classes: [...state.classes],
-    };
     let element: Actor | UseCase;
     if (state.kind === 'actor') {
       useCases.delete(state.id);
       const actor: Actor = {
-        ...shared,
+        id: state.id,
+        label: state.label.text,
+        labelType: state.label.type,
+        business: state.business ?? false,
+        classes: [...state.classes],
         type: state.icon ? 'icon' : (state.actorType ?? 'normal'),
         styles: actors.get(state.id)?.styles ?? [],
       };
@@ -301,7 +298,15 @@ export function resolveUsecase(
       element = actor;
     } else {
       actors.delete(state.id);
-      element = { ...shared, shape: state.shape ?? 'ellipse', styles: useCases.get(state.id)?.styles ?? [] };
+      element = {
+        id: state.id,
+        label: state.label.text,
+        labelType: state.label.type,
+        business: state.business ?? false,
+        classes: [...state.classes],
+        shape: state.shape ?? 'ellipse',
+        styles: useCases.get(state.id)?.styles ?? [],
+      };
       useCases.set(state.id, element);
     }
     if (state.stereotype) element.stereotype = state.stereotype;

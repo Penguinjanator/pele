@@ -151,11 +151,9 @@ function wrap(line: Span[], measurer: TextMeasurer, size: number, max: number, o
     }
     for (const piece of span.text.match(/\s*\S+\s*|\s+/g) ?? []) {
       let part = piece;
-      let w = measurer.width(part, size, span.style);
       if (width > 0 && width + measurer.width(part.trimEnd(), size, span.style) > max) {
         commit();
         part = part.trimStart();
-        w = measurer.width(part, size, span.style);
       }
       const last = current[current.length - 1];
       if (last && last.style === span.style && last.icon === undefined) {
@@ -164,6 +162,7 @@ function wrap(line: Span[], measurer: TextMeasurer, size: number, max: number, o
         width = 0;
         for (const s of current) width += s.width;
       } else {
+        const w = measurer.width(part, size, span.style);
         current.push({ text: part, style: span.style, width: w });
         width += w;
       }
@@ -196,6 +195,12 @@ export function layoutLabel(
         lineHeight,
       };
     }
+    const lines: Span[][] = [];
+    const widths: number[] = [];
+    wrap([{ text, style: base, width }], measurer, size, maxWidth, lines, widths);
+    let widest = 0;
+    for (const w of widths) if (w > widest) widest = w;
+    return { lines, widths, width: widest, height: lines.length * lineHeight, size, lineHeight };
   }
 
   const source = markdown ? dedent(raw.replace(/\r\n?/g, '\n')).trim() : raw.trim();

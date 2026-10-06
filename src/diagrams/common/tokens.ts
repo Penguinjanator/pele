@@ -124,33 +124,39 @@ export function tokenize(src: string, types: readonly TokenType[], diagram: stri
 export const ACC_DESCR: TokenType = {
   name: 'ACC_DESCR',
   pattern: /[\t ]*accDescr(?:[\t ]*:([^\n\r]*?(?=%%)|[^\n\r]*)|\s*{([^}]*)})/y,
+  first: '\t a',
 };
 export const ACC_TITLE: TokenType = {
   name: 'ACC_TITLE',
   pattern: /[\t ]*accTitle[\t ]*:(?:[^\n\r]*?(?=%%)|[^\n\r]*)/y,
+  first: '\t a',
 };
 export const TITLE: TokenType = {
   name: 'TITLE',
   pattern: /[\t ]*title(?:[\t ][^\n\r]*?(?=%%)|[\t ][^\n\r]*|)/y,
+  first: '\t t',
 };
-export const STRING: TokenType = { name: 'STRING', pattern: /"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/y };
-export const NEWLINE: TokenType = { name: 'NEWLINE', pattern: /\r?\n/y };
-export const WHITESPACE: TokenType = { name: 'WHITESPACE', pattern: /[\t ]+/y, hidden: true };
+export const STRING: TokenType = { name: 'STRING', pattern: /"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/y, first: `"'` };
+export const NEWLINE: TokenType = { name: 'NEWLINE', pattern: /\r?\n/y, first: '\r\n' };
+export const WHITESPACE: TokenType = { name: 'WHITESPACE', pattern: /[\t ]+/y, hidden: true, first: '\t ' };
 export const YAML: TokenType = {
   name: 'YAML',
   pattern: /---[\t ]*\r?\n(?:[\S\s]*?\r?\n)?---(?:\r?\n|(?!\S))/y,
   hidden: true,
   opener: /---[\t ]*\r?\n/y,
+  first: '-',
 };
 export const DIRECTIVE: TokenType = {
   name: 'DIRECTIVE',
   pattern: /[\t ]*%%{[\S\s]*?}%%(?:\r?\n|(?!\S))/y,
   hidden: true,
   opener: /[\t ]*%%{/y,
+  first: '\t %',
 };
 export const SINGLE_LINE_COMMENT: TokenType = {
   name: 'SINGLE_LINE_COMMENT',
   pattern: /[\t ]*%%[^\n\r]*/y,
+  first: '\t %',
   hidden: true,
 };
 

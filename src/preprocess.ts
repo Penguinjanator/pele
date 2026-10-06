@@ -59,15 +59,23 @@ function matchFrontMatter(text: string): FrontMatter | undefined {
     return last;
   };
 
+  const needle = '\n' + fence;
   let lastFence = -1;
-  for (let i = openingEnds[0] + 1; i < text.length; i++) if (closingEnd(i) !== -1) lastFence = i;
+  for (let i = text.lastIndexOf(needle); i > openingEnds[0]; i = text.lastIndexOf(needle, i - 1)) {
+    if (closingEnd(i) !== -1) {
+      lastFence = i;
+      break;
+    }
+  }
   if (lastFence === -1) return undefined;
 
   let openingEnd = openingEnds[0];
   for (const candidate of openingEnds) if (candidate < lastFence) openingEnd = candidate;
 
   const bodyStart = openingEnd + 1;
-  for (let i = bodyStart; i <= lastFence; i++) {
+  const firstAt = bodyStart > 0 ? bodyStart - 1 : 0;
+  for (let i = text.indexOf(needle, firstAt); i !== -1 && i <= lastFence; i = text.indexOf(needle, i + 1)) {
+    if (i < bodyStart) continue;
     const end = closingEnd(i);
     if (end !== -1) return { indent, body: text.slice(bodyStart, i), length: end + 1 };
   }

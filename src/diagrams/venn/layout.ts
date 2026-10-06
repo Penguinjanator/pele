@@ -79,7 +79,9 @@ function margin(circles: Circle[], inside: number[], outside: number[], x: numbe
   let best = Infinity;
   for (const i of inside) {
     const c = circles[i];
-    const room = c.r - Math.hypot(x - c.x, y - c.y);
+    const dx = x - c.x;
+    const dy = y - c.y;
+    const room = c.r - Math.sqrt(dx * dx + dy * dy);
     if (room < best) {
       if (room < floor) return room;
       best = room;
@@ -87,7 +89,9 @@ function margin(circles: Circle[], inside: number[], outside: number[], x: numbe
   }
   for (const i of outside) {
     const c = circles[i];
-    const room = Math.hypot(x - c.x, y - c.y) - c.r;
+    const dx = x - c.x;
+    const dy = y - c.y;
+    const room = Math.sqrt(dx * dx + dy * dy) - c.r;
     if (room < best) {
       if (room < floor) return room;
       best = room;
@@ -116,8 +120,9 @@ export function findSpot(circles: Circle[], inside: number[], outside: number[])
   let off = 0;
   const consider = (px: number, py: number): boolean => {
     const m = margin(circles, inside, outside, px, py, best - r * 1e-9);
+    if (!(m > best - r * 1e-9)) return false;
     const distance = Math.hypot(px - cx, py - cy);
-    if (m > best + r * 1e-9 || (m > best - r * 1e-9 && distance < off - r * 1e-9)) {
+    if (m > best + r * 1e-9 || distance < off - r * 1e-9) {
       best = m;
       off = distance;
       x = px;

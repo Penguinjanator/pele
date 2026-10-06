@@ -10,9 +10,25 @@ export function esc(text: string): string {
   return RE_NEEDS_ESC.test(text) ? text.replace(RE_ESC, (c) => ESC[c] ?? '') : text;
 }
 
+// The two decimals of a coordinate, by hundredths. Building the string from integers is much
+// faster than converting a double.
+const FRACTION: string[] = [];
+for (let i = 0; i < 100; i++) FRACTION.push(i === 0 ? '' : i % 10 === 0 ? '.' + i / 10 : '.' + (i < 10 ? '0' + i : i));
+
 export function num(value: number): string {
-  const r = Math.round(value * 100) / 100;
-  return r === 0 ? '0' : String(r);
+  const n = Math.round(value * 100);
+  if (n === 0) return '0';
+  if (n > 0) {
+    if (n < 1e11) {
+      const q = Math.floor(n / 100);
+      return q + FRACTION[n - q * 100];
+    }
+  } else if (n > -1e11) {
+    const m = -n;
+    const q = Math.floor(m / 100);
+    return '-' + q + FRACTION[m - q * 100];
+  }
+  return String(n / 100);
 }
 
 export type IconResolver = (name: string) => string | null | undefined;

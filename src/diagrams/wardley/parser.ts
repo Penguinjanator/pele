@@ -59,9 +59,9 @@ const enum T {
   newline,
 }
 
-const ARROW: TokenType = { name: 'ARROW', pattern: /->/y };
-const LINK_ARROW: TokenType = { name: 'LINK_ARROW', pattern: /-->|-\.->|>|\+'[^']*'<>|\+'[^']*'<|\+'[^']*'>/y };
-const word = (name: string, text: string): TokenType => ({ name, pattern: new RegExp(text, 'y') });
+const ARROW: TokenType = { name: 'ARROW', pattern: /->/y, first: '-' };
+const LINK_ARROW: TokenType = { name: 'LINK_ARROW', pattern: /-->|-\.->|>|\+'[^']*'<>|\+'[^']*'<|\+'[^']*'>/y, first: '->+' };
+const word = (name: string, text: string): TokenType => ({ name, pattern: new RegExp(text, 'y'), first: text[0] });
 
 export const WARDLEY_TOKENS: readonly TokenType[] = [
   { name: '[', pattern: '[' },
@@ -74,12 +74,12 @@ export const WARDLEY_TOKENS: readonly TokenType[] = [
   { name: '-', pattern: '-', longer: [ARROW, LINK_ARROW, YAML] },
   { name: '{', pattern: '{' },
   { name: '}', pattern: '}' },
-  { name: 'WARDLEY_NUMBER', pattern: /[0-9]+\.[0-9]+/y },
+  { name: 'WARDLEY_NUMBER', pattern: /[0-9]+\.[0-9]+/y, first: '0123456789' },
   ARROW,
-  { name: 'LINK_PORT', pattern: /\+<>|\+>|\+</y },
+  { name: 'LINK_PORT', pattern: /\+<>|\+>|\+</y, first: '+' },
   LINK_ARROW,
-  { name: 'LINK_LABEL', pattern: /;[^\n\r]+/y },
-  { name: 'STRATEGY', pattern: /build|buy|outsource|market/y },
+  { name: 'LINK_LABEL', pattern: /;[^\n\r]+/y, first: ';' },
+  { name: 'STRATEGY', pattern: /build|buy|outsource|market/y, first: 'bom' },
   word('KW_WARDLEY', 'wardley-beta'),
   word('KW_SIZE', 'size'),
   word('KW_EVOLUTION', 'evolution'),
@@ -97,14 +97,15 @@ export const WARDLEY_TOKENS: readonly TokenType[] = [
   {
     name: 'NAME_WITH_SPACES',
     pattern: /(?!title\s|accTitle|accDescr)[A-Za-z](?:[A-Za-z0-9_()&]|-(?!>))*(?:[ \t]+[A-Za-z(](?:[A-Za-z0-9_()&]|-(?!>))*)*/y,
+    first: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
   },
-  { name: 'WS', pattern: /[ \t]+/y, hidden: true },
+  { name: 'WS', pattern: /[ \t]+/y, hidden: true, first: '\t ' },
   accDescr(),
   ACC_TITLE,
   TITLE,
-  { name: 'INT', pattern: /0|[1-9][0-9]*(?!\.)/y },
+  { name: 'INT', pattern: /0|[1-9][0-9]*(?!\.)/y, first: '0123456789' },
   STRING,
-  { name: 'ID', pattern: /[\w]([-\w]*\w)?/y },
+  { name: 'ID', pattern: /[\w]([-\w]*\w)?/y, first: '_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz' },
   NEWLINE,
   WHITESPACE,
   YAML,

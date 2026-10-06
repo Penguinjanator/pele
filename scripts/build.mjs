@@ -37,7 +37,7 @@ const result = await build({
 execFileSync('npx', ['tsc', '-p', 'tsconfig.json'], { stdio: 'inherit' });
 
 const kb = (bytes) => (bytes / 1024).toFixed(1) + ' kB';
-const sizes = (files) => {
+const measure = (files) => {
   let raw = 0;
   let gz = 0;
   for (const file of files) {
@@ -45,6 +45,10 @@ const sizes = (files) => {
     raw += code.length;
     gz += gzipSync(code).length;
   }
+  return [raw, gz];
+};
+const sizes = (files) => {
+  const [raw, gz] = measure(files);
   return `${kb(raw)} minified, ${kb(gz)} gzipped`;
 };
 
@@ -66,10 +70,7 @@ console.log(`dist/esm/core.js with its chunks  ${sizes(closure('dist/esm/core.js
 console.log(`dist/esm/lazy.js with its chunks  ${sizes(closure('dist/esm/lazy.js'))}`);
 if (process.argv.includes('--sizes')) {
   const core = new Set(closure('dist/esm/core.js'));
-  const rows = types.map((type) => {
-    const extra = closure(`dist/esm/diagrams/${type}.js`).filter((file) => !core.has(file));
-    return [type, extra.reduce((sum, file) => sum + readFileSync(file).length, 0), extra.reduce((sum, file) => sum + gzipSync(readFileSync(file)).length, 0)];
-  });
+  const rows = types.map((type) => [type, ...measure(closure(`dist/esm/diagrams/${type}.js`).filter((file) => !core.has(file)))]);
   rows.sort((a, b) => b[1] - a[1]);
   console.log('\nAdded to the core by each type, loaded alone:');
   for (const [type, raw, gz] of rows) console.log(`  ${type.padEnd(16)} ${kb(raw).padStart(9)} minified, ${kb(gz).padStart(8)} gzipped`);
