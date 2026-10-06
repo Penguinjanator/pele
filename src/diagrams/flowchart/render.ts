@@ -8,7 +8,8 @@ import { drawShape, shapeHasLabel, shapeInset, shapeSize } from '../../svg/shape
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
-import { sanitizeUrl } from '../../util/url.js';
+import { decodeEntities } from '../../text/entities.js';
+import { safeUrl, sanitizeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { FlowDb } from './db.js';
 import { buildFlowGraph, type FlowGraph, type GraphEdge, type GraphNode } from './graph.js';
@@ -251,7 +252,7 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
       const aw = assetSize(node.assetWidth, 80);
       const ah = assetSize(node.assetHeight, 80);
       const top = view.label.height > 0 ? (node.pos === 't' ? h / 2 - ah : -h / 2) : -ah / 2;
-      inner = `<image href="${esc(sanitizeUrl(node.img))}" x="${num(-aw / 2)}" y="${num(top)}" width="${num(
+      inner = `<image href="${esc(safeUrl(node.img))}" x="${num(-aw / 2)}" y="${num(top)}" width="${num(
         aw
       )}" height="${num(ah)}" preserveAspectRatio="${node.constraint === 'on' ? 'xMidYMid meet' : 'none'}"/>`;
     } else if (node.icon) {
@@ -281,10 +282,11 @@ export function renderFlowchart(db: FlowDb, config: Config, options: RenderOptio
     const internal = / internal-link(?: |$)/.test(classes + ' ');
     if (internal && node.label) {
       // The label is a note name, but it still ends up in an href, so it gets the same check as a URL.
-      const safe = sanitizeUrl(node.label) !== 'about:blank';
-      const target = esc(node.label);
+      const name = decodeEntities(node.label);
+      const safe = sanitizeUrl(name) !== 'about:blank';
+      const target = esc(name);
       text = `<a class="internal-link"${safe ? ` href="${target}"` : ''} data-href="${target}">${text}</a>`;
-      links.push({ id: node.id, href: node.label, internal: true });
+      links.push({ id: node.id, href: name, internal: true });
     }
     let body = inner + text;
     if (node.tooltip) body = `<title>${esc(node.tooltip)}</title>` + body;

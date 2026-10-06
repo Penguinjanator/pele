@@ -7,6 +7,7 @@ import { PAD_X, PAD_Y, drawShape, shapeInset, shapeSize } from '../../svg/shapes
 import { RADIUS, classNames, resolveStyle, seriesColor, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
+import { decodeEntities } from '../../text/entities.js';
 import { sanitizeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { canonicalShape } from '../flowchart/shapes.js';
@@ -374,10 +375,11 @@ export function renderAgentflow(db: AgentflowDb, config: Config, options: Render
     const internal = / internal-link(?: |$)/.test(classes + ' ');
     if (internal && node.label) {
       // The label is a note name, but it still ends up in an href, so it gets the same check as a URL.
-      const safe = sanitizeUrl(node.label) !== 'about:blank';
-      const target = esc(node.label);
+      const name = decodeEntities(node.label);
+      const safe = sanitizeUrl(name) !== 'about:blank';
+      const target = esc(name);
       text = `<a class="internal-link"${safe ? ` href="${target}"` : ''} data-href="${target}">${text}</a>`;
-      links.push({ id: node.id, href: node.label, internal: true });
+      links.push({ id: node.id, href: name, internal: true });
     }
     let body = shape + text;
     if (node.tooltip) body = `<title>${esc(node.tooltip)}</title>` + body;

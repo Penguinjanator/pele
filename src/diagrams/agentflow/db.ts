@@ -1,5 +1,5 @@
 import { PeleError } from '../../errors.js';
-import { sanitizeUrl } from '../../util/url.js';
+import { safeUrl } from '../../util/url.js';
 import { parseYaml, type YamlValue } from '../../util/yaml.js';
 import { isToolDefinition } from './lookup.js';
 import { isValidShape, resolveShapeAlias } from './shapes.js';
@@ -494,7 +494,7 @@ export class AgentflowDb implements AgentflowModel {
     for (const id of ids.split(',')) {
       const vertex = this.nodes.get(id);
       if (vertex !== undefined) {
-        vertex.link = url ? sanitizeUrl(url) : undefined;
+        vertex.link = url ? safeUrl(url) : undefined;
         vertex.linkTarget = target;
       }
     }

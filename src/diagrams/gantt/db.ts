@@ -1,5 +1,5 @@
 import { PeleError } from '../../errors.js';
-import { sanitizeUrl } from '../../util/url.js';
+import { safeUrl } from '../../util/url.js';
 import { WEEKDAYS, add, addDays, format, isValid, isoDate, parseStrict, type Unit } from './dates.js';
 import type { GanttModel, GanttTask } from './types.js';
 
@@ -197,7 +197,7 @@ export class GanttDb implements GanttModel {
   }
 
   setLink(ids: string, link: string): void {
-    const href = sanitizeUrl(link);
+    const href = safeUrl(link);
     for (const id of ids.split(',')) {
       if (this.byId.has(id)) this.links.set(id, href);
     }

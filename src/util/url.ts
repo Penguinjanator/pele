@@ -1,3 +1,4 @@
+import { decodeEntities } from '../text/entities.js';
 const BLANK = 'about:blank';
 const RE_INVALID_PROTOCOL = /^([^\w]*)(javascript|data|vbscript)/im;
 const RE_HTML_ENTITIES = /&#(\w+)(^\w|;)?/g;
@@ -63,4 +64,9 @@ export function sanitizeUrl(url: string): string {
     return parsed.toString();
   }
   return normalized;
+}
+
+// A URL as written in a diagram: entity codes are read first, so they cannot hide a scheme.
+export function safeUrl(url: string): string {
+  return sanitizeUrl(decodeEntities(url));
 }

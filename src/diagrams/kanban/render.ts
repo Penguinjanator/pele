@@ -4,7 +4,7 @@ import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label, type Span } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
-import { sanitizeUrl } from '../../util/url.js';
+import { safeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { iconSvg } from '../common/icon.js';
 import type { KanbanModel, KanbanNode } from './db.js';
@@ -203,7 +203,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
       const bottom = card.height - CARD_PAD;
       if (item.ticket) {
         const top = bottom - card.meta;
-        const href = baseUrl ? sanitizeUrl(baseUrl.replace('#TICKET#', () => item.ticket!)) : 'about:blank';
+        const href = baseUrl ? safeUrl(baseUrl.replace('#TICKET#', () => item.ticket!)) : 'about:blank';
         if (href === 'about:blank') {
           inner += textBlock(card.ticket, CARD_PAD, top, ' class="pele-ticket" fill="var(--_m)"', icons);
         } else {

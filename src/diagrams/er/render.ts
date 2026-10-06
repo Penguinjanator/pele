@@ -6,6 +6,7 @@ import { svgDocument } from '../../svg/root.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
+import { decodeEntities } from '../../text/entities.js';
 import { sanitizeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import type { ErDb } from './db.js';
@@ -350,7 +351,7 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
     const text = view.style.text;
     const shape = `x="${num(x0)}" y="${num(y0)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}"`;
     let name = labelSvg(view.label, 0, view.rows.length > 0 ? y0 + view.headH / 2 : 0, ` class="pele-label"${text}`, icons);
-    const display = node.alias || node.label;
+    const display = decodeEntities(node.alias || node.label);
     if (/ internal-link(?: |$)/.test(classes + ' ') && name !== '') {
       // The name ends up in an href, so it gets the same check as a URL.
       const safe = sanitizeUrl(display) !== 'about:blank';
