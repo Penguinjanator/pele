@@ -4,7 +4,7 @@ document.querySelectorAll<HTMLElement>('[data-pele-example]').forEach((figure) =
   const draw = () => {
     try {
       const { fontFamily } = getComputedStyle(figure);
-      figure.innerHTML = render(figure.dataset.peleExample ?? '', { fontFamily, idPrefix: 'home-' }).svg;
+      figure.innerHTML = render(figure.dataset.peleExample ?? '', { fontFamily, idPrefix: figure.dataset.pelePrefix ?? 'home-' }).svg;
     } catch {
       if (!figure.querySelector('svg')) figure.textContent = 'This diagram could not be rendered.';
     }

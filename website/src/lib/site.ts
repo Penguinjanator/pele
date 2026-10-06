@@ -11,6 +11,9 @@ export const docsPages = [
 
 export type DocsPageId = typeof docsPages[number]['id'];
 
+// The introduction is the home page; every other page has a Markdown source.
+export const pageHref = (id: DocsPageId): string => (id === 'introduction' ? '/' : `/${id}`);
+
 export interface Heading {
   depth: number;
   slug: string;

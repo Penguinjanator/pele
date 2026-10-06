@@ -1,5 +1,5 @@
 ---
-import { docsPages, type DocsPageId, type Heading } from '../lib/site';
+import { docsPages, pageHref, type DocsPageId, type Heading } from '../lib/site';
 
 interface Props {
   class?: string;
@@ -17,7 +17,7 @@ const toc = headings.filter((heading) => heading.depth === 2 || heading.depth ==
     <div class="docs-toc-page">
       <a
         class:list={['docs-toc-title', { 'is-current': page.id === current }]}
-        href={page.id === current ? '#top' : `/${page.id}`}
+        href={page.id === current ? '#top' : pageHref(page.id)}
         aria-current={page.id === current ? 'page' : undefined}
       >
         {page.title}

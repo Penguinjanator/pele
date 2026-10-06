@@ -5,6 +5,24 @@ export const homeExample = `flowchart TD
   C --> E([SVG])
   D --> E`;
 
+export const themeExample = `flowchart LR
+  A[Tokens] --> B(Light)
+  A --> C(Dark)
+  subgraph Themes
+    B
+    C
+  end`;
+
+export const themeCss = `.pele {
+  --pele-bg: #fffcf0;
+  --pele-fg: #100f0f;
+  --pele-muted: #6f6e69;
+  --pele-line: #100f0f;
+  --pele-surface: #f2f0e5;
+  --pele-surface-alt: #e6e4d9;
+  --pele-border: #cecdc3;
+}`;
+
 export const playgroundExample = `flowchart TD
   A([Mermaid text]) --> B{Supported?}
   B -- Yes --> C[Parse]

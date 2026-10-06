@@ -9,17 +9,25 @@ import CodeBlock from '../components/CodeBlock.astro';
 import CopyButton from '../components/CopyButton.astro';
 import PlaygroundLink from '../components/PlaygroundLink.astro';
 import { highlightCode } from '../lib/highlight';
-import { homeExample } from '../lib/examples';
+import { homeExample, themeCss, themeExample } from '../lib/examples';
 import { repositoryUrl } from '../lib/site';
 
-// Rendered at build time so the diagram is in the page before any script runs.
-// The client renders it again with the fonts the browser actually uses.
-let svg = '';
-try {
-  svg = render(homeExample, { idPrefix: 'home-' }).svg;
-} catch {
-  // The client-side render reports the failure.
-}
+const headings = [
+  { depth: 2, slug: 'how-it-works', text: 'How it works' },
+  { depth: 2, slug: 'install-title', text: 'Pele in your app' },
+  { depth: 2, slug: 'explore-title', text: 'Explore' },
+  { depth: 2, slug: 'pele-in-use', text: 'Pele in use' },
+];
+
+// Rendered at build time so the diagrams are in the page before any script runs.
+// The client renders them again with the fonts the browser actually uses.
+const draw = (source: string, idPrefix: string): string => {
+  try {
+    return render(source, { idPrefix }).svg;
+  } catch {
+    return '';
+  }
+};
 
 const usage = `import { render } from '@kepano/pele';
 
@@ -29,11 +37,11 @@ const { svg } = render(\`flowchart LR
 document.querySelector('#diagram').innerHTML = svg;`;
 ---
 
-<BaseLayout>
+<BaseLayout markdownPath="/index.md" description="Pele is a lightweight library that renders Mermaid diagrams to SVG, themed with CSS variables.">
   <main id="top" class="docs-page home-page">
-    <SiteHeader />
+    <SiteHeader current="introduction" headings={headings} />
     <div class="docs-layout home-layout">
-      <DocsNavigation class="docs-toc" />
+      <DocsNavigation class="docs-toc" current="introduction" headings={headings} />
       <div class="home-content">
         <section class="hero-shell">
           <div class="hero-grid">
@@ -43,12 +51,12 @@ document.querySelector('#diagram').innerHTML = svg;`;
           </div>
         </section>
 
-        <section class="home-example" aria-labelledby="example-title">
+        <section class="home-example" aria-labelledby="how-it-works">
           <header class="home-example-heading">
-            <h2 id="example-title">How it works</h2>
+            <h2 id="how-it-works">How it works</h2>
             <PlaygroundLink source={homeExample} />
           </header>
-          <p class="home-example-description">Pass Mermaid text to Pele. It returns an SVG that takes its colors and fonts from your CSS.</p>
+          <p class="home-example-description">Pass Mermaid text to Pele. It returns an SVG.</p>
           <div class="home-example-panel">
             <div class="home-example-block home-example-source" data-code-block>
               <div class="home-example-label"><span>Mermaid</span><span class="doc-code-actions"><CopyButton /></span></div>
@@ -56,36 +64,51 @@ document.querySelector('#diagram').innerHTML = svg;`;
             </div>
             <div class="home-example-block">
               <div class="home-example-label"><span>Pele</span></div>
-              <figure class="home-example-figure" data-pele-theme="dark" data-pele-example={homeExample} aria-label="Flowchart rendered by Pele" set:html={svg} />
+              <figure class="home-example-figure" data-pele-theme="dark" data-pele-example={homeExample} data-pele-prefix="home-" aria-label="Flowchart rendered by Pele" set:html={draw(homeExample, 'home-')} />
+            </div>
+          </div>
+          <p class="home-example-description">The SVG has no colors of its own. Set a few CSS variables and every diagram follows your theme, without being rendered again.</p>
+          <div class="home-example-panel">
+            <div class="home-example-block home-example-source" data-code-block>
+              <div class="home-example-label"><span>CSS</span><span class="doc-code-actions"><CopyButton /></span></div>
+              <pre><code class="language-css" data-language="css" set:html={highlightCode(themeCss, 'css')} /></pre>
+            </div>
+            <div class="home-example-block home-example-light" data-pele-theme="light">
+              <div class="home-example-label"><span>Pele</span></div>
+              <figure class="home-example-figure" data-pele-example={themeExample} data-pele-prefix="theme-" aria-label="Flowchart rendered by Pele in a light theme" set:html={draw(themeExample, 'theme-')} />
             </div>
           </div>
         </section>
 
-        <Install>
-          <p class="get-started-link">Then render a diagram. Read the <a href="/introduction">introduction</a> and the <a href="/api">API</a> for more.</p>
+        <Install title="Pele in your app">
+          <p slot="description" class="get-started-link">Add Pele to your app using the <a href="/api">API</a>.</p>
           <CodeBlock language="ts" code={usage} />
         </Install>
 
         <section class="guide-section" aria-labelledby="explore-title">
           <header class="guide-heading"><h2 id="explore-title">Explore</h2></header>
-          <nav class="guide-links" aria-label="Explore Pele">
-            <a class="guide-link-card" href="/introduction">
-              <h3>Docs</h3>
-              <p>Install Pele, render a diagram, and theme it.</p>
+          <nav class="guide-links" aria-label="Documentation">
+            <a class="guide-link-card" href="/api">
+              <h3>API</h3>
+              <p>Render diagrams, inspect them, and handle errors.</p>
             </a>
-            <a class="guide-link-card" href="/playground">
-              <h3>Playground</h3>
-              <p>Edit a diagram and compare Pele with Mermaid.</p>
+            <a class="guide-link-card" href="/theming">
+              <h3>Theming</h3>
+              <p>Set colors and fonts with CSS variables.</p>
             </a>
-            <a class="guide-link-card" href={repositoryUrl} target="_blank" rel="noopener noreferrer">
-              <h3>GitHub</h3>
-              <p>Read the source and report issues.</p>
+            <a class="guide-link-card" href="/compatibility">
+              <h3>Compatibility</h3>
+              <p>What Pele shares with Mermaid, and where it differs.</p>
             </a>
           </nav>
         </section>
 
-        <section class="used-by" aria-labelledby="about-title">
-          <header class="used-by-heading"><h2 id="about-title">About</h2><p>Pele is <a href={repositoryUrl} target="_blank" rel="noopener noreferrer">open source</a> and in early development. Flowcharts work today, and other Mermaid diagram types are planned. Pele is named after <a href="https://en.wikipedia.org/wiki/Pele_(deity)" target="_blank" rel="noopener noreferrer">Pele</a>, the Polynesian goddess of volcanoes.</p></header>
+        <section class="used-by" aria-labelledby="pele-in-use">
+          <header class="used-by-heading"><div><h2 id="pele-in-use">Pele in use</h2></div><p>Pele is <a href={repositoryUrl} target="_blank" rel="noopener noreferrer">open source</a>. It is being built for <a href="https://obsidian.md" target="_blank" rel="noopener noreferrer">Obsidian</a>, to draw the Mermaid diagrams in your notes quickly and in the colors of your theme. Any app can use it. Pele is named after <a href="https://en.wikipedia.org/wiki/Pele_(deity)" target="_blank" rel="noopener noreferrer">Pele</a>, the Polynesian goddess of volcanoes and fire.</p></header>
+          <div class="used-by-list">
+            <a href="https://obsidian.md" class="used-by-card" target="_blank" rel="noopener noreferrer"><div class="used-by-copy"><h3>Obsidian</h3><span>Pele is in development as the renderer for Mermaid diagrams in notes.</span></div><strong aria-hidden="true">↗</strong></a>
+            <a href="/playground" class="used-by-card"><div class="used-by-copy"><h3>Playground</h3><span>Every diagram on this site is drawn by Pele. Edit one and compare it with Mermaid.</span></div><strong aria-hidden="true">→</strong></a>
+          </div>
         </section>
 
         <SiteFooter />

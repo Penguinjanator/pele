@@ -62,6 +62,7 @@ export function buildSearchIndex(): SearchItem[] {
       }
     });
   }
+  pages.unshift({ title: 'Introduction', kind: 'page', category: 'Docs', summary: 'What Pele is, how it works, and how to add it to your app.', href: '/' });
   return [
     ...pages,
     { title: 'Playground', kind: 'page', category: 'Tool', summary: 'Render Mermaid source with Pele and compare it with Mermaid.', href: '/playground' },

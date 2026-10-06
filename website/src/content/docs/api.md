@@ -9,6 +9,38 @@ Pele exports four functions and one error class. Every function is synchronous. 
 import { render, parse, detectType, supports, PeleError } from '@kepano/pele';
 ```
 
+## Usage
+
+Pass Mermaid text to `render()` and insert the SVG it returns.
+
+```ts
+import { render } from '@kepano/pele';
+
+const { svg } = render(`flowchart LR
+  A[Mermaid text] --> B[SVG]`);
+
+document.querySelector('#diagram').innerHTML = svg;
+```
+
+`render()` throws when the text cannot be rendered. Check `supports()` first to decide whether Pele can handle a diagram, and catch `PeleError` to report syntax errors.
+
+```ts
+import { PeleError, render, supports } from '@kepano/pele';
+
+function draw(source: string, element: HTMLElement) {
+  if (!supports(source)) return false;
+  try {
+    element.innerHTML = render(source).svg;
+  } catch (error) {
+    if (!(error instanceof PeleError)) throw error;
+    element.textContent = error.message;
+  }
+  return true;
+}
+```
+
+Pele is in early development and has not had a stable release. Flowcharts (`graph` and `flowchart`) are implemented. See [Compatibility](/compatibility) for the other diagram types.
+
 ## render
 
 ```ts
@@ -34,7 +66,7 @@ All options are optional.
 | `measurer` | `TextMeasurer` | Measures label text. Defaults to a canvas measurer in browsers and a built-in width table elsewhere. See [Text measurement](#text-measurement). |
 | `fontFamily` | `string` | Font used to measure labels. Set it to the font that `--pele-font` resolves to. The SVG still refers to `var(--pele-font)`. |
 | `fontSize` | `number` | Base font size in pixels. Defaults to `16`. |
-| `idPrefix` | `string` | Prefix for element ids and marker references. Use a different prefix for each diagram on a page. |
+| `idPrefix` | `string` | Prefix for the ids of the accessible title and description. Use a different prefix for each diagram on a page that has them. |
 | `maxWidth` | `boolean` | Lets the SVG scale to the width of its container instead of using a fixed pixel width. |
 | `padding` | `number` | Space around the diagram in pixels. |
 | `limit` | `number` | Maximum length of `text` in characters. The default is 50,000, as in Mermaid. Longer input throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
@@ -56,7 +88,7 @@ Each `LinkInfo` has the `id` of the node that carries the link, its `href`, and 
 ## parse
 
 ```ts
-function parse(text: string): DiagramModel
+function parse(text: string, options?: { limit?: number }): DiagramModel
 ```
 
 Parses Mermaid text and returns the diagram model without laying it out or rendering it. Throws a `PeleError` for unsupported diagram types and syntax errors.

@@ -190,6 +190,74 @@
   margin-top: 56px;
 }
 
+.used-by-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.used-by-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 16px;
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+  padding: 18px;
+  transition: background 150ms ease;
+
+  > strong {
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  @media (hover: hover) {
+    &:hover {
+      background: #222120;
+
+      h3 {
+        color: #f2f0e5;
+      }
+    }
+  }
+  &:focus-visible {
+    background: #222120;
+
+    h3 {
+      color: #f2f0e5;
+    }
+  }
+}
+
+.used-by-copy {
+  h3 {
+    margin: 0 0 4px;
+    font-size: inherit;
+    font-weight: 400;
+    line-height: 1.5;
+    transition: color 150ms ease;
+  }
+
+  > span {
+    color: var(--muted);
+    font-size: inherit;
+    line-height: 1.5;
+  }
+}
+
+// A light surface inside the dark panel, to show a second theme.
+.home-example-light {
+  background: #fffcf0;
+
+  .home-example-label { color: #6f6e69; }
+  .home-example-figure {
+    --pele-bg: #fffcf0;
+    --pele-surface: #f2f0e5;
+    --pele-surface-alt: #e6e4d9;
+    --pele-border: #cecdc3;
+  }
+}
+
 @media (max-width: 760px) {
   .guide-links {
     grid-template-columns: 1fr;
