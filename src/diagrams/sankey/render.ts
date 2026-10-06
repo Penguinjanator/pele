@@ -22,7 +22,7 @@ function numberOption(conf: Config, key: string, fallback: number, min: number, 
 
 function textOption(conf: Config, key: string): string {
   const value = conf[key];
-  return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  return typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value)) ? String(value) : '';
 }
 
 // Two decimals, as Mermaid shows values; numbers too large for that are left as they are.

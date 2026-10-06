@@ -112,6 +112,73 @@ describe('every diagram type', () => {
     }
   });
 
+  it('survives hostile values for every config key a renderer reads', { timeout: 300000 }, () => {
+    const values: unknown[] = [1e308, -1e308, 1e9, -1, 0, 0.5, NaN, Infinity, '"><script>alert(1)</script>', 'url(javascript:alert(1))', true, null, [], { a: 1 }, '__proto__'];
+    const literals = (dir: string): string[] => {
+      const found: string[] = [];
+      for (const file of readdirSync(dir)) {
+        if (!file.endsWith('.ts')) continue;
+        for (const m of readFileSync(`${dir}/${file}`, 'utf8').matchAll(/'([a-z][A-Za-z]{2,30})'/g)) found.push(m[1]);
+      }
+      return found;
+    };
+    const folders = readdirSync('src/diagrams').filter((f) => f !== 'common' && !f.endsWith('.ts'));
+    for (const { name, sources } of corpora) {
+      const type = render(sources[0], options).type;
+      const diagram = all.find((d) => d.type === type)!;
+      const folder = folders.find((f) => readFileSync(`src/diagrams/${f}/index.ts`, 'utf8').includes(`type: '${type}'`))!;
+      const keys = new Set([...literals(`src/diagrams/${folder}`), ...literals('src/diagrams/flowchart')]);
+      for (const value of values) {
+        const section = Object.fromEntries([...keys].map((key) => [key, value]));
+        const config = { ...section, [diagram.section ?? type]: section, flowchart: section, themeVariables: section };
+        for (const src of sources.slice(0, 2)) {
+          const at = `${where(name, src)} with ${JSON.stringify(value)}`;
+          let svg: string;
+          const started = performance.now();
+          try {
+            const result = render(src, { ...options, config: config as never });
+            svg = result.svg;
+            expect(Number.isFinite(result.width) && Number.isFinite(result.height), at).toBe(true);
+          } catch (error) {
+            expect(error, at).toBeInstanceOf(PeleError);
+            continue;
+          }
+          expect(performance.now() - started, at).toBeLessThan(3000);
+          expect(svg, at).not.toMatch(/NaN|Infinity|undefined/);
+          assertInert(svg, at);
+        }
+      }
+    }
+  });
+
+  it('treats names that are object keys as ordinary names', { timeout: 300000 }, () => {
+    let rendered = 0;
+    for (const { name, sources } of corpora) {
+      for (const src of sources.slice(0, 6)) {
+        const body = src.slice(src.indexOf('\n') + 1);
+        const counts = new Map<string, number>();
+        for (const m of body.matchAll(/\b[A-Za-z][A-Za-z0-9]{0,20}\b/g)) counts.set(m[0], (counts.get(m[0]) ?? 0) + 1);
+        const words = [...counts].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 4);
+        for (const [word] of words) {
+          for (const key of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf']) {
+            const variant = src.replace(new RegExp(`\\b${word}\\b`, 'g'), key);
+            let svg: string;
+            try {
+              svg = render(variant, options).svg;
+            } catch (error) {
+              if (error instanceof PeleError) continue;
+              throw new Error(`${where(name, variant)}: ${(error as Error).name}: ${(error as Error).message}`);
+            }
+            assertInert(svg, where(name, variant));
+            expect(svg, where(name, variant)).not.toMatch(/NaN|Infinity|undefined|\[object |function /);
+            rendered++;
+          }
+        }
+      }
+    }
+    expect(rendered).toBeGreaterThan(500);
+  });
+
   it('stays inert with hostile text in place of every quoted string and bracketed label', { timeout: 600000 }, () => {
     let rendered = 0;
     const payloads = PAYLOADS.filter((_, index) => index % 3 === 0);

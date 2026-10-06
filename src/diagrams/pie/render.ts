@@ -43,7 +43,8 @@ export function renderPie(model: PieModel, config: Config, options: RenderOption
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
   const pad = options.padding ?? 8;
 
-  const textPosition = typeof option(config, 'textPosition') === 'number' ? (option(config, 'textPosition') as number) : 0.75;
+  const position = option(config, 'textPosition');
+  const textPosition = typeof position === 'number' && position >= 0 && position <= 1 ? position : 0.75;
   const hole = option(config, 'donutHole');
   const inner = typeof hole === 'number' && hole > 0 && hole <= 0.9 ? hole * RADIUS : 0;
   const legendPosition = String(option(config, 'legendPosition') ?? 'right');
