@@ -45,32 +45,45 @@ export interface PlaygroundSample {
 export interface SampleGroup {
   type: string;
   samples: PlaygroundSample[];
+  beta: boolean;
 }
 
 const SAMPLES_PER_TYPE = 6;
 
+const statements = (source: string): string[] =>
+  source.replace(/^---\n[\s\S]*?\n---\n/, '').split('\n').map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('%%'));
+
+const sourcesOf = (corpus: unknown): string[] =>
+  Array.isArray(corpus) ? corpus.filter((source): source is string => typeof source === 'string' && source.trim() !== '') : [];
+
+// Mermaid marks a type it may still change with `-beta` in its keyword. A type is one of those
+// when its documentation has no example written without it.
+const isBeta = (sources: string[]): boolean =>
+  sources.length > 0 && sources.every((source) => statements(source)[0]?.split(/\s/)[0].endsWith('-beta'));
+
 function sampleLabel(source: string, index: number): string {
   const title = source.match(/^---\n[\s\S]*?^title:\s*(.+)$[\s\S]*?^---$/m)?.[1];
-  const lines = source.replace(/^---\n[\s\S]*?\n---\n/, '').split('\n').map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('%%'));
+  const lines = statements(source);
   const statement = lines[1] ?? lines[0] ?? 'Empty';
   const text = title?.replace(/^(["'])(.*)\1$/, '$2') ?? statement;
   return `${index + 1}. ${text.length > 48 ? `${text.slice(0, 47)}…` : text}`;
 }
 
 // The fullest few examples of each diagram type, from Mermaid's documentation.
-function pick(corpus: unknown): PlaygroundSample[] {
-  if (!Array.isArray(corpus)) return [];
-  const sources = corpus.filter((source): source is string => typeof source === 'string' && source.trim() !== '');
+function pick(sources: string[]): PlaygroundSample[] {
   const longest = new Set([...sources].sort((a, b) => b.length - a.length).slice(0, SAMPLES_PER_TYPE));
   return sources.filter((source) => longest.has(source)).map((source, index) => ({ label: sampleLabel(source, index), source }));
 }
 
 export function sampleGroups(corpora: Record<string, unknown>): SampleGroup[] {
   return Object.entries(corpora)
-    .map(([path, corpus]) => ({ type: path.match(/([\w-]+)-docs\.json$/)?.[1] ?? path, samples: pick(corpus) }))
+    .map(([path, corpus]) => {
+      const sources = sourcesOf(corpus);
+      return { type: path.match(/([\w-]+)-docs\.json$/)?.[1] ?? path, samples: pick(sources), beta: isBeta(sources) };
+    })
     .filter((group) => group.samples.length > 0)
-    .sort((a, b) => Number(b.type === 'flowchart') - Number(a.type === 'flowchart') || a.type.localeCompare(b.type));
+    .sort((a, b) => Number(b.type === 'flowchart') - Number(a.type === 'flowchart') || Number(a.beta) - Number(b.beta) || a.type.localeCompare(b.type));
 }
 
 // Names for the examples page, which lists the types by name.
@@ -120,6 +133,7 @@ export interface ExampleGroup {
   title: string;
   slug: string;
   sources: string[];
+  beta: boolean;
 }
 
 const lines = (source: string): Set<string> => new Set(source.split('\n').map((line) => line.trim()).filter(Boolean));
@@ -146,7 +160,7 @@ export function exampleGroups(corpora: Record<string, unknown>, draw: (source: s
   return Object.entries(corpora)
     .map(([path, corpus]) => {
       const type = path.match(/([\w-]+)-docs\.json$/)?.[1] ?? path;
-      const all = Array.isArray(corpus) ? corpus.filter((source): source is string => typeof source === 'string' && source.trim() !== '') : [];
+      const all = sourcesOf(corpus);
       const drawn = [...new Set(all)].map((source) => ({ source, svg: draw(source) })).filter((example) => example.svg !== undefined);
       const themed = drawn.filter((example) => !ownColors(example.source, example.svg!));
       const usable = (themed.length > 0 ? themed : drawn).map((example) => example.source);
@@ -156,10 +170,10 @@ export function exampleGroups(corpora: Record<string, unknown>, draw: (source: s
       const fuller = bySize.find((source) => source !== first && source.length <= FULLER_LIMIT && overlap(source, first!) < 0.5);
       if (fuller !== undefined) sources.push(fuller);
       const title = TYPE_TITLES.get(type) ?? type;
-      return { type, title, slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), sources };
+      return { type, title, slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), sources, beta: isBeta(all) };
     })
     .filter((group) => group.sources.length > 0 && !UNLISTED.has(group.type))
-    .sort((a, b) => a.title.localeCompare(b.title));
+    .sort((a, b) => Number(a.beta) - Number(b.beta) || a.title.localeCompare(b.title));
 }
 
 export const examplesTitle = 'Examples';
