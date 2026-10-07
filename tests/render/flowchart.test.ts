@@ -144,6 +144,39 @@ describe('flowchart rendering', () => {
     expect(svg.match(/class="pele-marker"/g)?.length).toBe(6);
   });
 
+  it('keeps an arrowhead apart from the edge that leaves beside it', () => {
+    const { svg } = render('flowchart TD\n  A --> B\n  B --> A', options);
+    const tips = [...svg.matchAll(/class="pele-marker" d="M([-\d.]+),([-\d.]+)L/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    const starts = [...svg.matchAll(/<g class="pele-edge"[^>]*><path d="M([-\d.]+),([-\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    expect(tips).toHaveLength(2);
+    expect(starts).toHaveLength(2);
+    // Each node has one edge arriving and one leaving on the side that faces the other node.
+    for (const [x, y] of tips) {
+      const beside = starts.find((start) => Math.abs(start[1] - y) < 1);
+      expect(beside).toBeDefined();
+      expect(Math.abs(beside![0] - x)).toBeGreaterThanOrEqual(12);
+    }
+  });
+
+  it('ends the edges that spread along a diamond or a circle on its outline', () => {
+    for (const dir of ['TD', 'LR']) {
+      const { svg } = render(`flowchart ${dir}\n  D{Decide} --> A\n  D --> B\n  D --> C\n  A & B & C --> E((End))`, options);
+      const at = (id: string): number[] => svg.match(new RegExp(`data-id="${id}" transform="translate\\(([-\\d.]+),([-\\d.]+)\\)"`))!.slice(1).map(Number);
+      const [dx, dy] = at('D');
+      const [w, h] = svg.match(/<polygon points="0,-([\d.]+) ([\d.]+),0/)!.slice(1).map((v) => Number(v) * 2).reverse();
+      const [ex, ey] = at('E');
+      const r = Number(svg.match(/data-id="E"[^>]*><circle r="([\d.]+)"/)![1]);
+      const starts = [...svg.matchAll(/<g class="pele-edge"[^>]*><path d="M([-\d.]+),([-\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+      const tips = [...svg.matchAll(/class="pele-marker" d="M([-\d.]+),([-\d.]+)L/g)].map((m) => [Number(m[1]), Number(m[2])]);
+      const fromDiamond = starts.slice(0, 3);
+      expect(new Set(fromDiamond.map((p) => p.join())).size, dir).toBe(3);
+      for (const [x, y] of fromDiamond) expect(Math.abs(x - dx) / (w / 2) + Math.abs(y - dy) / (h / 2), dir).toBeCloseTo(1, 1);
+      const intoCircle = tips.slice(3);
+      expect(new Set(intoCircle.map((p) => p.join())).size, dir).toBe(3);
+      for (const [x, y] of intoCircle) expect(Math.hypot(x - ex, y - ey), dir).toBeCloseTo(r, 0);
+    }
+  });
+
   it('keeps invisible links out of the drawing but in the layout', () => {
     const linked = render('flowchart LR\n  A ~~~ B', options);
     const apart = render('flowchart LR\n  A\n  B', options);

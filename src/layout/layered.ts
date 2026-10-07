@@ -14,6 +14,8 @@ export interface LNode {
   h: number;
   kind: Kind;
   pin: number;
+  // How much of the side that edges meet may be shared out between them; 0 keeps them all at its middle.
+  span: number;
   x: number;
   y: number;
   rank: number;
@@ -27,6 +29,9 @@ export interface LEdge {
   labelH: number;
   tailDx: number;
   headDx: number;
+  // An end that is held where its offset puts it, and takes no part in sharing out a node's side.
+  tailFixed: boolean;
+  headFixed: boolean;
   reversed: boolean;
   points: number[];
   labelX: number;
@@ -46,7 +51,7 @@ export interface LayeredResult {
 }
 
 export function lnode(w: number, h: number, kind: Kind = Kind.Node): LNode {
-  return { w, h, kind, pin: 0, x: 0, y: 0, rank: 0 };
+  return { w, h, kind, pin: 0, span: 0, x: 0, y: 0, rank: 0 };
 }
 
 export function ledge(tail: number, head: number, minlen = 1, labelW = 0, labelH = 0): LEdge {
@@ -58,6 +63,8 @@ export function ledge(tail: number, head: number, minlen = 1, labelW = 0, labelH
     labelH,
     tailDx: 0,
     headDx: 0,
+    tailFixed: false,
+    headFixed: false,
     reversed: false,
     points: [],
     labelX: 0,
@@ -70,6 +77,16 @@ const MAX_SWEEPS = 24;
 // An edge gets a bend point in every rank it skips. Past this many, the longest edges are
 // drawn as one direct curve instead, which keeps huge graphs from exhausting time and memory.
 const MAX_DUMMIES = 20000;
+
+// The room between two edges that meet one side of a node, and the least that keeps their arrowheads apart.
+const PORT_PITCH = 16;
+const MIN_PITCH = 8;
+
+const enum End {
+  Held,
+  Leaves,
+  Arrives,
+}
 
 function isDummy(kind: number): boolean {
   return kind === Kind.Dummy || kind === Kind.Label;
@@ -155,6 +172,13 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   const ETD = new Float64Array(segments);
   const firstDummy = new Int32Array(m).fill(-1);
   const labelNode = new Int32Array(m).fill(-1);
+  let spans = false;
+  for (let i = 0; i < real; i++) if (nodes[i].span > 0 && nodes[i].kind === Kind.Node) spans = true;
+  // What each segment's end is to the node it meets, for the ends that may move along the node's side.
+  const EFK = spans ? new Uint8Array(segments) : undefined;
+  const ETK = spans ? new Uint8Array(segments) : undefined;
+  const firstSeg = new Int32Array(m).fill(-1);
+  const lastSeg = new Int32Array(m).fill(-1);
   let offsets = false;
   {
     let next = real;
@@ -176,6 +200,8 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
       }
       let prev = a;
       if (rb - ra > 1) firstDummy[ei] = next;
+      firstSeg[ei] = ce;
+      if (EFK && !(e.reversed ? e.headFixed : e.tailFixed)) EFK[ce] = e.reversed ? End.Arrives : End.Leaves;
       for (let r = ra + 1; r < rb; r++) {
         const d = next++;
         RANK[d] = r;
@@ -197,6 +223,8 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
       ET[ce] = b;
       EFD[ce] = prev === a ? aDx : 0;
       ETD[ce] = bDx;
+      if (ETK && !(e.reversed ? e.tailFixed : e.headFixed)) ETK[ce] = e.reversed ? End.Leaves : End.Arrives;
+      lastSeg[ei] = ce;
       ce++;
     }
   }
@@ -277,6 +305,18 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   if (segments > 0 && maxRank > 0) {
     reduceCrossings(g, nodes);
     setPositions();
+  }
+
+  if (EFK && ETK) {
+    spread(g, nodes, EFK, ETK);
+    for (let ei = 0; ei < m; ei++) {
+      if (direct[ei]) continue;
+      const e = edges[ei];
+      const aDx = EFD[firstSeg[ei]];
+      const bDx = ETD[lastSeg[ei]];
+      e.tailDx = e.reversed ? bDx : aDx;
+      e.headDx = e.reversed ? aDx : bDx;
+    }
   }
 
   const xs = position(g, opt);
@@ -521,6 +561,43 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
   }
   if (startPorts) min -= step;
   for (let i = 0; i < n; i++) nodes[i].rank = r[i] - min;
+}
+
+// Gives the edges that meet one side of a node places of their own along it, in the order of the
+// nodes at their other ends, so that no two cross. When there is too little room for one each,
+// neighbours that run the same way share a place, which still keeps an arrowhead apart from an
+// edge that leaves beside it.
+function spread(g: Graph, nodes: LNode[], EFK: Uint8Array, ETK: Uint8Array): void {
+  const { real, W, EF, ET, EFD, ETD, succStart, succE, predStart, predE, pos } = g;
+  const ids: number[] = [];
+  for (let v = 0; v < real; v++) {
+    const span = Math.min(nodes[v].span, W[v]);
+    if (span <= 0 || nodes[v].kind !== Kind.Node) continue;
+    for (let side = 0; side < 2; side++) {
+      const start = side === 0 ? predStart : succStart;
+      const list = side === 0 ? predE : succE;
+      const kind = side === 0 ? ETK : EFK;
+      const other = side === 0 ? EF : ET;
+      const dx = side === 0 ? ETD : EFD;
+      ids.length = 0;
+      for (let k = start[v]; k < start[v + 1]; k++) if (kind[list[k]] !== End.Held) ids.push(list[k]);
+      if (ids.length < 2) continue;
+      ids.sort((a, b) => pos[other[a]] - pos[other[b]] || a - b);
+      let places = ids.length;
+      const shared = span / (places - 1) < MIN_PITCH;
+      if (shared) {
+        places = 1;
+        for (let k = 1; k < ids.length; k++) if (kind[ids[k]] !== kind[ids[k - 1]]) places++;
+        if (places === 1) continue;
+      }
+      const pitch = Math.min(PORT_PITCH, span / (places - 1));
+      let place = 0;
+      for (let k = 0; k < ids.length; k++) {
+        if (k > 0 && (!shared || kind[ids[k]] !== kind[ids[k - 1]])) place++;
+        dx[ids[k]] = (place - (places - 1) / 2) * pitch;
+      }
+    }
+  }
 }
 
 function reduceCrossings(g: Graph, nodes: LNode[]): void {

@@ -15,15 +15,41 @@ export const PAD_Y = 12;
 type Sizer = (tw: number, th: number) => ShapeSize;
 type Drawer = (w: number, h: number, a: string, line: string) => string;
 
-// Distance from the bounding box to the outline at the middle of a side: 0 top, 1 right, 2 bottom, 3 left.
-type Inset = (w: number, h: number, side: number) => number;
+// Distance from the bounding box to the outline on a side: 0 top, 1 right, 2 bottom, 3 left.
+// `t` is how far along the side from its middle, to the right or down.
+type Inset = (w: number, h: number, side: number, t: number) => number;
+
+// How much of a side edges may spread along, centered on its middle: the top and bottom, or the
+// left and right when `sideways`. A shape without one keeps its edges at the middle.
+type Span = (w: number, h: number, sideways: boolean) => number;
 
 interface ShapeDef {
   size: Sizer;
   draw: Drawer;
   inset?: Inset;
+  span?: Span;
   noLabel?: boolean;
 }
+
+// Kept clear at each end of a straight side, for the corner.
+const CORNER = 12;
+
+const flat: Span = (w, h, sideways) => (sideways ? h : w) - 2 * CORNER;
+// Straight along the top and bottom except for `cut(h)` at each end, and not straight at the sides.
+const flatAcross =
+  (cut: (h: number) => number): Span =>
+  (w, h, sideways) =>
+    sideways ? 0 : w - 2 * cut(h) - 2 * CORNER;
+
+// How far an ellipse's outline has fallen away from its bounding box, `t` from the middle of a side `half` long.
+function bulge(t: number, half: number, depth: number): number {
+  const k = Math.min(1, Math.abs(t) / half);
+  return depth * (1 - Math.sqrt(1 - k * k));
+}
+
+const roundInset: Inset = (w, h, side, t) => (side & 1 ? bulge(t, h / 2, w / 2) : bulge(t, w / 2, h / 2));
+const roundSpan: Span = (w, h, sideways) => (sideways ? h : w) * 0.6;
+const capInset: Inset = (w, _h, side, t) => (side & 1 ? 0 : bulge(t, w / 2, Math.min(12, Math.max(6, w / 14))));
 
 const fixed = (w: number, h: number): Sizer => () => ({ w, h, dy: 0 });
 
@@ -55,12 +81,15 @@ function rect(w: number, h: number, a: string, rx = ''): string {
 const ROUNDED = ` rx="${RADIUS}"`;
 
 const SHAPES: Record<string, ShapeDef> = {
-  rect: { size: box, draw: (w, h, a) => rect(w, h, a, ROUNDED) },
+  rect: { size: box, span: flat, draw: (w, h, a) => rect(w, h, a, ROUNDED) },
   rounded: {
     size: box,
+    span: flat,
     draw: (w, h, a) => rect(w, h, a, ` rx="${num(Math.min(12, h / 2))}"`),
   },
   stadium: {
+    inset: (_w, h, side, t) => (side & 1 ? bulge(t, h / 2, h / 2) : 0),
+    span: (w, h, sideways) => (sideways ? h * 0.6 : w - h),
     size: (tw, th) => {
       const h = th + 2 * PAD_Y;
       return { w: tw + h * 0.5 + 2 * PAD_X - 8, h, dy: 0 };
@@ -68,6 +97,7 @@ const SHAPES: Record<string, ShapeDef> = {
     draw: (w, h, a) => rect(w, h, a, ` rx="${num(h / 2)}"`),
   },
   'fr-rect': {
+    span: flat,
     size: (tw, th) => ({ w: tw + 2 * PAD_X + 16, h: th + 2 * PAD_Y, dy: 0 }),
     draw: (w, h, a, line) => {
       const x = w / 2 - 8;
@@ -78,6 +108,8 @@ const SHAPES: Record<string, ShapeDef> = {
     },
   },
   cyl: {
+    inset: capInset,
+    span: (w, h, sideways) => (sideways ? h - 2 * CORNER - 12 : w * 0.6),
     size: (tw, th) => {
       const w = Math.max(tw + 2 * PAD_X, 56);
       const ry = Math.min(12, Math.max(6, w / 14));
@@ -97,6 +129,8 @@ const SHAPES: Record<string, ShapeDef> = {
     },
   },
   circle: {
+    inset: roundInset,
+    span: roundSpan,
     size: (tw, th) => {
       const d = Math.max(Math.sqrt(tw * tw + th * th) + 16, 44);
       return { w: d, h: d, dy: 0 };
@@ -104,6 +138,8 @@ const SHAPES: Record<string, ShapeDef> = {
     draw: (w, _h, a) => `<circle r="${num(w / 2)}"${a}/>`,
   },
   'dbl-circ': {
+    inset: roundInset,
+    span: roundSpan,
     size: (tw, th) => {
       const d = Math.max(Math.sqrt(tw * tw + th * th) + 26, 54);
       return { w: d, h: d, dy: 0 };
@@ -111,10 +147,14 @@ const SHAPES: Record<string, ShapeDef> = {
     draw: (w, _h, a, line) => `<circle r="${num(w / 2)}"${a}/><circle r="${num(w / 2 - 5)}" fill="none"${line}/>`,
   },
   ellipse: {
+    inset: roundInset,
+    span: roundSpan,
     size: (tw, th) => ({ w: tw * 1.3 + 2 * PAD_X, h: th * 1.2 + 2 * PAD_Y, dy: 0 }),
     draw: (w, h, a) => `<ellipse rx="${num(w / 2)}" ry="${num(h / 2)}"${a}/>`,
   },
   diam: {
+    inset: (w, h, side, t) => (side & 1 ? (Math.abs(t) * w) / h : (Math.abs(t) * h) / w),
+    span: (w, h, sideways) => (sideways ? h : w) * 0.4,
     size: (tw, th) => {
       const a = tw + 16;
       const b = th + 8;
@@ -123,6 +163,8 @@ const SHAPES: Record<string, ShapeDef> = {
     draw: (w, h, a) => poly([0, -h / 2, w / 2, 0, 0, h / 2, -w / 2, 0], a),
   },
   hex: {
+    inset: (_w, _h, side, t) => (side & 1 ? Math.abs(t) / 2 : 0),
+    span: (w, h, sideways) => (sideways ? h * 0.5 : w - h / 2 - CORNER),
     size: (tw, th) => {
       const h = th + 2 * PAD_Y;
       return { w: tw + 2 * PAD_X + h / 2, h, dy: 0 };
@@ -134,6 +176,7 @@ const SHAPES: Record<string, ShapeDef> = {
   },
   odd: {
     inset: (_w, h, side) => (side === 3 ? h / 4 : 0),
+    span: flatAcross(() => 0),
     size: (tw, th) => {
       const h = th + 2 * PAD_Y;
       return { w: tw + 2 * PAD_X + h / 4, h, dy: 0 };
@@ -145,6 +188,7 @@ const SHAPES: Record<string, ShapeDef> = {
   },
   'lean-r': {
     inset: leanInset,
+    span: flatAcross((h) => h / 4),
     size: (tw, th) => {
       const h = th + 2 * PAD_Y;
       return { w: tw + 2 * PAD_X + h / 2, h, dy: 0 };
@@ -156,6 +200,7 @@ const SHAPES: Record<string, ShapeDef> = {
   },
   'lean-l': {
     inset: leanInset,
+    span: flatAcross((h) => h / 4),
     size: (tw, th) => {
       const h = th + 2 * PAD_Y;
       return { w: tw + 2 * PAD_X + h / 2, h, dy: 0 };
@@ -167,6 +212,7 @@ const SHAPES: Record<string, ShapeDef> = {
   },
   'trap-b': {
     inset: leanInset,
+    span: flatAcross((h) => h / 4),
     size: (tw, th) => {
       const h = th + 2 * PAD_Y;
       return { w: tw + 2 * PAD_X + h / 2, h, dy: 0 };
@@ -178,6 +224,7 @@ const SHAPES: Record<string, ShapeDef> = {
   },
   'trap-t': {
     inset: leanInset,
+    span: flatAcross((h) => h / 4),
     size: (tw, th) => {
       const h = th + 2 * PAD_Y;
       return { w: tw + 2 * PAD_X + h / 2, h, dy: 0 };
@@ -188,48 +235,60 @@ const SHAPES: Record<string, ShapeDef> = {
     },
   },
   text: {
+    span: flat,
     size: (tw, th) => ({ w: tw + 8, h: th + 8, dy: 0 }),
     draw: (w, h) => rect(w, h, ' fill="none" stroke="none"'),
   },
   'sm-circ': {
     noLabel: true,
+    inset: roundInset,
+    span: roundSpan,
     size: fixed(14, 14),
     draw: (w, _h, a) => `<circle r="${num(w / 2)}"${a}/>` },
   'f-circ': {
     noLabel: true,
+    inset: roundInset,
+    span: roundSpan,
     size: fixed(14, 14),
     draw: (w, _h, _a, line) => `<circle r="${num(w / 2)}" fill="var(--_l)"${line}/>`,
   },
   'fr-circ': {
     noLabel: true,
+    inset: roundInset,
+    span: roundSpan,
     size: fixed(18, 18),
     draw: (w, _h, a, line) => `<circle r="${num(w / 2)}"${a}/><circle r="${num(w / 2 - 4)}" fill="var(--_l)"${line}/>`,
   },
   fork: {
     noLabel: true,
+    span: (w, h, sideways) => (sideways ? h : w) - 8,
     size: fixed(72, 8),
     draw: (w, h, _a, line) => rect(w, h, ` fill="var(--_l)"${line}`, ' rx="2"'),
   },
   'notch-rect': {
     size: box,
+    span: flat,
     draw: (w, h, a) => {
       const c = 10;
       return poly([-w / 2 + c, -h / 2, w / 2, -h / 2, w / 2, h / 2, -w / 2, h / 2, -w / 2, -h / 2 + c], a);
     },
   },
   'lin-rect': {
+    span: flat,
     size: (tw, th) => ({ w: tw + 2 * PAD_X + 8, h: th + 2 * PAD_Y, dy: 0 }),
     draw: (w, h, a, line) =>
       rect(w, h, a, ROUNDED) +
       `<path d="M${num(-w / 2 + 8)},${num(-h / 2)}V${num(h / 2)}" fill="none"${line}/>`,
   },
   'div-rect': {
+    span: flat,
     size: (tw, th) => ({ w: tw + 2 * PAD_X, h: th + 2 * PAD_Y + 8, dy: 4 }),
     draw: (w, h, a, line) =>
       rect(w, h, a, ROUNDED) +
       `<path d="M${num(-w / 2)},${num(-h / 2 + 8)}H${num(w / 2)}" fill="none"${line}/>`,
   },
   'win-pane': {
+    span: flat,
     size: (tw, th) => ({ w: tw + 2 * PAD_X + 8, h: th + 2 * PAD_Y + 8, dy: 4 }),
     draw: (w, h, a, line) =>
       rect(w, h, a, ROUNDED) +
@@ -253,6 +312,7 @@ const SHAPES: Record<string, ShapeDef> = {
     draw: (w, h, a) => poly([-w / 2, -h / 2 + 10, w / 2, -h / 2, w / 2, h / 2, -w / 2, h / 2], a),
   },
   'notch-pent': {
+    span: flat,
     size: (tw, th) => ({ w: tw + 2 * PAD_X, h: th + 2 * PAD_Y, dy: 0 }),
     draw: (w, h, a) => {
       const c = 10;
@@ -298,6 +358,8 @@ const SHAPES: Record<string, ShapeDef> = {
   },
   'cross-circ': {
     noLabel: true,
+    inset: roundInset,
+    span: roundSpan,
     size: fixed(44, 44),
     draw: (w, _h, a, line) => {
       const r = w / 2;
@@ -309,6 +371,7 @@ const SHAPES: Record<string, ShapeDef> = {
     },
   },
   'st-rect': {
+    span: (w, h, sideways) => (sideways ? h : w) - 2 * CORNER - 8,
     size: (tw, th) => ({ w: tw + 2 * PAD_X + 8, h: th + 2 * PAD_Y + 8, dy: 4 }),
     draw: (w, h, a) => {
       const bw = w - 8;
@@ -341,6 +404,7 @@ const SHAPES: Record<string, ShapeDef> = {
   },
   datastore: {
     size: box,
+    span: flat,
     draw: (w, h, a, line) =>
       rect(w, h, a.replace('stroke="var(--_b)"', 'stroke="none"')) +
       `<path d="M${num(-w / 2)},${num(-h / 2)}H${num(w / 2)}M${num(-w / 2)},${num(h / 2)}H${num(w / 2)}" fill="none"${line}/>`,
@@ -376,6 +440,7 @@ const SHAPES: Record<string, ShapeDef> = {
     },
   },
   console: {
+    span: flat,
     size: (tw, th) => ({ w: Math.max(tw + 2 * PAD_X, 72), h: th + 2 * PAD_Y + 12, dy: 6 }),
     draw: (w, h, a, line) =>
       rect(w, h, a, ROUNDED) +
@@ -384,6 +449,7 @@ const SHAPES: Record<string, ShapeDef> = {
       )},${num(-h / 2 + 9)}h4" fill="none"${line}/>`,
   },
   browser: {
+    span: flat,
     size: (tw, th) => ({ w: Math.max(tw + 2 * PAD_X, 72), h: th + 2 * PAD_Y + 12, dy: 6 }),
     draw: (w, h, a, line) => {
       let dots = '';
@@ -452,6 +518,8 @@ const SHAPES: Record<string, ShapeDef> = {
     draw: (w, h, a) => poly([w * 0.15, -h / 2, -w / 2, h * 0.08, -w * 0.05, h * 0.08, -w * 0.15, h / 2, w / 2, -h * 0.08, w * 0.05, -h * 0.08], a),
   },
   'lin-cyl': {
+    inset: capInset,
+    span: (w, h, sideways) => (sideways ? h - 2 * CORNER - 20 : w * 0.6),
     size: (tw, th) => {
       const w = Math.max(tw + 2 * PAD_X, 56);
       const ry = Math.min(12, Math.max(6, w / 14));
@@ -521,6 +589,7 @@ const SHAPES: Record<string, ShapeDef> = {
   },
   'tag-rect': {
     size: box,
+    span: flat,
     draw: (w, h, a, line) =>
       rect(w, h, a, ROUNDED) +
       `<path d="M${num(w / 2 - 12)},${num(h / 2)}L${num(w / 2)},${num(h / 2 - 12)}" fill="none"${line}/>`,
@@ -576,8 +645,13 @@ export function drawShape(shape: string, w: number, h: number, a: string, line: 
   return (BY_NAME.get(shape) ?? FALLBACK).draw(w, h, a, line);
 }
 
-export function shapeInset(shape: string, w: number, h: number, side: number): number {
-  return BY_NAME.get(shape)?.inset?.(w, h, side) ?? 0;
+export function shapeInset(shape: string, w: number, h: number, side: number, t = 0): number {
+  return BY_NAME.get(shape)?.inset?.(w, h, side, t) ?? 0;
+}
+
+// How much of a side of the shape edges may spread along, when the flow runs down or, if `sideways`, across.
+export function shapeSpan(shape: string, w: number, h: number, sideways: boolean): number {
+  return Math.max(0, BY_NAME.get(shape)?.span?.(w, h, sideways) ?? 0);
 }
 
 export function shapeHasLabel(shape: string): boolean {
@@ -591,11 +665,11 @@ export function insetRoute(route: number[], at: number, view: { shape: string; w
   const dy = route[at + 1] - c.y;
   if (Math.abs(Math.abs(dy) - c.h / 2) < 0.5) {
     const side = dy < 0 ? 0 : 2;
-    const amount = shapeInset(view.shape, view.w, view.h, side) + (c.h - view.h) / 2;
+    const amount = shapeInset(view.shape, view.w, view.h, side, dx) + (c.h - view.h) / 2;
     route[at + 1] += side === 0 ? amount : -amount;
   } else if (Math.abs(Math.abs(dx) - c.w / 2) < 0.5) {
     const side = dx < 0 ? 3 : 1;
-    const amount = shapeInset(view.shape, view.w, view.h, side) + (c.w - view.w) / 2;
+    const amount = shapeInset(view.shape, view.w, view.h, side, dy) + (c.w - view.w) / 2;
     route[at] += side === 3 ? amount : -amount;
   }
 }

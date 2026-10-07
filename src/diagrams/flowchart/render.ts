@@ -5,7 +5,7 @@ import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, struckTitle, titleCrossed, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
-import { drawShape, insetRoute, shapeHasLabel, shapeSize } from '../../svg/shapes.js';
+import { drawShape, insetRoute, shapeHasLabel, shapeSize, shapeSpan } from '../../svg/shapes.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
@@ -138,6 +138,11 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     dir ??= rootDir;
     return dir === 'LR' || dir === 'RL';
   };
+  // The edges on one side of a node spread along it; a picture or an icon keeps them at its middle.
+  views.forEach((view, i) => {
+    if (view.node.isGroup) cnodes[i].span = Infinity;
+    else if (!view.node.img && !view.node.icon) cnodes[i].span = shapeSpan(view.shape, view.w, view.h, flowsSideways(i));
+  });
 
   const cedges: CEdge[] = [];
   const edgeLabels: Label[] = [];

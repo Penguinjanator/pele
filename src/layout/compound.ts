@@ -19,6 +19,8 @@ export interface CNode {
   minW: number;
   // Declaration order; a group takes the smallest value among its members.
   seq: number;
+  // How much of a side its edges may spread along, measured across the flow; 0 keeps them at its middle.
+  span: number;
   x: number;
   y: number;
 }
@@ -94,7 +96,7 @@ export function shiftLayout(nodes: CNode[], edges: CEdge[], ox: number, oy: numb
 }
 
 export function cnode(w: number, h: number, parent = -1): CNode {
-  return { w, h, parent, isGroup: false, dir: undefined, padX: 0, padTop: 0, padBottom: 0, minW: 0, seq: 0, x: 0, y: 0 };
+  return { w, h, parent, isGroup: false, dir: undefined, padX: 0, padTop: 0, padBottom: 0, minW: 0, seq: 0, span: 0, x: 0, y: 0 };
 }
 
 function startSide(dir: Dir): Side {
@@ -253,8 +255,11 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
     level.items.forEach((item, i) => {
       local[item] = i;
       const node = nodes[item];
-      lnodes.push(sized ? lnode(vertical ? node.w : node.h, vertical ? node.h : node.w) : lnode(0, 0));
+      const ln = sized ? lnode(vertical ? node.w : node.h, vertical ? node.h : node.w) : lnode(0, 0);
+      ln.span = node.isGroup ? Math.min(node.span, ln.w - 2 * node.padX) : node.span;
+      lnodes.push(ln);
     });
+    const held = (item: number, ei: number, out: boolean): boolean => nodes[item].isGroup && endpointBelow(item, edges[ei], out);
     const offset = (item: number, ei: number, out: boolean): number => {
       if (!sized || !nodes[item].isGroup || !endpointBelow(item, edges[ei], out)) return 0;
       const port = levelOf.get(item)!.portOf.get(ei * 2 + (out ? 0 : 1))!;
@@ -268,6 +273,8 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
         edge.labelH = vertical ? e.labelH : e.labelW;
         edge.tailDx = offset(le.a, le.e, true);
         edge.headDx = offset(le.b, le.e, false);
+        edge.tailFixed = held(le.a, le.e, true);
+        edge.headFixed = held(le.b, le.e, false);
       }
       ledges.push(edge);
     }
@@ -278,8 +285,13 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
         lnodes.push(lnode(0, 0, port.side === start ? Kind.StartPort : Kind.EndPort));
         dummies[i] = d;
         const edge = port.out ? ledge(local[port.inner], d) : ledge(d, local[port.inner]);
-        if (port.out) edge.tailDx = offset(port.inner, port.e, true);
-        else edge.headDx = offset(port.inner, port.e, false);
+        if (port.out) {
+          edge.tailDx = offset(port.inner, port.e, true);
+          edge.tailFixed = held(port.inner, port.e, true);
+        } else {
+          edge.headDx = offset(port.inner, port.e, false);
+          edge.headFixed = held(port.inner, port.e, false);
+        }
         ledges.push(edge);
       } else {
         lnodes[local[port.inner]].pin = port.side === Side.Top || port.side === Side.Left ? -1 : 1;
