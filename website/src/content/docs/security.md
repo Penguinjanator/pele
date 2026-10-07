@@ -36,6 +36,12 @@ Images load when the diagram is displayed, exposing the request to the image ser
 
 Links have `rel="noopener"`. A `target` is written only when it is `_self`, `_blank`, `_parent`, or `_top`.
 
+Use the [`linkRel`](/api#renderoptions) option to set a different `rel`. A site where anyone can publish a diagram can add `nofollow`, so that search engines do not credit the links. The value you pass replaces the default:
+
+```ts
+render(source, { linkRel: 'noopener nofollow' });
+```
+
 ## Limits
 
 | Limit | Default | Option |

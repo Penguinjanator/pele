@@ -10,7 +10,7 @@ import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
-import { imageUrl, linkUrl, safeUrl, sanitizeUrl } from '../../util/url.js';
+import { imageUrl, linkUrl, relAttr, safeUrl, sanitizeUrl } from '../../util/url.js';
 import type { IconResolver, LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { runsAcross, tighten, turnToFit } from '../common/fit-width.js';
 import type { FlowDb } from './db.js';
@@ -270,7 +270,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
       const name = decodeEntities(node.label);
       const safe = linkUrl(sanitizeUrl(name), options) !== 'about:blank';
       const target = esc(name);
-      text = `<a class="internal-link"${safe ? ` href="${target}"` : ''} data-href="${target}">${text}</a>`;
+      text = `<a class="internal-link"${safe ? ` href="${target}"${relAttr(options)}` : ''} data-href="${target}">${text}</a>`;
       links.push({ id: node.id, href: name, internal: true });
     }
     let body = inner + text;
@@ -278,7 +278,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     if (node.link) {
       const target = node.linkTarget ? ` target="${esc(node.linkTarget)}"` : '';
       const href = linkUrl(node.link, options);
-      body = `<a href="${esc(href)}"${target} rel="noopener">${body}</a>`;
+      body = `<a href="${esc(href)}"${target}${relAttr(options)}>${body}</a>`;
       links.push({ id: node.id, href, internal: false });
     }
     nodesOut += `<g class="pele-node pele-shape-${view.shape}${classes}" data-id="${id}" transform="translate(${num(

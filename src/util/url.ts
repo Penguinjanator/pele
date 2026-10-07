@@ -1,3 +1,4 @@
+import { esc } from '../svg/builder.js';
 import { decodeEntities } from '../text/entities.js';
 import type { RenderOptions } from '../types.js';
 
@@ -94,4 +95,9 @@ export function linkUrl(url: string, options: RenderOptions): string {
 
 export function imageUrl(url: string, options: RenderOptions): string {
   return allow(url, options.imageSchemes ?? IMAGE_SCHEMES);
+}
+
+export function relAttr(options: RenderOptions): string {
+  const rel = options.linkRel ?? 'noopener';
+  return rel ? ` rel="${esc(rel)}"` : '';
 }

@@ -8,7 +8,7 @@ import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
-import { linkUrl, sanitizeUrl } from '../../util/url.js';
+import { linkUrl, relAttr, sanitizeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { runsAcross, turnToFit } from '../common/fit-width.js';
 import type { ErDb } from './db.js';
@@ -336,7 +336,7 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
       // The name ends up in an href, so it gets the same check as a URL.
       const safe = linkUrl(sanitizeUrl(display), options) !== 'about:blank';
       const target = esc(display);
-      name = `<a class="internal-link"${safe ? ` href="${target}"` : ''} data-href="${target}">${name}</a>`;
+      name = `<a class="internal-link"${safe ? ` href="${target}"${relAttr(options)}` : ''} data-href="${target}">${name}</a>`;
       links.push({ id: node.label, href: display, internal: true });
     }
 

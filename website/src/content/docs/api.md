@@ -104,6 +104,7 @@ All options are optional.
 | `maxEdges` | `number` | Maximum number of edges in a flowchart. The default is 5,000. A diagram with more throws a `PeleError` with the code `limit`. Diagram configuration cannot change it. Pass `Infinity` for no limit. |
 | `linkSchemes` | `string[]` | URL schemes a link may use. The default is `['http', 'https', 'mailto', 'tel']`. Relative addresses are always kept. See [Security](/security#links-and-images). |
 | `imageSchemes` | `string[]` | URL schemes an image may use. The default is `['http', 'https']`. |
+| `linkRel` | `string` | The `rel` attribute of every link. The default is `'noopener'`. An empty string omits the attribute. See [Security](/security#links-and-images). |
 | `icons` | `(name: string) => string \| null \| undefined` | Returns the inner SVG markup for an icon name such as `fa:fa-car`. Icons without markup are omitted. The markup is inserted without filtering, so return only markup you trust. |
 | `config` | `object` | Mermaid configuration. Frontmatter and directives in the text take precedence over it. |
 

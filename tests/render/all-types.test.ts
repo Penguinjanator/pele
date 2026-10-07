@@ -117,6 +117,7 @@ describe('every diagram type', () => {
     ['flowchart image', 'flowchart LR\n  A@{ img: "URL" }'],
     ['flowchart note', 'flowchart LR\n  A["URL"]:::internal-link'],
     ['agentflow', 'agentflow-beta\n  A --> B\n  click A "URL"'],
+    ['agentflow note', 'agentflow-beta\n  A["URL"]:::internal-link --> B'],
     ['class', 'classDiagram\n  class A\n  click A href "URL"'],
     ['state', 'stateDiagram-v2\n  A --> B\n  click A href "URL"'],
     ['gantt', 'gantt\n  dateFormat YYYY-MM-DD\n  Task :a, 2024-01-01, 1d\n  click a href "URL"'],
@@ -177,6 +178,20 @@ describe('every diagram type', () => {
     for (const scheme of ['javascript', 'data', 'vbscript']) {
       const { svg } = render(`flowchart LR\n  A --> B\n  click A "${scheme}:alert(1)"`, { ...options, linkSchemes: [scheme] });
       expect(hrefs(svg), scheme).toEqual(['about:blank']);
+    }
+  });
+
+  it('writes the rel the host sets on every link', () => {
+    const rels = (svg: string): (string | undefined)[] => (svg.match(/<a [^>]*>/g) ?? []).map((a) => / rel="([^"]*)"/.exec(a)?.[1]);
+    for (const [name, template] of LINKS) {
+      if (name.endsWith('image')) continue;
+      const src = template.replace('URL', 'https://example.com/a');
+      expect(rels(render(src, options).svg), name).toEqual(['noopener']);
+      expect(rels(render(src, { ...options, linkRel: 'noopener nofollow' }).svg), name).toEqual(['noopener nofollow']);
+      expect(rels(render(src, { ...options, linkRel: '' }).svg), name).toEqual([undefined]);
+      const { svg } = render(src, { ...options, linkRel: 'a"><script>' });
+      expect(svg, name).toContain(' rel="a&quot;&gt;&lt;script&gt;"');
+      assertInert(svg, name);
     }
   });
 

@@ -317,7 +317,7 @@ describe('ER diagram rendering', () => {
 
   it('links an entity with the internal-link class', () => {
     const result = render('erDiagram\n Note:::internal-link { string body }\n p["My page"]:::internal-link', options);
-    expect(result.svg).toContain('<a class="internal-link" href="Note" data-href="Note">');
+    expect(result.svg).toContain('<a class="internal-link" href="Note" rel="noopener" data-href="Note">');
     expect(result.links).toEqual([
       { id: 'Note', href: 'Note', internal: true },
       { id: 'p', href: 'My page', internal: true },

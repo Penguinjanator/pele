@@ -4,7 +4,7 @@ import { svgDocument } from '../../svg/root.js';
 import { CRITICAL, RADIUS, classNames } from '../../svg/theme.js';
 import { layoutLabel, type Label, type Span } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
-import { linkUrl, safeUrl } from '../../util/url.js';
+import { linkUrl, relAttr, safeUrl } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { titleRoom } from '../common/fit-width.js';
 import { iconMarkup } from '../../text/icons.js';
@@ -226,7 +226,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
           inner += textBlock(card.ticket, CARD_PAD, top, ' class="pele-ticket" fill="var(--_m)"', icons);
         } else {
           inner +=
-            `<a href="${esc(href)}" target="_blank" rel="noopener">` +
+            `<a href="${esc(href)}" target="_blank"${relAttr(options)}>` +
             textBlock(card.ticket, CARD_PAD, top, ' class="pele-ticket" fill="var(--_c)"', icons) +
             '</a>';
           links.push({ id: item.id, href, internal: false });

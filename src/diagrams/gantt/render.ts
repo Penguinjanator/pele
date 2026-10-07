@@ -6,7 +6,7 @@ import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { capWidth } from '../common/fit-width.js';
-import { linkUrl } from '../../util/url.js';
+import { linkUrl, relAttr } from '../../util/url.js';
 import { autoTicks, intervalTicks, timeFormat } from './axis.js';
 import { add, addDays } from './dates.js';
 import { clock, type GanttDb } from './db.js';
@@ -334,7 +334,7 @@ export function renderGantt(model: GanttDb, config: Config, options: RenderOptio
     const url = model.links.get(task.id);
     if (url !== undefined) {
       const href = linkUrl(url, options);
-      body = `<a href="${esc(href)}" rel="noopener">${body}</a>`;
+      body = `<a href="${esc(href)}"${relAttr(options)}>${body}</a>`;
       links.push({ id: task.id, href, internal: false });
     }
     tasksOut += `<g class="${classes}" data-id="${escText(task.id)}">${body}</g>`;

@@ -126,7 +126,7 @@ describe('flowchart rendering', () => {
 
   it('turns internal-link nodes into Obsidian links', () => {
     const result = render('flowchart TD\n  A[My note] --> B\n  class A internal-link;', options);
-    expect(result.svg).toContain('<a class="internal-link" href="My note" data-href="My note">');
+    expect(result.svg).toContain('<a class="internal-link" href="My note" rel="noopener" data-href="My note">');
     expect(result.links).toEqual([{ id: 'A', href: 'My note', internal: true }]);
   });
 
