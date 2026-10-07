@@ -16,10 +16,15 @@
 // 4. An edge meets the middle of a side. An end with a side to itself stays there, and ends
 //    that share a side sit around the middle in the order of where they lead. An end moves off
 //    the middle only for the aims above (`settle`).
-// 5. An edge leaves and reaches a node square to it. A curve into an arrowhead may lean a few
-//    degrees the way it runs (`routePath` in svg/edges.ts, which draws the routes).
-// 6. Nodes keep the order they were written in, where nothing above says otherwise.
-// 7. The drawing stays compact. A gap between ranks grows only to hold the levels in it.
+// 5. The drawing is balanced, and what is alike is drawn alike. A label sits midway along the
+//    line that shows, the curves either side of it have much the same room to turn in, and a gap
+//    whose curves mostly cross has them all as the same plain curve rather than each on a
+//    level of its own (`headRoom` in `layered`, the crossed gaps in `assignTracks`).
+// 6. An edge leaves and reaches a node square to it, and an arrowhead points straight at the
+//    node (`routePath` in svg/edges.ts, which draws the routes).
+// 7. Nodes keep the order they were written in, where nothing above says otherwise.
+// 8. The drawing stays compact. A gap between ranks grows only to hold the levels in it, or
+//    to let curves that cross do so at a clear angle.
 
 export const enum Kind {
   Node,
@@ -70,6 +75,10 @@ export interface LayeredOptions {
   // The caller sets the ends of the edges on one side of a node apart itself, so two edges
   // between the same two nodes need no bend to keep them from being drawn as one.
   apart?: boolean;
+  // The room that the marker at the head of an edge takes. A rank of labels whose edges all
+  // head the same way sits half of this nearer their tails, so that each label is midway along
+  // the line that shows, and the curves either side of it have the same room to turn in.
+  headRoom?: number;
 }
 
 export interface LayeredResult {
@@ -134,6 +143,11 @@ const LEVEL_PITCH = 12;
 const LEVEL_LEAD = 12;
 const LEVEL_CLEAR = 8;
 const LEVEL_TOUCH = 4;
+// Levels tell apart curves that run alongside each other. Where the curves of a gap cross each
+// other more often than that, runs along levels only make the crossings long and shallow, so
+// each curve is one plain S instead, and the gap is made this many times as tall as its widest
+// curve runs across (and no taller than MAX_GAP allows), for them to cross at a clear angle.
+const CROSSED_SLOPE = 0.5;
 // How far out of line two points may be and still count as in line.
 const IN_LINE = 0.5;
 // A node, with whatever it is already in line with, moves this far at most to bring one more of
@@ -236,6 +250,8 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   const EFD = new Float64Array(segments);
   const ETD = new Float64Array(segments);
   const firstDummy = new Int32Array(m).fill(-1);
+  // Which way the edges with a label in each rank head: 1 down, 2 up, 3 both.
+  const heads = new Uint8Array(maxRank + 1);
   const labelNode = new Int32Array(m).fill(-1);
   let spans = false;
   for (let i = 0; i < real; i++) if (nodes[i].span > 0 && nodes[i].kind === Kind.Node) spans = true;
@@ -282,6 +298,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
           H[d] = e.labelH;
           KIND[d] = Kind.Label;
           labelNode[ei] = d;
+          heads[r] |= e.reversed ? 2 : 1;
         } else {
           KIND[d] = Kind.Dummy;
         }
@@ -470,6 +487,19 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   for (let r = 0; r < maxRank; r++) {
     gapUnder[r] = pieces ? usual(r) : Math.max(usual(r), Math.min((MAX_GAP * opt.rankSep) / step, run[r] * MIN_SLOPE));
   }
+  // A rank between two ranks of nodes, which holds labels and bends only.
+  const between = new Uint8Array(maxRank + 1).fill(1);
+  for (let i = 0; i < real; i++) between[RANK[i]] = 0;
+  for (let r = 1; r < maxRank; r++) {
+    if (opt.tracks || !between[r] || (heads[r] !== 1 && heads[r] !== 2)) continue;
+    const shift = Math.min((opt.headRoom ?? 0) / 2, gapUnder[heads[r] === 1 ? r - 1 : r] / 2);
+    gapUnder[r - 1] += heads[r] === 1 ? -shift : shift;
+    gapUnder[r] += heads[r] === 1 ? shift : -shift;
+  }
+  // The part of its rank that an edge runs straight through at a bend or label. A bare bend
+  // beside labels keeps to the middle half, which leaves the curves either side of it more room
+  // and still keeps them clear of the labels' corners.
+  const inset = (d: number): number => (KIND[d] === Kind.Dummy && between[RANK[d]] && !opt.tracks ? (bandBottom[RANK[d]] - bandTop[RANK[d]]) / 4 : 0);
   // The rank that the pieces leaving each rank arrive at, past any that hold only bends, and
   // the room between the two, which grows to hold the gap's tracks or levels: these keep
   // `margin` from the ranks, and between `leastPitch` and `mostPitch` from each other.
@@ -487,9 +517,11 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
       below[r] = next;
     }
     for (let k = 0; k < pieces.from.length; k++) pieces.wide.push(Math.abs(pieces.from[k] - pieces.to[k]) > LEVEL_WIDE * room[pieces.rank[k]] ? 1 : 0);
-    assignTracks(pieces, trackCount, !opt.tracks, room);
+    const tall = new Float64Array(maxRank + 1);
+    assignTracks(pieces, trackCount, !opt.tracks, room, tall);
     for (let r = 0; r < maxRank; r++) {
       if (trackCount[r] > 0) gapUnder[r] += Math.max(0, 2 * margin + (trackCount[r] - 1) * leastPitch - room[r]);
+      else if (tall[r] > 0) gapUnder[r] += Math.max(0, Math.min(MAX_GAP * opt.rankSep, tall[r]) - room[r]);
     }
   }
   let y = 0;
@@ -557,8 +589,8 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
         }
         const d = pieces.lower[k];
         if (d < 0) continue;
-        pts.push(xs[d] - minX, bandTop[RANK[d]]);
-        if (bandBottom[RANK[d]] > bandTop[RANK[d]]) pts.push(xs[d] - minX, bandBottom[RANK[d]]);
+        pts.push(xs[d] - minX, bandTop[RANK[d]] + inset(d));
+        if (bandBottom[RANK[d]] > bandTop[RANK[d]]) pts.push(xs[d] - minX, bandBottom[RANK[d]] - inset(d));
       }
     } else if (d0 >= 0) {
       for (let d = d0, end = d0 + span[ei] - 1; d < end; d++) {
@@ -566,8 +598,8 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
         const x = xs[d] - minX;
         const top = bandTop[RANK[d]];
         const bottom = bandBottom[RANK[d]];
-        pts.push(x, top);
-        if (bottom > top) pts.push(x, bottom);
+        pts.push(x, top + inset(d));
+        if (bottom > top) pts.push(x, bottom - inset(d));
       }
     }
     pts.push(last.x + (e.reversed ? e.tailDx : e.headDx), last.y - last.h / 2);
@@ -1143,8 +1175,9 @@ function emptyRanks(g: Graph): Uint8Array | undefined {
 // point, as the branches of a tree do. Which of two goes above the other is whichever makes
 // them cross less. With `curved`, the tracks are levels for curves to turn onto, and only the
 // pieces that would run along or too near another get one: each group of those counts its
-// tracks from its own first. `room` is the height of the gap under each rank.
-function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, room: Float64Array): void {
+// tracks from its own first. `room` is the height of the gap under each rank, and `tall`
+// receives the height that a gap whose curves mostly cross each other should have instead of levels.
+function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, room: Float64Array, tall: Float64Array): void {
   const { from, to, rank, track, levels, wide } = pieces;
   const total = from.length;
   const byRank = new Map<number, number[]>();
@@ -1323,6 +1356,22 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
       levels[k] = 0;
     }
     if (level.size === 0) continue;
+    let crossing = 0;
+    let alongside = 0;
+    const turning = [...level];
+    for (let i = 0; i < turning.length; i++) {
+      for (let j = i + 1; j < turning.length; j++) {
+        const a = turning[i];
+        const b = turning[j];
+        if (!overlap(a, b)) continue;
+        if (from[a] < to[a] !== from[b] < to[b]) crossing++;
+        else if (!mates(a, b)) alongside++;
+      }
+    }
+    if (crossing > alongside) {
+      for (const k of all) if ((HI[k] - LO[k]) * CROSSED_SLOPE > tall[r]) tall[r] = (HI[k] - LO[k]) * CROSSED_SLOPE;
+      continue;
+    }
     // With them go the short pieces that could cross one of them, so that each has its place
     // among the levels and crosses none.
     const beside = (k: number): boolean => {

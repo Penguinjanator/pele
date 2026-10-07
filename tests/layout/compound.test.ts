@@ -289,6 +289,48 @@ describe('compound layout', () => {
     expect(gap).toBeCloseTo(2 * 28 + 2 * 12, 5);
   });
 
+  it('draws the edges of a gap as plain curves, in a taller gap, where they cross each other more than they run alongside', () => {
+    // Four nodes above four, each with an edge to every one below.
+    const nodes = Array.from({ length: 8 }, () => cnode(80, 40));
+    nodes.forEach((node, i) => {
+      node.seq = i;
+      node.span = 56;
+    });
+    const edges: CEdge[] = [];
+    for (let i = 0; i < 4; i++) for (let j = 4; j < 8; j++) edges.push(edge(i, j));
+    compoundLayout(nodes, edges, 'TB', OPTIONS);
+    // No edge turns onto a level: each runs from one point to the other.
+    for (const e of edges) expect(e.route).toHaveLength(6);
+    // The gap is half as tall as the widest edge runs across, and no more than three times the usual.
+    const widest = Math.max(...edges.map((e) => Math.abs(e.route[0] - e.route[3])));
+    expect(widest).toBeGreaterThan(6 * OPTIONS.rankSep);
+    expect(nodes[4].y - nodes[0].y - 40).toBeCloseTo(3 * OPTIONS.rankSep, 5);
+  });
+
+  it('sets a rank of labels half an arrowhead nearer the tails of its edges, and holds a bend beside them for half their height', () => {
+    const lay = (headRoom: number): CEdge[] => {
+      const nodes = [cnode(60, 40), cnode(60, 40)];
+      nodes.forEach((node, i) => {
+        node.seq = i;
+        node.span = 36;
+      });
+      const edges = [edge(0, 1, 40, 20), edge(0, 1, 50, 20), edge(0, 1)];
+      compoundLayout(nodes, edges, 'TB', { ...OPTIONS, headRoom });
+      return edges;
+    };
+    // Without arrowheads the labels are midway between the two nodes.
+    const plain = lay(0);
+    expect(plain[0].labelY).toBeCloseTo((40 + 108) / 2, 5);
+    // With them, the labels are midway between the node above and the backs of the arrowheads.
+    const [first, second, bare] = lay(8);
+    expect(first.labelY).toBeCloseTo((40 + 108 - 8) / 2, 5);
+    expect(second.labelY).toBeCloseTo(first.labelY, 5);
+    // A labelled edge runs straight for the height of its label, and the bare one for half of that.
+    expect(first.route[7] - first.route[4]).toBeCloseTo(20, 5);
+    expect(bare.route[7] - bare.route[4]).toBeCloseTo(10, 5);
+    expect((bare.route[4] + bare.route[7]) / 2).toBeCloseTo(first.labelY, 5);
+  });
+
   it('turns an edge that runs far across at a level of its own where a shorter one would run close beside it', () => {
     // A node above a row of three, and an edge back up to it from below the row.
     const nodes = [cnode(80, 40), cnode(80, 40), cnode(80, 40), cnode(80, 40), cnode(80, 40)];

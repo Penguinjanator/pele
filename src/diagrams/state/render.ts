@@ -396,6 +396,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
     edgeSep: EDGE_SEP,
     rankSep: numberOption(config, 'rankSpacing', RANK_SEP),
     portSep: 20,
+    headRoom: markerTrim('arrow_point'),
   });
 
   const width = Math.ceil(layout.width + 2 * pad);

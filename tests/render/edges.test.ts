@@ -60,23 +60,12 @@ describe('edge paths', () => {
     expect(routePath([0, 0, 0, 0, 48, 0], undefined, 0, 7).d).toBe('M0,0L0,41');
   });
 
-  it('leans a curve into a marker where it runs further across than along, by no more than a limit', () => {
-    const lean = (path: { edx: number; edy: number }): number => (Math.atan2(path.edx, path.edy) * 180) / Math.PI;
-    // No further across than along: square to the node.
-    expect(lean(routePath([0, 0, 0, 40, 48, 0], undefined, 0, 7))).toBeCloseTo(0, 5);
-    // Twice as far across: a few degrees the way the curve runs, and never more than twelve.
-    const twice = routePath([0, 0, 0, 96, 48, 0], undefined, 0, 7);
-    expect(lean(twice)).toBeGreaterThan(5);
-    expect(lean(twice)).toBeLessThan(12);
-    expect(lean(routePath([0, 0, 0, -96, 48, 0], undefined, 0, 7))).toBeCloseTo(-lean(twice), 5);
-    expect(lean(routePath([0, 0, 0, 900, 48, 0], undefined, 0, 7))).toBeCloseTo(12, 5);
-    // The end of the curve, the straight run and the arrowhead are in one line.
-    const [, , x2, y2, x, y] = curve([0, 0, 0, 96, 48, 0], undefined, 0, 7);
-    expect(Math.atan2(x - x2, y - y2)).toBeCloseTo(Math.atan2(twice.edx, twice.edy), 2);
-    expect(Math.atan2(twice.ex - x, twice.ey - y)).toBeCloseTo(Math.atan2(twice.edx, twice.edy), 2);
-    // The end without a marker stays square, and so does an end with none beside one that has.
-    expect([twice.sdx + 0, twice.sdy]).toEqual([0, -1]);
-    expect(lean(routePath([0, 0, 0, 96, 48, 0], undefined, 0, 0, 0, 7 + LEAD))).toBeCloseTo(0, 5);
+  it('keeps both ends of a curve heading along the flow, however far across it runs', () => {
+    for (const across of [40, 96, -96, 900]) {
+      const path = routePath([0, 0, 0, across, 48, 0], undefined, 0, 7);
+      expect([path.sdx + 0, path.sdy]).toEqual([0, -1]);
+      expect([path.edx + 0, path.edy]).toEqual([0, 1]);
+    }
   });
 
   it('turns a corner of the route as widely as its legs allow, rounds it in a stepped route, and leaves it sharp in a linear one', () => {

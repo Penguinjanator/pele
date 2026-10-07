@@ -26,12 +26,6 @@ const CORNER = 12;
 const HANDLE = 0.62;
 // How far an edge runs straight before a marker at its end, where it has the room.
 export const LEAD = 6;
-// A curve that runs further across than along need not meet its node square to it at an end
-// with a marker, where the marker and the straight run before it leave the curve little room
-// and it would turn sharply: it leans the way it runs, by this much for each time further
-// across than along that it runs, and by no more than MAX_LEAN (in radians).
-const LEAN = 0.15;
-const MAX_LEAN = Math.PI / 15;
 
 // How far from each side of each node the edges that meet it start to turn: as far as the
 // largest marker there needs, for every edge on the side, so that none turns sooner than its
@@ -93,28 +87,17 @@ export function routePath(
   }
   let last = xs.length - 1;
   const aligned = (i: number): boolean => Math.abs(xs[i] - xs[i - 1]) < 0.01 || Math.abs(ys[i] - ys[i - 1]) < 0.01;
-  // The straight runs before a marker at each end, once they are in the route.
-  let startLead = -1;
-  let endLead = -1;
-  const straight = (i: number): boolean => linear || aligned(i) || i === startLead || i === endLead;
-  // The way the route heads from point i to point j, at an end of the route: where an S joins
-  // them, along the flow, or leaning a little the way the S runs if `marked`.
-  const unit = (i: number, j: number, axis: number, marked = false): [number, number] => {
+  const straight = (i: number): boolean => linear || aligned(i);
+  // The way the route heads from point i to point j: along the flow where an S joins them.
+  const unit = (i: number, j: number, axis: number): [number, number] => {
+    if (!straight(Math.max(i, j))) return axis === 0 ? [0, Math.sign(ys[j] - ys[i]) || 1] : [Math.sign(xs[j] - xs[i]) || 1, 0];
     const dx = xs[j] - xs[i];
     const dy = ys[j] - ys[i];
-    if (!straight(Math.max(i, j))) {
-      const across = axis === 0 ? dx : dy;
-      const along = axis === 0 ? dy : dx;
-      const lean = marked ? Math.max(0, Math.min(MAX_LEAN, LEAN * (Math.abs(across / (along || 1)) - 1))) : 0;
-      const a = Math.sin(lean) * Math.sign(across);
-      const b = Math.cos(lean) * (Math.sign(along) || 1);
-      return axis === 0 ? [a, b] : [b, a];
-    }
     const len = Math.hypot(dx, dy) || 1;
     return [dx / len, dy / len];
   };
-  const [sdx, sdy] = unit(0, 1, axes[1], startTrim > 0);
-  const [edx, edy] = unit(last - 1, last, axes[last], endTrim > 0);
+  const [sdx, sdy] = unit(0, 1, axes[1]);
+  const [edx, edy] = unit(last - 1, last, axes[last]);
   const sx = xs[0];
   const sy = ys[0];
   const ex = xs[last];
@@ -150,12 +133,7 @@ export function routePath(
     ys.splice(1, 0, ys[0] + sdy * leaves);
     axes.splice(1, 0, axes[1]);
     last++;
-    startLead = 1;
   }
-  if (arrives >= 1) endLead = last;
-  // The curves that leave the first node and reach the last, which head the way the ends do.
-  const firstCurve = startLead + 2;
-  const lastCurve = endLead < 0 ? last : last - 1;
 
   let d = `M${num(xs[0])},${num(ys[0])}`;
   let atX = xs[0];
@@ -173,10 +151,9 @@ export function routePath(
       const down = axes[i] === 0;
       const along = down ? y - atY : x - atX;
       const k = Math.abs(along) * ease(down ? x - atX : y - atY, along);
-      const flow = down ? [0, Math.sign(along)] : [Math.sign(along), 0];
-      const [ux, uy] = i === firstCurve ? [sdx, sdy] : flow;
-      const [vx, vy] = i === lastCurve ? [edx, edy] : flow;
-      d += `C${num(atX + ux * k)},${num(atY + uy * k)} ${num(x - vx * k)},${num(y - vy * k)} ${num(x)},${num(y)}`;
+      const ux = down ? 0 : Math.sign(along) * k;
+      const uy = down ? Math.sign(along) * k : 0;
+      d += `C${num(atX + ux)},${num(atY + uy)} ${num(x - ux)},${num(y - uy)} ${num(x)},${num(y)}`;
       atX = x;
       atY = y;
       continue;
