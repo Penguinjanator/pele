@@ -69,14 +69,21 @@ export function routePath(route: number[], curve: string | undefined, startTrim:
         d += `H${num(mx)}V${num(y)}H${num(x)}`;
       }
     } else if (axis === 0) {
-      const my = (py + y) / 2;
-      d += `C${num(px)},${num(my)} ${num(x)},${num(my)} ${num(x)},${num(y)}`;
+      const k = (y - py) * ease(x - px, y - py);
+      d += `C${num(px)},${num(py + k)} ${num(x)},${num(y - k)} ${num(x)},${num(y)}`;
     } else {
-      const mx = (px + x) / 2;
-      d += `C${num(mx)},${num(py)} ${num(mx)},${num(y)} ${num(x)},${num(y)}`;
+      const k = (x - px) * ease(y - py, x - px);
+      d += `C${num(px + k)},${num(py)} ${num(x - k)},${num(y)} ${num(x)},${num(y)}`;
     }
   }
   return { d, sx, sy, sdx: -sdx, sdy: -sdy, ex, ey, edx, edy };
+}
+
+// How far along the flow a curve's handles reach, as a share of the way it travels along it. Half
+// gives an even S. A curve that runs more than four times as far across as along turns sooner and
+// crosses in a straighter line, so that the edges sharing a gap fan out and do not run together.
+function ease(across: number, along: number): number {
+  return Math.max(0.12, Math.min(0.5, (2 * Math.abs(along)) / (Math.abs(across) || 1)));
 }
 
 export function markerTrim(type: string): number {

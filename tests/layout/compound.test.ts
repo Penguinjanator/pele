@@ -196,6 +196,24 @@ describe('compound layout', () => {
     for (const x of into) expect(Math.abs(x - back[0])).toBeGreaterThanOrEqual(8);
   });
 
+  it('gives the gap between two ranks more room when edges run far across it', () => {
+    const gapUnder = (children: number): number => {
+      const nodes = [cnode(100, 40)];
+      const edges: CEdge[] = [];
+      for (let i = 1; i <= children; i++) {
+        nodes.push(cnode(100, 40));
+        edges.push(edge(0, i));
+      }
+      nodes.forEach((node, i) => (node.seq = i));
+      compoundLayout(nodes, edges, 'TB', OPTIONS);
+      return nodes[1].y - nodes[0].y - 40;
+    };
+    expect(gapUnder(3)).toBeCloseTo(OPTIONS.rankSep, 5);
+    // Seven children reach 420 across from the middle; an eighth of that is more than the usual gap.
+    expect(gapUnder(7)).toBeCloseTo(420 / 8, 5);
+    expect(gapUnder(40)).toBeCloseTo(3 * OPTIONS.rankSep, 5);
+  });
+
   it('survives groups that contain each other', () => {
     const a = cnode(0, 0, 1);
     const b = cnode(0, 0, 0);

@@ -82,6 +82,11 @@ const MAX_DUMMIES = 20000;
 const PORT_PITCH = 16;
 const MIN_PITCH = 8;
 
+// A gap between ranks grows to keep the edges that cross it at least this steep, up to this many
+// times its usual height. Shallower than that, the edges of a wide rank are hard to tell apart.
+const MIN_SLOPE = 0.125;
+const MAX_GAP = 3;
+
 const enum End {
   Held,
   Leaves,
@@ -333,6 +338,12 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   };
   const startRanks = portOnly(0, Kind.StartPort) ? step : 0;
   const endRanks = portOnly(maxRank, Kind.EndPort) ? step : 0;
+  // The longest way across that any edge travels in the gap below each rank.
+  const run = new Float64Array(maxRank + 1);
+  for (let e = 0; e < segments; e++) {
+    const across = Math.abs(xs[EF[e]] + EFD[e] - xs[ET[e]] - ETD[e]);
+    if (across > run[RANK[EF[e]]]) run[RANK[EF[e]]] = across;
+  }
   const bandTop = new Float64Array(maxRank + 1);
   const bandBottom = new Float64Array(maxRank + 1);
   let y = 0;
@@ -341,9 +352,12 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     for (let i = layerStart[r]; i < layerStart[r + 1]; i++) if (H[order[i]] > h) h = H[order[i]];
     bandTop[r] = y;
     bandBottom[r] = y + h;
-    if (r === maxRank) y += h;
-    else if (r < startRanks || r >= maxRank - endRanks) y += h + opt.portSep / step;
-    else y += h + opt.rankSep / step;
+    if (r === maxRank) {
+      y += h;
+      continue;
+    }
+    const gap = (r < startRanks || r >= maxRank - endRanks ? opt.portSep : opt.rankSep) / step;
+    y += h + Math.max(gap, Math.min((MAX_GAP * opt.rankSep) / step, run[r] * MIN_SLOPE));
   }
   const height = y;
 
