@@ -1,7 +1,7 @@
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num, textStyle, type IconResolver } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
-import { RADIUS, classNames, seriesColor } from '../../svg/theme.js';
+import { CRITICAL, RADIUS, classNames } from '../../svg/theme.js';
 import { layoutLabel, type Label, type Span } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import { linkUrl, safeUrl } from '../../util/url.js';
@@ -18,12 +18,14 @@ const CARD_GAP = 8;
 const META_GAP = 4;
 const ICON_GAP = 6;
 
-// Mermaid names five priorities and gives Medium no color. Matching here ignores case.
+// Mermaid names five priorities and gives Medium no color. Matching here ignores case. The high
+// ones are marked in the critical color and the low ones in the muted one, the nearer to Medium
+// the fainter. They are not series colors, as a theme may put those in any order.
 const PRIORITY = new Map([
-  ['very high', 3],
-  ['high', 1],
-  ['low', 0],
-  ['very low', 4],
+  ['very high', `stroke="${CRITICAL}"`],
+  ['high', `stroke="${CRITICAL}" opacity="0.5"`],
+  ['low', 'stroke="var(--_m)" opacity="0.5"'],
+  ['very low', 'stroke="var(--_m)"'],
 ]);
 
 // Lays out text for a fixed width. A word too long for a line is broken between characters,
@@ -213,9 +215,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
       const color = PRIORITY.get(priority);
       let inner = `<rect width="${cardWidth}" height="${num(card.height)}" rx="${RADIUS}" fill="var(--_bg)" stroke="var(--_b)"/>`;
       if (color !== undefined) {
-        inner += `<path class="pele-priority" d="M2.5,5V${num(card.height - 5)}" fill="none" stroke="${seriesColor(
-          color
-        )}" stroke-width="3" stroke-linecap="round"/>`;
+        inner += `<path class="pele-priority" d="M2.5,5V${num(card.height - 5)}" fill="none" ${color} stroke-width="3" stroke-linecap="round"/>`;
       }
       inner += textBlock(card.label, CARD_PAD, CARD_PAD, ' class="pele-label"', icons);
       if (has(item.icon)) {

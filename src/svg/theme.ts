@@ -10,6 +10,9 @@ export const ROOT_STYLE =
 
 export const FONT_MONO = 'var(--_fm)';
 export const RADIUS = 'var(--pele-radius,4px)';
+// The color of what a diagram marks as critical. It is not one of the series colors, as a theme
+// may put those in any order.
+export const CRITICAL = 'var(--pele-critical,#e45756)';
 
 // A list of font names, quoted or not, and nothing that could end the declaration it is put in.
 const FAMILY = String.raw`(?:"[^"'\\\n<>{}();:@]*"|'[^"'\\\n<>{}();:@]*'|[\p{L}\p{N}_-][\p{L}\p{N}_ .-]*)`;

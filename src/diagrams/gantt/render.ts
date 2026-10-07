@@ -1,7 +1,7 @@
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
-import { RADIUS, resolveStyle } from '../../svg/theme.js';
+import { CRITICAL, RADIUS, resolveStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
@@ -14,7 +14,7 @@ import type { GanttTask } from './types.js';
 
 const WIDTH = 800;
 const MIN_PLOT = 240;
-const LABEL_GAP = 6;
+const LABEL_GAP = 8;
 const RE_BREAK = /<br\s*\/?>/gi;
 
 function setting(config: Config, key: string, min: number, max: number): number | undefined {
@@ -314,13 +314,12 @@ export function renderGantt(model: GanttDb, config: Config, options: RenderOptio
       classes += ' pele-unscheduled';
       textFill = ' fill="var(--_m)"';
     } else {
+      // A critical task takes the critical color in place of the accent. Done, it keeps the fill
+      // of finished work and only its border is in that color.
+      const color = task.crit ? CRITICAL : 'var(--_c)';
       const paint =
-        state === 'done'
-          ? 'fill="var(--_a)"'
-          : state === 'active'
-            ? 'fill="var(--_c)" fill-opacity="0.25"'
-            : 'fill="var(--_c)"';
-      const stroke = task.crit ? 'stroke="var(--_l)" stroke-width="2"' : `stroke="${state === 'done' ? 'var(--_b)' : 'var(--_c)'}"`;
+        state === 'done' ? 'fill="var(--_a)"' : state === 'active' ? `fill="${color}" fill-opacity="0.25"` : `fill="${color}"`;
+      const stroke = `stroke="${state === 'done' && !task.crit ? 'var(--_b)' : color}"`;
       if (task.milestone) {
         const cx = (bar.x0 + bar.x1) / 2;
         const r = barHeight / 2;

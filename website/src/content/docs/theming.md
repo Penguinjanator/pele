@@ -21,6 +21,7 @@ CSS variables and default values.
 | `--pele-surface-alt` | `#e6e6e6` | Subgraph fill |
 | `--pele-border` | `#8a8a8a` | Node and subgraph borders |
 | `--pele-accent` | `#5b7bd5` | Highlights |
+| `--pele-critical` | `#e45756` | Critical tasks in a Gantt chart, high priorities in a kanban |
 | `--pele-font` | Measured font | Label font. See [Fonts](#fonts) |
 | `--pele-font-mono` | Measured font | Monospace labels |
 | `--pele-title-weight` | `bold` | Diagram title |
@@ -57,7 +58,6 @@ Categories depend on the diagram type:
 | Mindmap | Branch from the root |
 | Timeline | Section, or time period when there are no sections |
 | User journey | Actor |
-| Kanban | Priority |
 | Cynefin | Domain |
 | Event modeling | Kind of step |
 | Agentflow | Kind of node |
@@ -78,6 +78,7 @@ Set the variables on the root `<svg>` or on any element that contains it. The ro
   --pele-surface-alt: #e6e4d9;
   --pele-border: #cecdc3;
   --pele-accent: #205ea6;
+  --pele-critical: #af3029;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -90,6 +91,7 @@ Set the variables on the root `<svg>` or on any element that contains it. The ro
     --pele-surface-alt: #282726;
     --pele-border: #403e3c;
     --pele-accent: #4385be;
+    --pele-critical: #d14d41;
   }
 }
 ```

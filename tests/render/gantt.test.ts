@@ -81,16 +81,19 @@ describe('gantt rendering', () => {
 
   it('distinguishes done, active, and critical tasks', () => {
     const { svg } = render(
-      'gantt\n dateFormat YYYY-MM-DD\n P :p, 2024-01-01, 9d\n A :active, a, 2024-01-01, 9d\n D :done, d, 2024-01-01, 9d\n C :crit, c, 2024-01-01, 9d\n CD :crit, done, cd, 2024-01-01, 9d',
+      'gantt\n dateFormat YYYY-MM-DD\n P :p, 2024-01-01, 9d\n A :active, a, 2024-01-01, 9d\n D :done, d, 2024-01-01, 9d\n C :crit, c, 2024-01-01, 9d\n CD :crit, done, cd, 2024-01-01, 9d\n CA :crit, active, ca, 2024-01-01, 9d',
       options
     );
     const paint = (id: string): string => new RegExp(`data-id="${id}"><rect [^>]*?(fill="[^/]*)/>`).exec(svg)![1];
-    const all = ['p', 'a', 'd', 'c', 'cd'].map(paint);
-    expect(new Set(all).size).toBe(5);
+    const all = ['p', 'a', 'd', 'c', 'cd', 'ca'].map(paint);
+    expect(new Set(all).size).toBe(6);
     expect(paint('p')).toBe('fill="var(--_c)" stroke="var(--_c)" style="rx:var(--_r)"');
     expect(paint('a')).toContain('fill-opacity="0.25"');
     expect(paint('d')).toContain('fill="var(--_a)"');
-    expect(paint('c')).toContain('stroke="var(--_l)" stroke-width="2"');
+    const red = 'var(--pele-critical,#e45756)';
+    expect(paint('c')).toBe(`fill="${red}" stroke="${red}" style="rx:var(--_r)"`);
+    expect(paint('cd')).toBe(`fill="var(--_a)" stroke="${red}" style="rx:var(--_r)"`);
+    expect(paint('ca')).toBe(`fill="${red}" fill-opacity="0.25" stroke="${red}" style="rx:var(--_r)"`);
     expect(svg).toContain('class="pele-task pele-done pele-crit"');
     expect(svg).toContain('class="pele-task pele-active"');
   });

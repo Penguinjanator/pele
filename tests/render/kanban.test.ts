@@ -87,8 +87,12 @@ describe('kanban rendering', () => {
       "    d[D]@{ priority: 'Low' }\n    e[E]@{ priority: 'Very Low' }\n    f[F]@{ priority: high }\n    g[G]@{ priority: whenever }";
     const { svg } = render(src, options);
     const edge = (id: string): string | undefined =>
-      new RegExp(`data-id="${id}"[^>]*><rect[^>]*/><path class="pele-priority"[^>]*stroke="var\\(--pele-series-(\\d)`).exec(svg)?.[1];
-    expect(['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(edge)).toEqual(['4', '2', undefined, '1', '5', '2', undefined]);
+      new RegExp(`data-id="${id}"[^>]*><rect[^>]*/><path class="pele-priority"[^>]*fill="none" (.*?) stroke-width`).exec(svg)?.[1];
+    const red = 'stroke="var(--pele-critical,#e45756)"';
+    const grey = 'stroke="var(--_m)"';
+    const faint = ' opacity="0.5"';
+    expect(['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(edge)).toEqual([red, red + faint, undefined, grey + faint, grey, red + faint, undefined]);
+    expect(svg).not.toContain('--pele-series-');
     expect(svg).toContain('class="pele-node pele-card pele-priority-very-high" data-id="a"');
     expect(svg).toContain('class="pele-node pele-card" data-id="g"');
   });
