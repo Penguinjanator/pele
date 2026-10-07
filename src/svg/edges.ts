@@ -20,8 +20,8 @@ export interface EdgePath {
 
 // The most a corner between two straight runs is rounded by.
 const CORNER = 12;
-// How far a curve runs straight before a marker at its end.
-const LEAD = 6;
+// How far from a node a curve starts to turn, where it has the room.
+const LEAD = 10;
 
 // Builds the path for a route of x, y, axis triples, trimming both ends to leave room for markers.
 // Where two straight runs meet at a right angle, the corner is rounded, except in a linear route.
@@ -77,18 +77,27 @@ export function routePath(route: number[], curve: string | undefined, startTrim:
   ys[0] += sdy * startTrim;
   xs[last] -= edx * endTrim;
   ys[last] -= edy * endTrim;
-  // A curve that ends in a marker runs straight for a little way first, where it has the room,
-  // so that the marker does not sit on the bend.
-  const lead = (i: number, j: number): number => (straight(Math.max(i, j)) ? 0 : Math.min(LEAD, (Math.abs(xs[j] - xs[i]) * Math.abs(edx) + Math.abs(ys[j] - ys[i]) * Math.abs(edy)) / 4));
-  if (endTrim > 0) {
-    const run = lead(last - 1, last);
-    if (run >= 2) {
-      xs.splice(last, 0, xs[last] - edx * run);
-      ys.splice(last, 0, ys[last] - edy * run);
-      axes.splice(last, 0, axes[last]);
-      count++;
-      last++;
-    }
+  // A curve that meets a node runs straight for a little way there: it leaves and arrives square
+  // to the node, and a marker does not sit on the bend. The straight part reaches as far from
+  // the node whatever marker the end carries, so that the curves on one side of a node all turn
+  // at one level, and none crosses another for having a larger marker.
+  const reach = (i: number, ux: number, uy: number): number =>
+    Math.min(LEAD, (Math.abs(xs[i] - xs[i - 1]) * Math.abs(ux) + Math.abs(ys[i] - ys[i - 1]) * Math.abs(uy) + (i === 1 ? startTrim : 0) + (i === last ? endTrim : 0)) / 5);
+  const leaving = straight(1) ? 0 : reach(1, sdx, sdy) - startTrim;
+  const arriving = straight(last) ? 0 : reach(last, edx, edy) - endTrim;
+  if (arriving >= 1) {
+    xs.splice(last, 0, xs[last] - edx * arriving);
+    ys.splice(last, 0, ys[last] - edy * arriving);
+    axes.splice(last, 0, axes[last]);
+    count++;
+    last++;
+  }
+  if (leaving >= 1) {
+    xs.splice(1, 0, xs[0] + sdx * leaving);
+    ys.splice(1, 0, ys[0] + sdy * leaving);
+    axes.splice(1, 0, axes[1]);
+    count++;
+    last++;
   }
 
   // How far each corner is rounded: up to all of a run that ends the route, and half of one
@@ -129,10 +138,12 @@ export function routePath(route: number[], curve: string | undefined, startTrim:
 }
 
 // How far along the flow a curve's handles reach, as a share of the way it travels along it. Half
-// gives an even S. A curve that runs more than four times as far across as along turns sooner and
-// crosses in a straighter line, so that the edges sharing a gap fan out and do not run together.
+// gives an even S. A curve that runs more than eight times as far across as along turns sooner
+// and crosses in a straighter line, so that the edges sharing a gap fan out and do not run
+// together. A gap grows to keep its curves from running that far across, so this is for the
+// widest only.
 function ease(across: number, along: number): number {
-  return Math.max(0.12, Math.min(0.5, (2 * Math.abs(along)) / (Math.abs(across) || 1)));
+  return Math.max(0.25, Math.min(0.5, (4 * Math.abs(along)) / (Math.abs(across) || 1)));
 }
 
 export function markerTrim(type: string): number {

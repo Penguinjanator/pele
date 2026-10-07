@@ -232,6 +232,15 @@ describe('flowchart rendering', () => {
     expect(xs).toEqual([...xs].sort((a, b) => a - b));
   });
 
+  it('labels an edge that runs back up nearer the node it starts from', () => {
+    const { svg } = render('flowchart TD\n  A[Start] --> B[Parse]\n  A --> C[Measure]\n  B --> E{Fits?}\n  C --> E\n  E -->|Yes| F[Draw]\n  E -->|No| A', options);
+    const y = (id: string): number => Number(svg.match(new RegExp(`data-id="${id}" transform="translate\\([-\\d.]+,([-\\d.]+)\\)`))![1]);
+    const label = svg.match(/class="pele-edge-label" data-id="L_E_A_0"><rect x="[-\d.]+" y="([-\d.]+)"/)!;
+    // Below the row in the middle, on the way out of the decision, and not up beside the start.
+    expect(Number(label[1])).toBeGreaterThan(y('B'));
+    expect(Number(label[1])).toBeLessThan(y('E'));
+  });
+
   it('keeps invisible links out of the drawing but in the layout', () => {
     const linked = render('flowchart LR\n  A ~~~ B', options);
     const apart = render('flowchart LR\n  A\n  B', options);

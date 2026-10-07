@@ -91,6 +91,8 @@ const MIN_PITCH = 8;
 // times its usual height. Shallower than that, the edges of a wide rank are hard to tell apart.
 const MIN_SLOPE = 0.125;
 const MAX_GAP = 3;
+// The part of a gap that curves do not turn in: they run straight for a little way at each end.
+const TURN_CLEAR = 20;
 
 // Tracks: the room kept clear between a rank and the nearest track, the room between two tracks
 // when the gap has to grow to hold them, and the most they spread to when it has room to spare.
@@ -219,8 +221,10 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
       const rb = RANK[b];
       let labelRank = -1;
       if (e.labelW > 0) {
+        // The label goes halfway along. Where that is a rank of nodes, it goes one rank nearer
+        // the node the edge starts from, which is the lower one when the edge runs against the flow.
         labelRank = ra + ((rb - ra) >> 1);
-        if (step === 2 && (labelRank & 1) === 0) labelRank--;
+        if (step === 2 && (labelRank & 1) === 0) labelRank += e.reversed ? 1 : -1;
       }
       let prev = a;
       if (rb - ra > 1) firstDummy[ei] = next;
@@ -418,7 +422,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   // The room under each rank. Curves need more where they run far across; tracks do not.
   const gapUnder = new Float64Array(maxRank + 1);
   for (let r = 0; r < maxRank; r++) {
-    gapUnder[r] = opt.tracks ? usual(r) : Math.max(usual(r), Math.min((MAX_GAP * opt.rankSep) / step, run[r] * MIN_SLOPE));
+    gapUnder[r] = opt.tracks ? usual(r) : Math.max(usual(r), Math.min((MAX_GAP * opt.rankSep) / step, TURN_CLEAR / step + run[r] * MIN_SLOPE));
   }
   // The rank that the pieces leaving each rank arrive at, past any that hold only bends. The
   // gap between the two grows to hold its tracks, or the levels of its curves.

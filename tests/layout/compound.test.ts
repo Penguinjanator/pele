@@ -230,8 +230,9 @@ describe('compound layout', () => {
       return nodes[1].y - nodes[0].y - 40;
     };
     expect(gapUnder(3)).toBeCloseTo(OPTIONS.rankSep, 5);
-    // Seven children reach 420 across from the middle; an eighth of that is more than the usual gap.
-    expect(gapUnder(7)).toBeCloseTo(420 / 8, 5);
+    // Seven children reach 420 across from the middle. The gap is an eighth of that, and the 20
+    // that curves run straight in at their ends.
+    expect(gapUnder(7)).toBeCloseTo(20 + 420 / 8, 5);
     expect(gapUnder(40)).toBeCloseTo(3 * OPTIONS.rankSep, 5);
   });
 
