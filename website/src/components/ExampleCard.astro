@@ -15,19 +15,23 @@ interface Props {
 
 const { source, prefix, label, code = false, note, ariaLabel = label } = Astro.props;
 
-// A chart that can draw itself narrower is also drawn for a phone, and CSS shows the one that
-// suits the screen. Its text then stays at full size where the wide drawing would be shrunk.
+// A chart that can draw itself narrower is drawn at three widths, and CSS shows the widest that
+// the card has room for. Its text then stays at full size where a wider drawing would be shrunk.
 const PHONE_WIDTH = 320;
+const TABLET_WIDTH = 480;
 // About the width a figure has in the docs column on a desktop screen.
 const COLUMN_WIDTH = 640;
 let wide: string | undefined;
+let medium: string | undefined;
 let narrow: string | undefined;
 let error: string | undefined;
 try {
   const drawn = render(source, { idPrefix: prefix, maxWidth: COLUMN_WIDTH, icons: siteIcon });
+  const tablet = render(source, { idPrefix: `${prefix}medium-`, maxWidth: TABLET_WIDTH, icons: siteIcon });
   const phone = render(source, { idPrefix: `${prefix}narrow-`, maxWidth: PHONE_WIDTH, icons: siteIcon });
   wide = drawn.svg;
-  narrow = phone.width < drawn.width ? phone.svg : undefined;
+  medium = tablet.width < drawn.width ? tablet.svg : undefined;
+  narrow = phone.width < Math.min(tablet.width, drawn.width) ? phone.svg : undefined;
 } catch (cause) {
   error = cause instanceof Error ? cause.message : String(cause);
 }
@@ -50,9 +54,13 @@ try {
     </a>}
   </figcaption>
   {wide
-    ? <div class="example-figure" data-pele-theme="dark" role="img" aria-label={ariaLabel}>
-        {narrow
-          ? <><div class="example-wide" set:html={wide} /><div class="example-narrow" set:html={narrow} /></>
+    ? <div class:list={['example-figure', medium && 'has-medium', narrow && 'has-narrow']} data-pele-theme="dark" role="img" aria-label={ariaLabel}>
+        {medium || narrow
+          ? <>
+              <div class="example-wide" set:html={wide} />
+              {medium && <div class="example-medium" set:html={medium} />}
+              {narrow && <div class="example-narrow" set:html={narrow} />}
+            </>
           : <Fragment set:html={wide} />}
       </div>
     : <pre class="example-error">{error}</pre>}

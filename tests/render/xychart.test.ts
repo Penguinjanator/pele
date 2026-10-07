@@ -74,13 +74,13 @@ describe('XY chart rendering', () => {
     expect(svg.match(/class="pele-legend-item"/g)?.length).toBe(2);
   });
 
-  it('draws series in the order they are declared', () => {
+  it('draws lines over bars, and colors each series by its place in the source', () => {
     const { svg } = render('xychart\n line [1, 2]\n bar [2, 1]\n line [3, 3]\n bar [1, 1]', options);
     expect([...svg.matchAll(/class="pele-series pele-(\w+)" fill="var\(--pele-series-(\d)/g)].map((m) => m[1] + m[2])).toEqual([
-      'line1',
       'bars2',
-      'line3',
       'bars4',
+      'line1',
+      'line3',
     ]);
   });
 
@@ -198,13 +198,14 @@ describe('XY chart rendering', () => {
     const chart = 'xychart\n x-axis [a, b, c]\n y-axis 0 --> 30\n bar [12, 2, 25]\n bar [7, 30, 1]';
     expect(render(chart, options).svg).not.toContain('pele-data-labels');
     const { svg } = render(configured('    showDataLabel: true', chart), options);
-    const groups = [...svg.matchAll(/<g class="pele-data-labels"[^>]*?(fill="var\(--_bg\)")?>(.*?)<\/g>/g)];
+    const groups = [...svg.matchAll(/<g class="pele-data-labels"[^>]*>(.*?)<\/g>/g)];
     // Each series shows its own values; Mermaid repeats those of the first series.
-    expect(groups.flatMap((g) => texts(g[2])).sort()).toEqual(['1', '12', '2', '25', '30', '7']);
-    expect(texts(groups.find((g) => g[1])![2])).toContain('25');
-    const out = render(configured('    showDataLabel: true\n    showDataLabelOutsideBar: true', chart), options).svg;
-    expect(out).not.toContain('fill="var(--_bg)"');
-    expect(texts(out)).toContain('25');
+    expect(groups.flatMap((g) => texts(g[1])).sort()).toEqual(['1', '12', '2', '25', '30', '7']);
+    // They are written past the end of the bars in the text color, whichever way Mermaid's setting is.
+    expect(svg).not.toContain('fill="var(--_bg)"');
+    for (const outside of ['true', 'false']) {
+      expect(render(configured(`    showDataLabel: true\n    showDataLabelOutsideBar: ${outside}`, chart), options).svg).toBe(svg);
+    }
   });
 
   it('thins out category labels that would run into each other', () => {

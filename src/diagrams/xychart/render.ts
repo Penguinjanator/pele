@@ -69,8 +69,9 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
   // A narrower chart is not as much shorter, so that the plot keeps room for its marks.
   const height = Math.round(dimension(chart.height, 500) * Math.max(0.6, width / natural));
   const horizontal = (model.orientation ?? chart.chartOrientation) === 'horizontal';
+  // The value of a bar is always written past its end, which is what showDataLabelOutsideBar asks
+  // for in Mermaid. Inside, whether it fits changes from bar to bar and with the width of the chart.
   const showValues = on(chart, 'showDataLabel', false);
-  const valuesOutside = showValues && on(chart, 'showDataLabelOutsideBar', false);
   const x = model.xAxis;
   const plots = model.plots;
   const text = (raw: string | undefined, fontSize: number, max: number): Label =>
@@ -198,7 +199,7 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
   let valueWidth = 0;
   for (const plot of plots) {
     for (const label of plot.pointLabels ?? []) pointLabelWidth = Math.max(pointLabelWidth, measurer.width(label, tiny, 0));
-    if (valuesOutside && horizontal && plot.type === 'bar') {
+    if (showValues && horizontal && plot.type === 'bar') {
       for (const [, value] of plot.data) valueWidth = Math.max(valueWidth, measurer.width(String(finite(value) ?? ''), tiny, 0));
     }
   }
@@ -260,8 +261,10 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
   const base = clamp(scale(0));
   // Bars that go both ways get a line to stand on.
   if (bars > 0 && base > 0 && base < 1) axis += rule(base);
+  // Lines are drawn over the bars wherever they were declared, as a bar would hide part of one
+  // under it. A series keeps the color of its place in the source.
   let series = '';
-  let inside = '';
+  let lines = '';
   let outside = '';
   let pointLabels = '';
   let bar = 0;
@@ -290,24 +293,18 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
         const w = measurer.width(label, tiny, 0);
         // Towards the end of the bar: 1 when it runs up or right from the baseline, -1 the other way.
         const out = v >= base ? 1 : -1;
-        let fits = !valuesOutside;
         let tx = bx + bw / 2;
         let ty = by + bh / 2;
         let anchor = 'middle';
         if (horizontal) {
           if (bh < tiny) continue;
-          fits &&= w + 12 <= bw;
-          const side = fits ? -out : out;
-          tx = (out > 0 ? bx + bw : bx) + side * 6;
-          anchor = side > 0 ? 'start' : 'end';
+          tx = (out > 0 ? bx + bw : bx) + out * 6;
+          anchor = out > 0 ? 'start' : 'end';
         } else {
-          fits &&= w + 6 <= bw && tinyHeight + 4 <= bh;
-          if (!fits && w + 2 > span / bars) continue;
-          ty = (out > 0 ? by : by + bh) + (fits ? out : -out) * (tinyHeight / 2 + 2);
+          if (w + 2 > span / bars) continue;
+          ty = (out > 0 ? by : by + bh) - out * (tinyHeight / 2 + 2);
         }
-        const written = `<text x="${num(tx)}" y="${num(ty + tiny * 0.35)}" text-anchor="${anchor}">${label}</text>`;
-        if (fits) inside += written;
-        else outside += written;
+        outside += `<text x="${num(tx)}" y="${num(ty + tiny * 0.35)}" text-anchor="${anchor}">${label}</text>`;
       }
       series += `<g class="pele-series pele-bars"${id} fill="${color}">${rects}</g>`;
       return;
@@ -367,7 +364,7 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
           : aligned(label, Math.max(Math.min(cx, right - half), left + half), cy - 6 - label.height / 2, 'middle');
       }
     }
-    series +=
+    lines +=
       `<g class="pele-series pele-line"${id} fill="${color}">` +
       (d ? `<path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` : '') +
       dots +
@@ -403,11 +400,10 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
   const content =
     labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
     (grid ? `<path class="pele-grid" d="${grid}" stroke="var(--_a)"/>` : '') +
-    `<g class="pele-plot">${series}</g>` +
+    `<g class="pele-plot">${series}${lines}</g>` +
     (axis ? `<path class="pele-axis" d="${axis}" fill="none" stroke="var(--_b)"/>` : '') +
     (labels ? `<g class="pele-axis-labels" font-size="${small}" fill="var(--_m)">${labels}</g>` : '') +
     (titles ? `<g class="pele-axis-titles" font-size="${small}">${titles}</g>` : '') +
-    (inside ? `<g class="pele-data-labels" font-size="${tiny}" fill="var(--_bg)">${inside}</g>` : '') +
     (outside ? `<g class="pele-data-labels" font-size="${tiny}">${outside}</g>` : '') +
     (pointLabels ? `<g class="pele-point-labels" font-size="${tiny}">${pointLabels}</g>` : '') +
     (legendOut ? `<g class="pele-legend" font-size="${small}">${legendOut}</g>` : '');

@@ -31,6 +31,7 @@
   // A track that can shrink, so a wide diagram scales down instead of widening the card.
   grid-template-columns: minmax(0, 1fr);
   place-items: center;
+  container: example / inline-size;
   min-height: 120px;
   margin-top: 18px;
   color: var(--muted);
@@ -49,16 +50,24 @@
 
 // A box of its own for each drawing, as wide as the figure, so that its zoom has a width to
 // follow. The drawing is centered in it and shrinks as a lone one does.
-.example-wide, .example-narrow {
+.example-wide, .example-medium, .example-narrow {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   place-items: center;
   width: 100%;
 }
-.example-narrow { display: none; }
+.example-medium, .example-narrow { display: none; }
 
-@media (max-width: 520px) {
-  .example-wide { display: none; }
+// The drawings are 640, 480 and 320 wide. Each gives way to the next where it would be shrunk by
+// more than a little, going by the width of the figure and not of the screen: the docs column
+// is narrow on a small desktop as well as on a phone.
+@container example (max-width: 599px) {
+  .has-medium > .example-wide { display: none; }
+  .example-medium { display: grid; }
+}
+
+@container example (max-width: 439px) {
+  .has-narrow > .example-wide, .has-narrow > .example-medium { display: none; }
   .example-narrow { display: grid; }
 }
 
