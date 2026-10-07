@@ -25,10 +25,11 @@ const drawings = (source: string, prefix: string) => {
   const narrow = render(source, { idPrefix: `${prefix}narrow-`, maxWidth: PHONE_WIDTH, icons: siteIcon });
   return { wide: wide.svg, narrow: narrow.width < wide.width ? narrow.svg : undefined };
 };
-// The first line that is not front matter, a directive, or a comment: the diagram's own opening line.
+// The first line that is not front matter, a directive, or a comment: the diagram's own opening
+// line. A pie chart may carry its title there, which is the chart's content and not its opening.
 const opening = (source: string): string =>
-  source.replace(/^---\n[\s\S]*?\n---\n/, '').split('\n').map((line) => line.trim())
-    .find((line) => line !== '' && !line.startsWith('%%')) ?? '';
+  (source.replace(/^---\n[\s\S]*?\n---\n/, '').split('\n').map((line) => line.trim())
+    .find((line) => line !== '' && !line.startsWith('%%')) ?? '').replace(/\s+title\s.*$/, '');
 ---
 
 <DocsLayout current="examples" title={examplesTitle} description={examplesDescription} headings={headings} markdownPath="/examples.md">
