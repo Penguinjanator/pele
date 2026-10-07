@@ -16,6 +16,9 @@ export interface LNode {
   pin: number;
   // How much of the side that edges meet may be shared out between them; 0 keeps them all at its middle.
   span: number;
+  // The side has a middle that its ends keep to, such as the tip of a diamond: they are not moved
+  // along it to let an edge run straight.
+  centered: boolean;
   x: number;
   y: number;
   rank: number;
@@ -51,7 +54,7 @@ export interface LayeredResult {
 }
 
 export function lnode(w: number, h: number, kind: Kind = Kind.Node): LNode {
-  return { w, h, kind, pin: 0, span: 0, x: 0, y: 0, rank: 0 };
+  return { w, h, kind, pin: 0, span: 0, centered: false, x: 0, y: 0, rank: 0 };
 }
 
 export function ledge(tail: number, head: number, minlen = 1, labelW = 0, labelH = 0): LEdge {
@@ -86,6 +89,15 @@ const MIN_PITCH = 8;
 // times its usual height. Shallower than that, the edges of a wide rank are hard to tell apart.
 const MIN_SLOPE = 0.125;
 const MAX_GAP = 3;
+
+// Curves that would run close beside each other across a gap turn at different levels instead:
+// how near both their ends must be for that, and the room between two levels. The gap grows by
+// that much for each level, so that every curve still turns in the height it would have had.
+const LEVEL_NEAR = 40;
+const LEVEL_PITCH = 16;
+// Past this many edges across one gap, none are given levels: weighing every pair of edges
+// against each other would take too long.
+const MAX_WEIGHED = 400;
 
 const enum End {
   Held,
@@ -305,15 +317,20 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   };
   setPositions();
 
-  const g: Graph = { n, real, maxRank, W, KIND, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos, offsets };
+  const g: Graph = { n, real, maxRank, W, KIND, RANK, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos, offsets };
 
   if (segments > 0 && maxRank > 0) {
     reduceCrossings(g, nodes);
     setPositions();
   }
 
+  if (EFK && ETK) spread(g, nodes, EFK, ETK);
+
+  const xs = position(g, opt);
+
+  const empty = emptyRanks(g);
   if (EFK && ETK) {
-    spread(g, nodes, EFK, ETK);
+    settle(g, nodes, xs, EFK, ETK, empty);
     for (let ei = 0; ei < m; ei++) {
       if (direct[ei]) continue;
       const e = edges[ei];
@@ -324,7 +341,51 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     }
   }
 
-  const xs = position(g, opt);
+  // A rank that holds nothing but the bends of edges is only there because some other edge has a
+  // label or a twin. Its bends move onto the straight line between the ends of their edges, and
+  // one that gets there is left out of the route, so that the edge is drawn as a single curve.
+  const onLine = new Uint8Array(n);
+  if (empty) straighten(g, xs, empty, firstDummy, span, opt.edgeSep, onLine);
+  pastLabels(g, xs, firstDummy, span, opt.edgeSep, onLine);
+  // An edge is cut where it passes a rank that holds something, and each piece crosses one gap.
+  // Where edges spread along their nodes, the pieces that run close together in a gap get tracks
+  // of their own, as the levels that their curves turn at. `pieceStart` gives every edge's run
+  // of pieces.
+  const pieceStart = new Int32Array(m + 1);
+  const pieces: Pieces | undefined = EFK ? { from: [], to: [], rank: [], lower: [], track: [], levels: [] } : undefined;
+  const trackCount = new Int32Array(maxRank + 1);
+  if (pieces) {
+    for (let ei = 0; ei < m; ei++) {
+      pieceStart[ei] = pieces.from.length;
+      if (direct[ei]) continue;
+      const d0 = firstDummy[ei];
+      // An edge that keeps a bend to stay clear of its twin is drawn through the bend, as it is.
+      let twin = false;
+      for (let d = d0, end = d0 < 0 ? d0 : d0 + span[ei] - 1; d < end; d++) {
+        // So is one that has a bend left out in a rank of labels: its curve crosses that rank.
+        const bare = empty !== undefined && empty[RANK[d]] === 1;
+        if (bare !== (onLine[d] === 1)) twin = true;
+      }
+      if (twin) continue;
+      let x = xs[EF[firstSeg[ei]]] + EFD[firstSeg[ei]];
+      let rank = RANK[EF[firstSeg[ei]]];
+      for (let d = d0, end = d0 < 0 ? d0 : d0 + span[ei] - 1; d < end; d++) {
+        if (empty && empty[RANK[d]]) continue;
+        pieces.from.push(x);
+        pieces.to.push(xs[d]);
+        pieces.rank.push(rank);
+        pieces.lower.push(d);
+        x = xs[d];
+        rank = RANK[d];
+      }
+      pieces.from.push(x);
+      pieces.to.push(xs[ET[lastSeg[ei]]] + ETD[lastSeg[ei]]);
+      pieces.rank.push(rank);
+      pieces.lower.push(-1);
+    }
+    pieceStart[m] = pieces.from.length;
+    assignTracks(pieces, trackCount, LEVEL_NEAR);
+  }
 
   // Ranks that hold only border ports or their pass-through dummies need little room of their own.
   const portOnly = (r: number, kind: Kind): boolean => {
@@ -346,18 +407,33 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   }
   const bandTop = new Float64Array(maxRank + 1);
   const bandBottom = new Float64Array(maxRank + 1);
+  const usual = (r: number): number => (r < startRanks || r >= maxRank - endRanks ? opt.portSep : opt.rankSep) / step;
+  // The room under each rank, which curves need more of where they run far across.
+  const gapUnder = new Float64Array(maxRank + 1);
+  for (let r = 0; r < maxRank; r++) {
+    gapUnder[r] = Math.max(usual(r), Math.min((MAX_GAP * opt.rankSep) / step, run[r] * MIN_SLOPE));
+  }
+  // The rank that the pieces leaving each rank arrive at, past any that hold only bends. The
+  // gap between the two grows to hold the levels of its curves.
+  const below = new Int32Array(maxRank + 1);
+  if (pieces) {
+    for (let r = 0; r < maxRank; r++) {
+      if (empty && empty[r]) continue;
+      let next = r + 1;
+      let room = gapUnder[r];
+      while (next < maxRank && empty && empty[next]) room += gapUnder[next++];
+      below[r] = next;
+      const count = trackCount[r];
+      gapUnder[r] += Math.max(0, count - 1) * LEVEL_PITCH;
+    }
+  }
   let y = 0;
   for (let r = 0; r <= maxRank; r++) {
     let h = 0;
     for (let i = layerStart[r]; i < layerStart[r + 1]; i++) if (H[order[i]] > h) h = H[order[i]];
     bandTop[r] = y;
     bandBottom[r] = y + h;
-    if (r === maxRank) {
-      y += h;
-      continue;
-    }
-    const gap = (r < startRanks || r >= maxRank - endRanks ? opt.portSep : opt.rankSep) / step;
-    y += h + Math.max(gap, Math.min((MAX_GAP * opt.rankSep) / step, run[r] * MIN_SLOPE));
+    y += h + gapUnder[r];
   }
   const height = y;
 
@@ -368,10 +444,24 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     if (xs[i] - half < minX) minX = xs[i] - half;
     if (xs[i] + half > maxX) maxX = xs[i] + half;
   }
+  // Where edges spread along their nodes, a rank whose nodes only send edges on stands on one
+  // line, and a rank whose nodes only receive them hangs from one, so that the edges of nodes of
+  // different heights set out from, or arrive at, the same level. In any other rank the nodes
+  // are centered.
+  const arrives = new Uint8Array(maxRank + 1);
+  const leaves = new Uint8Array(maxRank + 1);
+  for (let i = 0; i < real; i++) {
+    if (KIND[i] !== Kind.Node || !EFK) continue;
+    if (predStart[i + 1] > predStart[i]) arrives[RANK[i]] = 1;
+    if (succStart[i + 1] > succStart[i]) leaves[RANK[i]] = 1;
+  }
   for (let i = 0; i < real; i++) {
     const node = nodes[i];
+    const r = node.rank;
     node.x = xs[i] - minX;
-    node.y = (bandTop[node.rank] + bandBottom[node.rank]) / 2;
+    if (KIND[i] === Kind.Node && leaves[r] && !arrives[r]) node.y = bandBottom[r] - node.h / 2;
+    else if (KIND[i] === Kind.Node && arrives[r] && !leaves[r]) node.y = bandTop[r] + node.h / 2;
+    else node.y = (bandTop[r] + bandBottom[r]) / 2;
   }
 
   for (let ei = 0; ei < m; ei++) {
@@ -380,8 +470,29 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     const last = nodes[e.reversed ? e.tail : e.head];
     const pts: number[] = [first.x + (e.reversed ? e.headDx : e.tailDx), first.y + first.h / 2];
     const d0 = firstDummy[ei];
-    if (d0 >= 0) {
+    if (pieces && pieceStart[ei + 1] > pieceStart[ei]) {
+      for (let k = pieceStart[ei]; k < pieceStart[ei + 1]; k++) {
+        if (pieces.levels[k] > 1) {
+          // The curve runs straight down to its level, turns, and runs straight on from there.
+          const r = pieces.rank[k];
+          const count = pieces.levels[k];
+          const top = bandBottom[r];
+          const bottom = bandTop[below[r]];
+          const turnFrom = top + pieces.track[k] * LEVEL_PITCH;
+          const turnTo = bottom - (count - 1 - pieces.track[k]) * LEVEL_PITCH;
+          const d = pieces.lower[k];
+          const reaches = d < 0 ? last.y - last.h / 2 : bandTop[RANK[d]];
+          if (turnFrom > pts[pts.length - 1] + 0.5) pts.push(pieces.from[k] - minX, turnFrom);
+          if (turnTo < reaches - 0.5) pts.push(pieces.to[k] - minX, turnTo);
+        }
+        const d = pieces.lower[k];
+        if (d < 0) continue;
+        pts.push(xs[d] - minX, bandTop[RANK[d]]);
+        if (bandBottom[RANK[d]] > bandTop[RANK[d]]) pts.push(xs[d] - minX, bandBottom[RANK[d]]);
+      }
+    } else if (d0 >= 0) {
       for (let d = d0, end = d0 + span[ei] - 1; d < end; d++) {
+        if (onLine[d]) continue;
         const x = xs[d] - minX;
         const top = bandTop[RANK[d]];
         const bottom = bandBottom[RANK[d]];
@@ -414,12 +525,27 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   return { width: maxX - minX, height };
 }
 
+// The pieces of edges that each cross one gap: where they leave the rank above and reach the
+// one below, the rank above, the bend they end at (or -1 at the edge's last node), and the
+// track they run across on (or -1 when they run straight down). Where only the pieces that run
+// close together are told apart, `levels` is how many tracks such a group takes, and each
+// one's track counts from the group's first.
+interface Pieces {
+  from: number[];
+  to: number[];
+  rank: number[];
+  lower: number[];
+  track: number[];
+  levels: number[];
+}
+
 interface Graph {
   n: number;
   real: number;
   maxRank: number;
   W: Float64Array;
   KIND: Uint8Array;
+  RANK: Int32Array;
   // Segment endpoints, and where each segment attaches on them.
   EF: Int32Array;
   ET: Int32Array;
@@ -577,39 +703,412 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
   for (let i = 0; i < n; i++) nodes[i].rank = r[i] - min;
 }
 
-// Gives the edges that meet one side of a node places of their own along it, in the order of the
-// nodes at their other ends, so that no two cross. When there is too little room for one each,
-// neighbours that run the same way share a place, which still keeps an arrowhead apart from an
-// edge that leaves beside it.
+// The ends of edges that may move along one side of a node (0 the side its edges arrive at, 1 the
+// other), in the order of the nodes at their other ends, so that no two cross. `room` receives
+// the least distance between each end and the one before it, and the result is their sum.
+// When there is too little room for a full pitch between each pair, the edges that leave side by
+// side move closer together, since they have no arrowheads to keep apart. With less room still,
+// neighbours that run the same way share a place, which keeps an arrowhead apart from an edge
+// that leaves beside it.
+function sideEnds(g: Graph, v: number, side: number, span: number, kinds: Uint8Array, ids: number[], room: number[]): number {
+  const start = side === 0 ? g.predStart : g.succStart;
+  const list = side === 0 ? g.predE : g.succE;
+  const other = side === 0 ? g.EF : g.ET;
+  const pos = g.pos;
+  ids.length = 0;
+  for (let k = start[v]; k < start[v + 1]; k++) if (kinds[list[k]] !== End.Held) ids.push(list[k]);
+  if (ids.length < 2) return 0;
+  ids.sort((a, b) => pos[other[a]] - pos[other[b]] || a - b);
+  const fill = (share: (leaves: boolean, same: boolean) => number): number => {
+    let total = 0;
+    room.length = ids.length;
+    room[0] = 0;
+    for (let k = 1; k < ids.length; k++) {
+      const same = kinds[ids[k]] === kinds[ids[k - 1]];
+      room[k] = share(same && kinds[ids[k]] === End.Leaves, same);
+      total += room[k];
+    }
+    return total;
+  };
+  let total = fill(() => 1);
+  if (span / total < MIN_PITCH) total = fill((leaves) => (leaves ? 0.5 : 1));
+  if (span / total < MIN_PITCH) total = fill((_leaves, same) => (same ? 0 : 1));
+  if (total === 0) return 0;
+  const pitch = Math.min(PORT_PITCH, span / total);
+  for (let k = 1; k < ids.length; k++) room[k] *= pitch;
+  return total * pitch;
+}
+
+// Gives the edges that meet one side of a node places of their own along it, around its middle.
 function spread(g: Graph, nodes: LNode[], EFK: Uint8Array, ETK: Uint8Array): void {
-  const { real, W, EF, ET, EFD, ETD, succStart, succE, predStart, predE, pos } = g;
+  const { real, W, EFD, ETD } = g;
   const ids: number[] = [];
+  const room: number[] = [];
   for (let v = 0; v < real; v++) {
     const span = Math.min(nodes[v].span, W[v]);
     if (span <= 0 || nodes[v].kind !== Kind.Node) continue;
     for (let side = 0; side < 2; side++) {
-      const start = side === 0 ? predStart : succStart;
-      const list = side === 0 ? predE : succE;
-      const kind = side === 0 ? ETK : EFK;
-      const other = side === 0 ? EF : ET;
+      const total = sideEnds(g, v, side, span, side === 0 ? ETK : EFK, ids, room);
+      if (total === 0) continue;
       const dx = side === 0 ? ETD : EFD;
-      ids.length = 0;
-      for (let k = start[v]; k < start[v + 1]; k++) if (kind[list[k]] !== End.Held) ids.push(list[k]);
-      if (ids.length < 2) continue;
-      ids.sort((a, b) => pos[other[a]] - pos[other[b]] || a - b);
-      let places = ids.length;
-      const shared = span / (places - 1) < MIN_PITCH;
-      if (shared) {
-        places = 1;
-        for (let k = 1; k < ids.length; k++) if (kind[ids[k]] !== kind[ids[k - 1]]) places++;
-        if (places === 1) continue;
-      }
-      const pitch = Math.min(PORT_PITCH, span / (places - 1));
-      let place = 0;
+      let at = -total / 2;
       for (let k = 0; k < ids.length; k++) {
-        if (k > 0 && (!shared || kind[ids[k]] !== kind[ids[k - 1]])) place++;
-        dx[ids[k]] = (place - (places - 1) / 2) * pitch;
+        at += room[k];
+        dx[ids[k]] = at;
       }
+    }
+  }
+}
+
+// Once the nodes have their places, moves an end along its side when that lets its edge run
+// straight: when the point the edge runs to, or some part of the side it runs to, is in line
+// with the end's own side. The other ends stay around the middle of their side. On a group,
+// the ends keep clear of the points where other edges pass through its border.
+function settle(g: Graph, nodes: LNode[], xs: Float64Array, EFK: Uint8Array, ETK: Uint8Array, empty: Uint8Array | undefined): void {
+  const { real, W, KIND, RANK, EF, ET, EFD, ETD, succStart, succE, predStart, predE, pos } = g;
+  const ids: number[] = [];
+  const room: number[] = [];
+  const all: number[] = [];
+  const sum: number[] = [];
+  const count: number[] = [];
+  // Where the end of segment `e` on node `v` should be, from the middle of its side. The edge is
+  // followed up from the segment (side 0) or down, past the bends in ranks that hold nothing
+  // else, to where it next comes to a point that is held in place or to another node's side.
+  const wanted = (e: number, side: number, v: number, span: number, again: boolean): number => {
+    if (nodes[v].centered) return 0;
+    for (let hops = 0; hops < 100000; hops++) {
+      const u = side === 0 ? EF[e] : ET[e];
+      if (!empty || KIND[u] !== Kind.Dummy || !empty[RANK[u]]) break;
+      e = side === 0 ? predE[predStart[u]] : succE[succStart[u]];
+    }
+    const u = side === 0 ? EF[e] : ET[e];
+    const point = side === 0 ? xs[u] + EFD[e] : xs[u] + ETD[e];
+    // Once the other end has its place, this one comes into line with it if it can.
+    if (again && Math.abs(point - xs[v]) <= span / 2) return point - xs[v];
+    // The part of the other side that its end may move along, if it may move.
+    let middle = point;
+    let width = 0;
+    if (u < real && nodes[u].kind === Kind.Node && (side === 0 ? EFK : ETK)[e] !== End.Held && !nodes[u].centered) {
+      width = Math.max(0, Math.min(nodes[u].span, W[u]));
+      if (width > 0) middle = xs[u];
+    }
+    const lo = Math.max(xs[v] - span / 2, middle - width / 2);
+    const hi = Math.min(xs[v] + span / 2, middle + width / 2);
+    if (lo > hi) return 0;
+    // Both ends settle on one place in the part the two sides share: nearer the middle of the narrower.
+    const place = (xs[v] * width + middle * span) / (width + span);
+    return Math.max(lo, Math.min(hi, place)) - xs[v];
+  };
+  for (let pass = 0; pass < 2; pass++) {
+    for (let v = 0; v < real; v++) {
+      const span = Math.min(nodes[v].span, W[v]);
+      if (span <= 0 || nodes[v].kind !== Kind.Node) continue;
+      for (let side = 0; side < 2; side++) {
+        const kinds = side === 0 ? ETK : EFK;
+        const dx = side === 0 ? ETD : EFD;
+        const other = side === 0 ? EF : ET;
+        const start = side === 0 ? predStart : succStart;
+        const list = side === 0 ? predE : succE;
+        sideEnds(g, v, side, span, kinds, ids, room);
+        if (ids.length === 0) continue;
+        if (ids.length === 1) room[0] = 0;
+        // Every end on the side in order, the held ones among them, which divide the rest into runs.
+        all.length = 0;
+        for (let k = start[v]; k < start[v + 1]; k++) all.push(list[k]);
+        all.sort((a, b) => pos[other[a]] - pos[other[b]] || a - b);
+        let k = 0;
+        let lo = -span / 2;
+        for (let i = 0; i <= all.length; i++) {
+          const held = i < all.length && kinds[all[i]] === End.Held;
+          if (i < all.length && !held) continue;
+          // The run of free ends before this point is ids[k..], as many as were passed since the last held end.
+          let size = 0;
+          for (let j = i - 1; j >= 0 && kinds[all[j]] !== End.Held; j--) size++;
+          const hi = held ? dx[all[i]] - PORT_PITCH : span / 2;
+          if (size > 0) {
+            // The places nearest the wanted ones that keep the order and the room between
+            // neighbours: an isotonic fit, by pooling neighbours that would otherwise be too close.
+            sum.length = 0;
+            count.length = 0;
+            let before = 0;
+            for (let j = 0; j < size; j++) {
+              if (j > 0) before += room[k + j];
+              sum.push(wanted(ids[k + j], side, v, span, pass > 0) - before);
+              count.push(1);
+              // Ends that share a place for want of room stay together.
+              let together = j > 0 && room[k + j] === 0;
+              while (sum.length > 1 && (together || sum[sum.length - 2] / count[count.length - 2] > sum[sum.length - 1] / count[count.length - 1])) {
+                together = false;
+                const top = sum.pop()!;
+                const pooled = count.pop()!;
+                sum[sum.length - 1] += top;
+                count[count.length - 1] += pooled;
+              }
+            }
+            const total = before;
+            let j = 0;
+            before = 0;
+            for (let b = 0; b < sum.length; b++) {
+              // With too little room between two held ends, the run sits in the middle of what there is.
+              const level = hi - total < lo ? (lo + hi - total) / 2 : Math.max(lo, Math.min(hi - total, sum[b] / count[b]));
+              for (let c = 0; c < count[b]; c++, j++) {
+                if (j > 0) before += room[k + j];
+                dx[ids[k + j]] = level + before;
+              }
+            }
+            k += size;
+          }
+          if (held) lo = dx[all[i]] + PORT_PITCH;
+        }
+      }
+    }
+  }
+}
+
+// Marks the ranks that hold nothing but the bends of edges, if there are any.
+function emptyRanks(g: Graph): Uint8Array | undefined {
+  const { maxRank, KIND, layerStart, order } = g;
+  const empty = new Uint8Array(maxRank + 1);
+  let any = false;
+  for (let r = 1; r < maxRank; r++) {
+    let only = layerStart[r + 1] > layerStart[r];
+    for (let i = layerStart[r]; only && i < layerStart[r + 1]; i++) if (KIND[order[i]] !== Kind.Dummy) only = false;
+    if (only) {
+      empty[r] = 1;
+      any = true;
+    }
+  }
+  return any ? empty : undefined;
+}
+
+// Gives the pieces that run close together across a gap tracks of their own, and counts the
+// most that any group of them takes in each gap. Two pieces are kept apart when both their ends
+// are within `near` of each other, unless they leave from or arrive at the same point, as the
+// branches of a tree do. Which of two goes above the other is whichever makes them cross less.
+// Each group of such pieces counts its tracks from its own first.
+function assignTracks(pieces: Pieces, trackCount: Int32Array, near: number): void {
+  const { from, to, rank, track, levels } = pieces;
+  const total = from.length;
+  const byRank = new Map<number, number[]>();
+  for (let k = 0; k < total; k++) {
+    track.push(-1);
+    levels.push(1);
+    if (Math.abs(from[k] - to[k]) < 0.5) continue;
+    const list = byRank.get(rank[k]);
+    if (list) list.push(k);
+    else byRank.set(rank[k], [k]);
+  }
+  const lo = (k: number): number => Math.min(from[k], to[k]);
+  const hi = (k: number): number => Math.max(from[k], to[k]);
+  const within = (x: number, k: number): number => (x >= lo(k) - 0.5 && x <= hi(k) + 0.5 ? 1 : 0);
+  const mates = (a: number, b: number): boolean => Math.abs(from[a] - from[b]) < 0.5 || Math.abs(to[a] - to[b]) < 0.5;
+  const overlap = (a: number, b: number): boolean => lo(a) < hi(b) - 0.5 && lo(b) < hi(a) - 0.5;
+  // Whether a and b need tracks of their own.
+  const clash = (a: number, b: number): boolean =>
+    overlap(a, b) && !mates(a, b) && Math.abs(from[a] - from[b]) <= near && Math.abs(to[a] - to[b]) <= near;
+  // How often a and b cross with a on the higher track: a's way down through b, and b's way down to itself through a.
+  const crossings = (a: number, b: number): number => within(to[a], b) + within(from[b], a);
+
+  for (const [r, list] of byRank) {
+    // A plain order to start from, and to keep where nothing says otherwise: the pieces that
+    // reach furthest go first, so that those of one fan nest.
+    list.sort((a, b) => hi(b) - lo(b) - (hi(a) - lo(a)) || lo(a) - lo(b) || a - b);
+    const count = list.length;
+    if (count > MAX_WEIGHED) continue;
+    const above: number[][] = [];
+    // The group each piece is in, with those it clashes with, found by joining them up.
+    const group = list.map((_, i) => i);
+    const find = (i: number): number => {
+      while (group[i] !== i) i = group[i] = group[group[i]];
+      return i;
+    };
+    let sequence = list;
+    if (count <= MAX_WEIGHED) {
+      // before[j] lists the pieces that should be above list[j]. The order follows as many of
+      // these as it can: a piece is placed once all that should be above it are, and when
+      // none is free, the one with the fewest still waiting.
+      const waiting = new Int32Array(count);
+      const after: number[][] = [];
+      for (let i = 0; i < count; i++) {
+        above.push([]);
+        after.push([]);
+      }
+      for (let i = 0; i < count; i++) {
+        for (let j = i + 1; j < count; j++) {
+          const a = list[i];
+          const b = list[j];
+          if (!clash(a, b)) continue;
+          group[find(i)] = find(j);
+          const ab = crossings(a, b);
+          const ba = crossings(b, a);
+          if (ab === ba) continue;
+          const first = ab < ba ? i : j;
+          const second = ab < ba ? j : i;
+          above[second].push(first);
+          after[first].push(second);
+          waiting[second]++;
+        }
+      }
+      const placed = new Uint8Array(count);
+      const result: number[] = [];
+      for (let done = 0; done < count; done++) {
+        let pick = -1;
+        for (let i = 0; i < count; i++) {
+          if (placed[i]) continue;
+          if (pick < 0 || waiting[i] < waiting[pick]) pick = i;
+          if (waiting[i] === 0) break;
+        }
+        placed[pick] = 1;
+        result.push(pick);
+        for (const j of after[pick]) waiting[j]--;
+      }
+      sequence = result.map((i) => list[i]);
+    }
+    // Each piece takes the first track below those it should be under that has room for it.
+    const place = new Map<number, number>();
+    list.forEach((k, i) => place.set(k, i));
+    const rows: number[][] = [];
+    for (const k of sequence) {
+      let t = 0;
+      for (const i of above[place.get(k)!] ?? []) if (track[list[i]] >= t) t = track[list[i]] + 1;
+      for (; ; t++) {
+        const row = (rows[t] ??= []);
+        let free = true;
+        for (const other of row) if (clash(k, other)) free = false;
+        if (free) {
+          row.push(k);
+          break;
+        }
+      }
+      track[k] = t;
+    }
+    trackCount[r] = rows.length;
+    // Each group's tracks count from its own first, and a piece alone in its group has none.
+    const first = new Map<number, number>();
+    const lastOf = new Map<number, number>();
+    list.forEach((k, i) => {
+      const root = find(i);
+      first.set(root, Math.min(first.get(root) ?? Infinity, track[k]));
+      lastOf.set(root, Math.max(lastOf.get(root) ?? -Infinity, track[k]));
+    });
+    let most = 0;
+    list.forEach((k, i) => {
+      const root = find(i);
+      levels[k] = lastOf.get(root)! - first.get(root)! + 1;
+      track[k] -= first.get(root)!;
+      if (levels[k] > most) most = levels[k];
+    });
+    trackCount[r] = most;
+  }
+}
+
+// Moves the bends in ranks that hold only bends onto the straight line between the nearest points
+// of their edges that are held in place, and marks the ones that can be left out of the route.
+// `firstDummy` and `span` give each edge's run of bends, one in every rank.
+function straighten(g: Graph, xs: Float64Array, empty: Uint8Array, firstDummy: Int32Array, span: Int32Array, sep: number, onLine: Uint8Array): void {
+  const { maxRank, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order } = g;
+
+  const want = new Float64Array(xs.length);
+  // The points that each bend's edge runs between, across the ranks that hold only bends.
+  const from = new Float64Array(xs.length);
+  const to = new Float64Array(xs.length);
+  for (let ei = 0; ei < firstDummy.length; ei++) {
+    const d0 = firstDummy[ei];
+    if (d0 < 0) continue;
+    const end = d0 + span[ei] - 1;
+    // A bend's rank is its place in the run, counted from the rank after the edge's first node.
+    const base = g.RANK[d0];
+    for (let d = d0; d < end; d++) {
+      if (!empty[base + d - d0]) continue;
+      let last = d;
+      while (last + 1 < end && empty[base + last + 1 - d0]) last++;
+      const above = predE[predStart[d]];
+      const below = succE[succStart[last]];
+      const x0 = xs[EF[above]] + EFD[above];
+      const x1 = xs[ET[below]] + ETD[below];
+      const steps = last - d + 2;
+      for (let k = d; k <= last; k++) {
+        want[k] = x0 + ((x1 - x0) * (k - d + 1)) / steps;
+        from[k] = x0;
+        to[k] = x1;
+      }
+      d = last;
+    }
+  }
+
+  // Nothing in such a rank is in a bend's way, so each one goes onto its line and out of the
+  // route. Only twins stay: bends of edges that run between the same two points, which would
+  // otherwise be drawn as one. They take places a little apart, around the line.
+  const twins: number[] = [];
+  for (let r = 1; r < maxRank; r++) {
+    if (!empty[r]) continue;
+    const s = layerStart[r];
+    const end = layerStart[r + 1];
+    const row = Array.from(order.subarray(s, end)).sort((a, b) => from[a] - from[b] || to[a] - to[b] || a - b);
+    for (let i = 0; i < row.length; ) {
+      twins.length = 0;
+      let j = i;
+      for (; j < row.length && Math.abs(from[row[j]] - from[row[i]]) < 1 && Math.abs(to[row[j]] - to[row[i]]) < 1; j++) twins.push(row[j]);
+      // The twins keep the order the rank gave them, so that two edges do not swap sides on the way.
+      twins.sort((a, b) => g.pos[a] - g.pos[b]);
+      for (let k = 0; k < twins.length; k++) {
+        const d = twins[k];
+        xs[d] = want[d] + (k - (twins.length - 1) / 2) * sep;
+        if (twins.length === 1) onLine[d] = 1;
+      }
+      i = j;
+    }
+  }
+}
+
+// In a rank that holds labels and bends but no nodes, a bend is there to take its edge straight
+// through between the labels. Where the edge would pass clear of every label anyway, the bend
+// is left out, and the edge turns in the whole height between the ranks on either side.
+function pastLabels(g: Graph, xs: Float64Array, firstDummy: Int32Array, span: Int32Array, clear: number, onLine: Uint8Array): void {
+  const { maxRank, W, KIND, RANK, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order } = g;
+  const labelled = new Uint8Array(maxRank + 1);
+  let any = false;
+  for (let r = 1; r < maxRank; r++) {
+    let labels = false;
+    let others = false;
+    for (let i = layerStart[r]; i < layerStart[r + 1]; i++) {
+      const kind = KIND[order[i]];
+      if (kind === Kind.Label) labels = true;
+      else if (kind !== Kind.Dummy) others = true;
+    }
+    if (labels && !others) {
+      labelled[r] = 1;
+      any = true;
+    }
+  }
+  if (!any) return;
+  for (let ei = 0; ei < firstDummy.length; ei++) {
+    const d0 = firstDummy[ei];
+    if (d0 < 0) continue;
+    for (let d = d0, end = d0 + span[ei] - 1; d < end; d++) {
+      if (KIND[d] !== Kind.Dummy || !labelled[RANK[d]]) continue;
+      // The points on either side that the edge is held at, past any bends already left out.
+      let first = d;
+      let last = d;
+      while (first > d0 && onLine[first - 1]) first--;
+      while (last + 1 < end && onLine[last + 1]) last++;
+      const above = predE[predStart[first]];
+      const below = succE[succStart[last]];
+      const from = xs[EF[above]] + EFD[above];
+      const to = xs[ET[below]] + ETD[below];
+      const lo = Math.min(from, to) - clear;
+      const hi = Math.max(from, to) + clear;
+      let free = true;
+      const r = RANK[d];
+      for (let i = layerStart[r]; free && i < layerStart[r + 1]; i++) {
+        const label = order[i];
+        if (KIND[label] === Kind.Label && xs[label] + W[label] / 2 > lo && xs[label] - W[label] / 2 < hi) free = false;
+      }
+      if (!free) continue;
+      onLine[d] = 1;
+      // The bends left out between the two points lie on the line between them.
+      const steps = last - first + 2;
+      for (let k = first; k <= last; k++) xs[k] = from + ((to - from) * (k - first + 1)) / steps;
     }
   }
 }
@@ -764,7 +1263,8 @@ function position(g: Graph, opt: LayeredOptions): Float64Array {
   const { n, maxRank, W, KIND, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos } = g;
   const segments = EF.length;
   const gap = new Float64Array(n);
-  for (let i = 0; i < n; i++) gap[i] = W[i] / 2 + (isDummy(KIND[i]) ? opt.edgeSep : opt.nodeSep) / 2;
+  // A port on a group's border is a point that an edge passes through, and needs no more room than a bend.
+  for (let i = 0; i < n; i++) gap[i] = W[i] / 2 + (KIND[i] === Kind.Node ? opt.nodeSep : opt.edgeSep) / 2;
 
   // Neighbours in left-to-right order, so the medians can be read off directly.
   const key = new Int32Array(segments);

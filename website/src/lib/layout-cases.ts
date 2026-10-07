@@ -49,6 +49,15 @@ let vault = 'flowchart TD\n';
 notes.forEach((name, i) => (vault += `  a${i}["${name}"] --> MOC[_MOC]\n`));
 [0, 1, 2, 3, 9, 11].forEach((i) => (vault += `  a${i} --> Weekly\n`));
 
+// Two fans beside each other, one with an edge written twice.
+let repeated = 'graph TD\n  hub["Hub"]\n  index["Index"]\n';
+['Plugins', 'Medium draft', 'Medium draft', 'Test note', '2025-04-17', '2024-06-13', '2024-07-15', 'PARA design'].forEach((name) => {
+  repeated += `  ${name.replace(/\W/g, '_')}["${name}"] --> hub\n`;
+});
+['Notes', 'Obsidian', 'Reading', 'Reading', 'Clippings', 'Daily', 'Weekly', 'Monthly', 'Projects', 'Project log'].forEach((name) => {
+  repeated += `  index --> ${name.replace(/\W/g, '_')}["${name}"]\n`;
+});
+
 // Every shape, with three edges arriving, three leaving and one coming back.
 const SHAPES = [
   ['rect', 'rounded', 'stadium', 'fr-rect', 'cyl', 'circle', 'dbl-circ', 'diam'],
@@ -88,7 +97,7 @@ const flowchart: LayoutGroup[] = [
       { title: 'Decision with loops', source: 'flowchart TD\n  A[Christmas] -->|Get money| B(Go shopping)\n  B --> C{Let me think}\n  C -->|One| D[Laptop]\n  C -->|Two| E[iPhone]\n  C -->|Three| F[Car]\n  D --> B\n  E --> A\n' },
       { title: 'Tree', source: 'flowchart TD\n  A[Start] --> B[Parse]\n  A --> C[Measure]\n  B --> D[Layout]\n  C --> D\n  D --> E[Draw]\n  D --> F[Export]\n  D --> G[Cache]\n' },
       { title: 'Fan out, 3', source: fan('TD', 3, false) },
-      { title: 'Fan out, 7', note: 'More edges than the hub has room for, so they share a place.', source: fan('TD', 7, false) },
+      { title: 'Fan out, 7', note: 'More edges than fit at a full pitch, so they leave closer together.', source: fan('TD', 7, false) },
       { title: 'Fan in, 3', source: fan('TD', 3, true) },
       { title: 'Fan in, 7', source: fan('TD', 7, true) },
       { title: 'Hub with edges both ways', source: 'flowchart TD\n  a --> hub[A wide hub with room]\n  b --> hub\n  hub --> a\n  c --> hub\n  hub --> d\n  hub --> e\n  e --> hub\n  f --> hub\n  hub --> f\n' },
@@ -134,6 +143,7 @@ const flowchart: LayoutGroup[] = [
     slug: 'wide',
     cases: [
       { title: 'Notes into two hubs', note: 'Long runs across the gap between two ranks.', source: vault },
+      { title: 'Wide graph with a repeated edge', note: 'The repeat gives every edge a rank in the middle, which should not show as a bend.', source: repeated },
       { title: 'Fan in, 30', source: fan('TD', 30, true) },
       { title: 'Fan out, 30, left to right', source: fan('LR', 30, false) },
       { title: 'Two dense ranks', source: mesh },
@@ -165,7 +175,7 @@ const edges = (cases: LayoutCase[]): LayoutGroup[] => [{ title: 'Edges', slug: '
 export const layoutCases: Record<string, LayoutGroup[]> = {
   flowchart,
   state: edges([
-    { title: 'Two-way transitions', note: 'Every edge still meets the middle of a side.', source: 'stateDiagram-v2\n  [*] --> Idle\n  Idle --> Running : start\n  Running --> Idle : stop\n  Running --> Paused : pause\n  Paused --> Running : resume\n  Paused --> Idle : stop\n  Running --> [*]\n' },
+    { title: 'Two-way transitions', note: 'A transition that arrives should not touch one that leaves beside it.', source: 'stateDiagram-v2\n  [*] --> Idle\n  Idle --> Running : start\n  Running --> Idle : stop\n  Running --> Paused : pause\n  Paused --> Running : resume\n  Paused --> Idle : stop\n  Running --> [*]\n' },
     { title: 'Composite state', source: 'stateDiagram-v2\n  [*] --> Active\n  state Active {\n    [*] --> Typing\n    Typing --> Waiting : pause\n    Waiting --> Typing : key\n  }\n  Active --> Saved : save\n  Saved --> Active : edit\n  Saved --> [*]\n' },
     { title: 'Wide fan', source: 'stateDiagram-v2\n  [*] --> Menu\n  Menu --> Open\n  Menu --> Save\n  Menu --> Export\n  Menu --> Print\n  Menu --> Share\n  Menu --> Settings\n  Menu --> Help\n  Open --> Done\n  Save --> Done\n  Export --> Done\n  Print --> Done\n  Share --> Done\n  Settings --> Done\n  Help --> Done\n  Done --> Menu\n' },
   ]),

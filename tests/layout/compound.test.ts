@@ -158,8 +158,10 @@ describe('compound layout', () => {
       const byStart = [0, 1, 2].sort((a, b) => starts[a] - starts[b]);
       const byTarget = [0, 1, 2].sort((a, b) => targets[a] - targets[b]);
       expect(byStart, dir).toEqual(byTarget);
-      expect(starts[byStart[1]] - starts[byStart[0]], dir).toBeCloseTo(16, 5);
-      expect(starts[byStart[0]] + starts[byStart[2]], dir).toBeCloseTo(0, 5);
+      // None of the three can run straight, so they stay around the middle, a pitch apart.
+      expect(starts[byStart[0]], dir).toBeCloseTo(-16, 5);
+      expect(starts[byStart[1]], dir).toBeCloseTo(0, 5);
+      expect(starts[byStart[2]], dir).toBeCloseTo(16, 5);
       for (const e of edges) expect(onBorder(nodes[0], e.route[0], e.route[1]), dir).toBe(true);
     }
   });
@@ -196,6 +198,25 @@ describe('compound layout', () => {
     for (const x of into) expect(Math.abs(x - back[0])).toBeGreaterThanOrEqual(8);
   });
 
+  it('stands a rank that only sends edges on one line, and hangs a rank that only receives them from one', () => {
+    const lay = (span: number): CNode[] => {
+      const nodes = [cnode(60, 40), cnode(60, 120), cnode(60, 30), cnode(60, 90)];
+      nodes.forEach((node, i) => {
+        node.seq = i;
+        node.span = span;
+      });
+      compoundLayout(nodes, [edge(0, 2), edge(1, 2), edge(0, 3), edge(1, 3)], 'TB', OPTIONS);
+      return nodes;
+    };
+    const spread = lay(36);
+    expect(spread[0].y + 20).toBeCloseTo(spread[1].y + 60, 5);
+    expect(spread[2].y - 15).toBeCloseTo(spread[3].y - 45, 5);
+    // Without spreading, as in the diagram types that do not use it yet, each rank is centered.
+    const plain = lay(0);
+    expect(plain[0].y).toBeCloseTo(plain[1].y, 5);
+    expect(plain[2].y).toBeCloseTo(plain[3].y, 5);
+  });
+
   it('gives the gap between two ranks more room when edges run far across it', () => {
     const gapUnder = (children: number): number => {
       const nodes = [cnode(100, 40)];
@@ -212,6 +233,82 @@ describe('compound layout', () => {
     // Seven children reach 420 across from the middle; an eighth of that is more than the usual gap.
     expect(gapUnder(7)).toBeCloseTo(420 / 8, 5);
     expect(gapUnder(40)).toBeCloseTo(3 * OPTIONS.rankSep, 5);
+  });
+
+  it('moves an end along its side to let its edge run straight, and no closer to its neighbour than a pitch', () => {
+    // A wide node above four narrow ones.
+    const nodes = [cnode(400, 40), cnode(40, 40), cnode(40, 40), cnode(40, 40), cnode(40, 40)];
+    nodes.forEach((node, i) => {
+      node.seq = i;
+      node.span = node.w - 24;
+    });
+    const edges = [edge(0, 1), edge(0, 2), edge(0, 3), edge(0, 4)];
+    compoundLayout(nodes, edges, 'TB', OPTIONS);
+    // Each child is under the wide node, so each edge runs straight down to it.
+    for (const e of edges) expect(e.route[0]).toBeCloseTo(e.route[e.route.length - 3], 5);
+    const twoWay = [cnode(200, 40), cnode(40, 40)];
+    twoWay.forEach((node, i) => {
+      node.seq = i;
+      node.span = node.w - 24;
+    });
+    const pair = [edge(0, 1), edge(1, 0)];
+    compoundLayout(twoWay, pair, 'TB', OPTIONS);
+    expect(Math.abs(pair[0].route[0] - pair[1].route[pair[1].route.length - 3])).toBeCloseTo(16, 5);
+  });
+
+  it('moves the edges that leave side by side closer together before it lets them share a place', () => {
+    const nodes = [cnode(60, 40)];
+    const edges: CEdge[] = [];
+    for (let i = 1; i <= 7; i++) {
+      nodes.push(cnode(60, 40));
+      edges.push(edge(0, i));
+    }
+    nodes.forEach((node, i) => (node.seq = i));
+    nodes[0].span = 36;
+    compoundLayout(nodes, edges, 'TB', OPTIONS);
+    const starts = edges.map((e) => e.route[0]).sort((a, b) => a - b);
+    // Six gaps of half a pitch each across the 36 there is.
+    for (let i = 1; i < starts.length; i++) expect(starts[i] - starts[i - 1]).toBeCloseTo(6, 5);
+  });
+
+  it('draws an edge as one curve across a rank that only a twin of another edge put there', () => {
+    const lay = (twin: boolean): CEdge[] => {
+      const nodes = [cnode(60, 40), cnode(60, 40), cnode(60, 40), cnode(60, 40)];
+      nodes.forEach((node, i) => {
+        node.seq = i;
+        node.span = 36;
+      });
+      const edges = [edge(0, 1), edge(0, 2), edge(0, 3)];
+      if (twin) edges.push(edge(0, 3));
+      compoundLayout(nodes, edges, 'TB', OPTIONS);
+      return edges;
+    };
+    const plain = lay(false);
+    const twinned = lay(true);
+    // The twins make every edge take a rank in the middle, but none of them needs a bend there.
+    for (const e of twinned.slice(0, 2)) expect(e.route).toHaveLength(6);
+    expect(twinned[0].route[1]).toBeCloseTo(plain[0].route[1], 5);
+    // The gap is one level taller, for the twins to turn at two.
+    expect(twinned[0].route[4]).toBeCloseTo(plain[0].route[4] + 16, 5);
+    // The twins leave and arrive at places of their own.
+    const [one, other] = [twinned[2].route, twinned[3].route];
+    expect(Math.abs(one[0] - other[0])).toBeGreaterThanOrEqual(8);
+    expect(Math.abs(one[one.length - 3] - other[other.length - 3])).toBeGreaterThanOrEqual(8);
+    // They would run close beside each other, so one turns straight away and the other further down.
+    const turnsAt = (route: number[]): number => (Math.abs(route[3] - route[0]) < 0.01 ? route[4] : route[1]);
+    expect(Math.abs(turnsAt(one) - turnsAt(other))).toBeGreaterThanOrEqual(10);
+  });
+
+  it('keeps twin edges apart where their ends cannot be', () => {
+    const nodes = [cnode(60, 40), cnode(60, 40)];
+    nodes.forEach((node, i) => (node.seq = i));
+    const edges = [edge(0, 1), edge(0, 1)];
+    compoundLayout(nodes, edges, 'TB', OPTIONS);
+    const [a, b] = edges.map((e) => e.route);
+    expect(a).toHaveLength(9);
+    expect(b).toHaveLength(9);
+    expect(a[0]).toBeCloseTo(b[0], 5);
+    expect(Math.abs(a[3] - b[3])).toBeCloseTo(OPTIONS.edgeSep, 5);
   });
 
   it('survives groups that contain each other', () => {

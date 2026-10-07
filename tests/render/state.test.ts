@@ -122,6 +122,19 @@ describe('state diagram rendering', () => {
     expect(count(svg, 'class="pele-edge pele-transition"')).toBe(4);
   });
 
+  it('keeps a transition that arrives apart from one that leaves on the same side of a state', () => {
+    const { svg } = render('stateDiagram-v2\n  Still --> Moving\n  Moving --> Still', options);
+    const tips = [...svg.matchAll(/class="pele-marker" d="M([-\d.]+),([-\d.]+)L/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    const starts = [...svg.matchAll(/<g class="pele-edge pele-transition"[^>]*><path d="M([-\d.]+),([-\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+    expect(tips).toHaveLength(2);
+    expect(starts).toHaveLength(2);
+    for (const [x, y] of tips) {
+      const beside = starts.find((start) => Math.abs(start[1] - y) < 1);
+      expect(beside).toBeDefined();
+      expect(Math.abs(beside![0] - x)).toBeGreaterThanOrEqual(12);
+    }
+  });
+
   it('draws a choice as a diamond and fork and join as bars across the flow', () => {
     const body = 'state c <<choice>>\n state f <<fork>>\n state j <<join>>\n [*] --> f\n f --> x\n f --> y\n x --> j\n y --> j\n j --> c\n c --> p : yes\n c --> q : no';
     const down = draw(body);

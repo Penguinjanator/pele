@@ -289,6 +289,8 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
       }
     }
     c ??= cnode(view.w, view.h);
+    // The transitions on one side of a state's box spread along it, clear of its corners.
+    if (view.kind === K.State || view.kind === K.Described) c.span = (across(i) ? view.w : view.h) - 24;
     cnodes.push(c);
   }
 

@@ -649,6 +649,16 @@ export function shapeInset(shape: string, w: number, h: number, side: number, t 
   return BY_NAME.get(shape)?.inset?.(w, h, side, t) ?? 0;
 }
 
+// Shapes whose every side comes to a point or a curve, and those whose left and right sides do.
+const ROUND = new Set(['diam', 'circle', 'dbl-circ', 'ellipse', 'sm-circ', 'f-circ', 'fr-circ', 'cross-circ']);
+const ROUND_ENDS = new Set(['hex', 'stadium']);
+
+// Whether the side that edges meet has a middle that a lone edge should keep to: the tip of a
+// diamond, the top of a circle. A flat side has no such place.
+export function shapeCentered(shape: string, sideways: boolean): boolean {
+  return ROUND.has(shape) || (sideways && ROUND_ENDS.has(shape));
+}
+
 // How much of a side of the shape edges may spread along, when the flow runs down or, if `sideways`, across.
 export function shapeSpan(shape: string, w: number, h: number, sideways: boolean): number {
   return Math.max(0, BY_NAME.get(shape)?.span?.(w, h, sideways) ?? 0);

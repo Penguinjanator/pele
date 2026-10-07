@@ -18,17 +18,22 @@ export interface EdgePath {
 
 // Marker types are Mermaid's: arrow_point, arrow_circle, arrow_cross; anything else draws nothing.
 
+// How far a curve runs straight before a marker at its end.
+const LEAD = 6;
+
 // Builds the path for a route of x, y, axis triples, trimming both ends to leave room for markers.
 export function routePath(route: number[], curve: string | undefined, startTrim: number, endTrim: number): EdgePath {
-  const count = route.length / 3;
-  const xs = new Array<number>(count);
-  const ys = new Array<number>(count);
-  for (let i = 0; i < count; i++) {
-    xs[i] = route[i * 3];
-    ys[i] = route[i * 3 + 1];
-  }
   const linear = curve === 'linear';
   const stepped = curve === 'step' || curve === 'stepBefore' || curve === 'stepAfter';
+  const xs: number[] = [];
+  const ys: number[] = [];
+  const axes: number[] = [];
+  for (let i = 0; i < route.length; i += 3) {
+    xs.push(route[i]);
+    ys.push(route[i + 1]);
+    axes.push(route[i + 2]);
+  }
+  let count = xs.length;
   const straight = (i: number): boolean =>
     linear || Math.abs(xs[i] - xs[i - 1]) < 0.01 || Math.abs(ys[i] - ys[i - 1]) < 0.01;
 
@@ -39,9 +44,9 @@ export function routePath(route: number[], curve: string | undefined, startTrim:
     const len = Math.hypot(dx, dy) || 1;
     return [dx / len, dy / len];
   };
-  const last = count - 1;
-  const [sdx, sdy] = unit(0, 1, route[5], !straight(1) && !stepped);
-  const [edx, edy] = unit(last - 1, last, route[last * 3 + 2], !straight(last) && !stepped);
+  let last = count - 1;
+  const [sdx, sdy] = unit(0, 1, axes[1], !straight(1) && !stepped);
+  const [edx, edy] = unit(last - 1, last, axes[last], !straight(last) && !stepped);
   const sx = xs[0];
   const sy = ys[0];
   const ex = xs[last];
@@ -50,6 +55,20 @@ export function routePath(route: number[], curve: string | undefined, startTrim:
   ys[0] += sdy * startTrim;
   xs[last] -= edx * endTrim;
   ys[last] -= edy * endTrim;
+  // A curve that ends in a marker runs straight for a little way first, where it has the room,
+  // so that the marker does not sit on the bend.
+  const lead = (i: number, j: number): number =>
+    stepped || straight(Math.max(i, j)) ? 0 : Math.min(LEAD, (Math.abs(xs[j] - xs[i]) * Math.abs(edx) + Math.abs(ys[j] - ys[i]) * Math.abs(edy)) / 4);
+  if (endTrim > 0) {
+    const run = lead(last - 1, last);
+    if (run >= 2) {
+      xs.splice(last, 0, xs[last] - edx * run);
+      ys.splice(last, 0, ys[last] - edy * run);
+      axes.splice(last, 0, axes[last]);
+      count++;
+      last++;
+    }
+  }
 
   let d = `M${num(xs[0])},${num(ys[0])}`;
   for (let i = 1; i < count; i++) {
@@ -57,7 +76,7 @@ export function routePath(route: number[], curve: string | undefined, startTrim:
     const y = ys[i];
     const px = xs[i - 1];
     const py = ys[i - 1];
-    const axis = route[i * 3 + 2];
+    const axis = axes[i];
     if (straight(i)) {
       d += `L${num(x)},${num(y)}`;
     } else if (stepped) {

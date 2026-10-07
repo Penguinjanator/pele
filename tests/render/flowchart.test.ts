@@ -177,6 +177,23 @@ describe('flowchart rendering', () => {
     }
   });
 
+  it('brings a lone edge to the tip of a diamond, and not to wherever it would run straight', () => {
+    const { svg } = render('flowchart TD\n  A[A node wide enough to reach over the diamond] --> B[Left]\n  A --> C{Decide}\n  B --> D[End]\n  C --> D', options);
+    const tipX = Number(svg.match(/data-id="C" transform="translate\(([-\d.]+),/)![1]);
+    const arrow = svg.match(/data-id="L_A_C_0"><path [^>]*\/><path class="pele-marker" d="M([-\d.]+),/)!;
+    expect(Number(arrow[1])).toBeCloseTo(tipX, 1);
+  });
+
+  it('turns an edge in the whole height between two ranks when it passes clear of the labels between them', () => {
+    const { svg } = render('flowchart TD\n  A[Christmas] -->|Get money| B(Go shopping)\n  B --> C{Let me think}\n  C -->|One| D[Laptop]\n  C -->|Two| E[iPhone]\n  C -->|Three| F[Car]\n  D --> B\n  E --> A', options);
+    const back = svg.match(/data-id="L_E_A_0"><path d="([^"]+)"/)![1];
+    const y = (id: string): number => Number(svg.match(new RegExp(`data-id="${id}" transform="translate\\([-\\d.]+,([-\\d.]+)\\)`))![1]);
+    // The last curve of the edge back to the top starts below the label's rank, not beside the label.
+    const curves = [...back.matchAll(/([-\d.]+),([-\d.]+)C[-\d.]+,[-\d.]+ [-\d.]+,[-\d.]+ [-\d.]+,([-\d.]+)/g)];
+    const last = curves[curves.length - 1];
+    expect(Number(last[2])).toBeGreaterThan((y('A') + y('B')) / 2 + 10);
+  });
+
   it('keeps invisible links out of the drawing but in the layout', () => {
     const linked = render('flowchart LR\n  A ~~~ B', options);
     const apart = render('flowchart LR\n  A\n  B', options);

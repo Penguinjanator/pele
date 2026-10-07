@@ -26,6 +26,15 @@ describe('edge paths', () => {
     expect(x2).toBeCloseTo(32, 5);
   });
 
+  it('runs a curve straight for a little way into the marker at its end', () => {
+    // Seven for the arrowhead, then six straight, and the curve turns in what is left.
+    expect(routePath([0, 0, 0, 100, 48, 0], undefined, 0, 7).d).toBe('M0,0C0,17.5 100,17.5 100,35L100,41');
+    // Without a marker the curve runs all the way.
+    expect(routePath([0, 0, 0, 100, 48, 0], undefined, 0, 0).d).toBe('M0,0C0,24 100,24 100,48');
+    // With little room, the straight part takes a quarter of it at most.
+    expect(routePath([0, 0, 0, 100, 19, 0], undefined, 0, 7).d).toBe('M0,0C0,1.62 100,7.38 100,9L100,12');
+  });
+
   it('keeps both ends of an eased curve heading along the flow', () => {
     const path = routePath([0, 0, 0, 900, 48, 0], undefined, 0, 7);
     expect([path.sdx, path.sdy]).toEqual([-0, -1]);
