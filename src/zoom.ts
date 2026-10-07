@@ -321,6 +321,12 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     event.preventDefault();
   };
 
+  // Browsers ring a focused SVG after a click too, where an HTML element is only ringed when
+  // the focus came from the keyboard. The drawing is treated as HTML is.
+  const onFocus = (event: Event): void => {
+    if (svg && event.target === svg) svg.style.outline = svg.matches(':focus-visible') ? '' : 'none';
+  };
+
   // Safari on a Mac reports a trackpad pinch this way and no other.
   let gesture = 0;
   const onGestureStart = (event: Event): void => {
@@ -348,6 +354,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     ['wheel', onWheel as EventListener, { passive: false }],
     ['dblclick', onDoubleClick as EventListener],
     ['keydown', onKeyDown as EventListener],
+    ['focusin', onFocus],
     ['gesturestart', onGestureStart],
     ['gesturechange', onGestureChange],
     ['gestureend', onGestureEnd],

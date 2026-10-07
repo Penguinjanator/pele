@@ -42,8 +42,9 @@
 }
 
 // A diagram that can be zoomed takes the keyboard's focus. The site shows that on its buttons
-// only, and without a ring around the diagram.
-svg.pele:focus-visible { outline: none; }
+// only, and without a ring around the diagram. Browsers ring a focused SVG after a click as
+// well, which :focus-visible alone would not cover.
+svg.pele:focus { outline: none; }
 .pele-zoom button:focus-visible {
   outline: none;
   background: var(--line-hover) !important;
