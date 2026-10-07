@@ -54,8 +54,20 @@ const statements = (source: string): string[] =>
   source.replace(/^---\n[\s\S]*?\n---\n/, '').split('\n').map((line) => line.trim())
     .filter((line) => line && !line.startsWith('%%'));
 
+// Mermaid's documentation is partly in British English. The site is in American English, so
+// its examples are respelled, names and labels alike.
+const AMERICAN: [RegExp, string][] = [
+  [/(analy)s(?=e|ing)/gi, '$1z'],
+  [/(authori|populari|recogni|standardi|summari)s(?=[aei])/gi, '$1z'],
+  [/(catalog)ue/gi, '$1'],
+  [/(gr)e(?=y\b)/gi, '$1a'],
+  [/(licen)c(?=e)/gi, '$1s'],
+  [/(model)l(?=ed|ing)/gi, '$1'],
+];
+const american = (source: string): string => AMERICAN.reduce((text, [british, spelling]) => text.replace(british, spelling), source);
+
 const sourcesOf = (corpus: unknown): string[] =>
-  Array.isArray(corpus) ? corpus.filter((source): source is string => typeof source === 'string' && source.trim() !== '') : [];
+  Array.isArray(corpus) ? corpus.filter((source): source is string => typeof source === 'string' && source.trim() !== '').map(american) : [];
 
 // Mermaid marks a type it may still change with `-beta` in its keyword. A type is one of those
 // when its documentation has no example written without it.
