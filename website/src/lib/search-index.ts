@@ -1,6 +1,6 @@
 import { docs } from './docs';
-import { groups } from './example-groups';
-import { examplesDescription, examplesTitle } from './examples';
+import { pages as examplePages } from './example-groups';
+import { examplePageHref, examplesDescription, examplesTitle } from './examples';
 import type { SearchItem } from './search';
 
 const plainText = (value: string) => value
@@ -66,14 +66,16 @@ export function buildSearchIndex(): SearchItem[] {
   }
   pages.unshift({ title: 'Introduction', kind: 'page', category: 'Docs', summary: 'What Pele is, how it works, and how to add it to your app.', href: '/' });
   pages.splice(1, 0, { title: examplesTitle, kind: 'page', category: 'Docs', summary: examplesDescription, href: '/examples' });
-  for (const group of groups) {
+  // Each diagram type's own page of examples. They follow the documentation's sections, so that
+  // the list shown before anything is typed stays as it was.
+  for (const page of examplePages) {
     entries.push({
-      title: group.title,
-      kind: 'section',
+      title: page.title,
+      kind: 'page',
       category: examplesTitle,
-      summary: `Examples of ${group.title} diagrams drawn by Pele.`,
-      href: `/examples#${group.slug}`,
-      searchTerms: [group.type],
+      summary: page.description,
+      href: examplePageHref(page.type),
+      searchTerms: [page.type, 'diagram', 'chart'],
     });
   }
   return [

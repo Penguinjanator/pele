@@ -65,3 +65,21 @@
 @media (max-width: 760px) {
   .example-card { padding-inline: 16px; }
 }
+
+.example-title {
+  min-width: 0;
+  color: var(--paper);
+}
+
+.example-note {
+  color: var(--muted);
+}
+
+.example-error {
+  margin: 14px 0 0;
+  overflow-x: auto;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+  white-space: pre-wrap;
+}

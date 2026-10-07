@@ -5,9 +5,10 @@ import type { DocsPageId, Heading } from '../lib/site';
 interface Props {
   current?: DocsPageId;
   headings?: Heading[];
+  child?: string;
 }
 
-const { current, headings = [] } = Astro.props;
+const { current, headings = [], child } = Astro.props;
 ---
 
 <button
@@ -30,7 +31,7 @@ const { current, headings = [] } = Astro.props;
       <a class="mobile-docs-playground" href="/playground">
         <span>Playground</span>
       </a>
-      <DocsNavigation class="mobile-docs-navigation" current={current} headings={headings} ariaLabel="Documentation menu" />
+      <DocsNavigation class="mobile-docs-navigation" current={current} headings={headings} child={child} ariaLabel="Documentation menu" />
     </div>
   </section>
 </div>

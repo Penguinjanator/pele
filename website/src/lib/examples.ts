@@ -1,3 +1,6 @@
+import { layoutCases, type LayoutGroup } from './layout-cases';
+import type { Heading } from './site';
+
 export const homeExample = `flowchart TD
   A[Mermaid text] --> B{Flowchart?}
   B -- Yes --> C[Pele]
@@ -260,6 +263,42 @@ const TYPE_TITLES = new Map([
   ['treemap', 'Treemap'],
 ]);
 
+// What each type of diagram is for, under the title on the page of its examples.
+const TYPE_DESCRIPTIONS = new Map([
+  ['flowchart', 'Show the steps and decisions in a process.'],
+  ['swimlane', 'Show a process divided by who performs each step.'],
+  ['sequence', 'Show the messages that participants exchange over time.'],
+  ['class', 'Show classes, their members, and the relationships between them.'],
+  ['state', 'Show the states of a system and the transitions between them.'],
+  ['er', 'Show entities, their attributes, and the relationships between them.'],
+  ['gantt', 'Show the tasks of a project on a timeline.'],
+  ['git', 'Show commits, branches, and merges.'],
+  ['pie', 'Show the parts of a whole.'],
+  ['mindmap', 'Show ideas branching out from a central topic.'],
+  ['kanban', 'Show tasks in columns by status.'],
+  ['timeline', 'Show events in chronological order.'],
+  ['journey', 'Show the steps of a task and how satisfying each one is.'],
+  ['quadrant', 'Plot items on two axes that divide the chart into four sections.'],
+  ['xychart', 'Plot data as bars and lines on two axes.'],
+  ['requirement', 'Show requirements and how they relate to each other and to the elements that satisfy them.'],
+  ['sankey', 'Show flows between nodes, with widths proportional to quantity.'],
+  ['architecture', 'Show services and the connections between them.'],
+  ['c4', 'Show a software system as people, systems, containers, and components.'],
+  ['block', 'Show blocks in a grid that you arrange yourself.'],
+  ['agentflow', 'Show the tasks of AI agents and how work passes between them.'],
+  ['railroad', 'Show the syntax of a grammar.'],
+  ['treeview', 'Show a hierarchy, such as files and folders.'],
+  ['cynefin', 'Sort items into the five domains of the Cynefin framework.'],
+  ['wardley', 'Plot components by their visibility to the user and their stage of evolution.'],
+  ['eventmodeling', 'Show how commands, events, and views change a system over time.'],
+  ['usecase', 'Show actors and the goals they reach with a system.'],
+  ['venn', 'Show sets and where they overlap.'],
+  ['ishikawa', 'Show the causes that contribute to a problem.'],
+  ['packet', 'Show the fields of a network packet.'],
+  ['radar', 'Compare values across several axes.'],
+  ['treemap', 'Show hierarchical data as nested rectangles, sized by value.'],
+]);
+
 // Info only prints a version number, which is not much of an example.
 const UNLISTED = new Set(['info']);
 
@@ -312,6 +351,45 @@ export function exampleGroups(corpora: Record<string, unknown>, draw: (source: s
     })
     .filter((group) => group.sources.length > 0 && !UNLISTED.has(group.type))
     .sort((a, b) => Number(a.beta) - Number(b.beta) || a.title.localeCompare(b.title));
+}
+
+export interface ExamplePage {
+  type: string;
+  title: string;
+  description: string;
+  // Diagrams chosen to show how the type is laid out, then every example in Mermaid's documentation.
+  groups: LayoutGroup[];
+  sources: string[];
+}
+
+export const documentationSlug = 'documentation';
+
+// A page for each type the examples page lists, at /examples/<type>.
+export function examplePages(corpora: Record<string, unknown>): ExamplePage[] {
+  return Object.entries(corpora)
+    .map(([path, corpus]) => {
+      const type = typeOf(path);
+      const title = TYPE_TITLES.get(type) ?? type;
+      return { type, title, description: TYPE_DESCRIPTIONS.get(type) ?? `Examples of ${title} diagrams.`, groups: layoutCases[type] ?? [], sources: [...new Set(sourcesOf(corpus))] };
+    })
+    .filter((page) => page.sources.length > 0 && !UNLISTED.has(page.type));
+}
+
+export const examplePageHref = (type: string): string => `/examples/${type}`;
+
+// The diagram's own opening line and the one after it, to tell a type's examples apart.
+export function exampleLabel(source: string, index: number): string {
+  const text = statements(source).slice(0, 2).join(' · ');
+  return `${index + 1}. ${text.length > 80 ? `${text.slice(0, 79)}…` : text}`;
+}
+
+// A page with nothing but the documentation's examples needs no headings to divide it.
+export function examplePageHeadings(page: ExamplePage): Heading[] {
+  if (page.groups.length === 0) return [];
+  return [
+    ...page.groups.map((group) => ({ depth: 2, slug: group.slug, text: group.title })),
+    { depth: 2, slug: documentationSlug, text: 'Documentation examples' },
+  ];
 }
 
 export const examplesTitle = 'Examples';

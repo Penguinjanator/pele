@@ -1,30 +1,11 @@
 ---
-import { render } from 'pele';
+import ExampleCard from '../components/ExampleCard.astro';
 import DocsLayout from '../layouts/DocsLayout.astro';
 import { groups } from '../lib/example-groups';
-import { siteIcon } from '../lib/icons';
 import { examplesDescription, examplesTitle } from '../lib/examples';
-import { playgroundHref } from '../lib/playground-link';
 
 const headings = groups.map((group) => ({ depth: 2, slug: group.slug, text: group.title }));
 
-const hrefFor = (source: string): string | undefined => {
-  try {
-    return playgroundHref(source);
-  } catch {
-    return undefined;
-  }
-};
-// A chart that can draw itself narrower is also drawn for a phone, and CSS shows the one that
-// suits the screen. Its text then stays at full size where the wide drawing would be shrunk.
-const PHONE_WIDTH = 320;
-// About the width a figure has in the docs column on a desktop screen.
-const COLUMN_WIDTH = 640;
-const drawings = (source: string, prefix: string) => {
-  const wide = render(source, { idPrefix: prefix, maxWidth: COLUMN_WIDTH, icons: siteIcon });
-  const narrow = render(source, { idPrefix: `${prefix}narrow-`, maxWidth: PHONE_WIDTH, icons: siteIcon });
-  return { wide: wide.svg, narrow: narrow.width < wide.width ? narrow.svg : undefined };
-};
 // The first line that is not front matter, a directive, or a comment: the diagram's own opening
 // line. A pie chart may carry its title there, which is the chart's content and not its opening.
 const opening = (source: string): string =>
@@ -36,27 +17,9 @@ const opening = (source: string): string =>
   {groups.map((group) => (
     <>
       <h2 id={group.slug}>{group.title}</h2>
-      {group.sources.map((source, index) => {
-        const prefix = `${group.type}-${index}-`;
-        const href = hrefFor(source);
-        const { wide, narrow } = drawings(source, prefix);
-        return (
-          <figure class="example-card">
-            <figcaption class="example-label">
-              <span class="example-opening">{opening(source)}</span>
-              {href && <a class="playground-link text-action" href={href}>
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3" /></svg>
-                <span><span class="playground-link-prefix">Open in </span>Playground</span>
-              </a>}
-            </figcaption>
-            <div class="example-figure" data-pele-theme="dark" role="img" aria-label={`${group.title} diagram rendered by Pele`}>
-              {narrow
-                ? <><div class="example-wide" set:html={wide} /><div class="example-narrow" set:html={narrow} /></>
-                : <Fragment set:html={wide} />}
-            </div>
-          </figure>
-        );
-      })}
+      {group.sources.map((source, index) => (
+        <ExampleCard source={source} prefix={`${group.type}-${index}-`} label={opening(source)} code ariaLabel={`${group.title} diagram rendered by Pele`} />
+      ))}
     </>
   ))}
 </DocsLayout>

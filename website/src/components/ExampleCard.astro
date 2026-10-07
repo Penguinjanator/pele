@@ -1,0 +1,59 @@
+---
+import { render } from 'pele';
+import { siteIcon } from '../lib/icons';
+import { playgroundHref } from '../lib/playground-link';
+
+interface Props {
+  source: string;
+  prefix: string;
+  // What the card is called, and whether that is a line of the diagram's source.
+  label: string;
+  code?: boolean;
+  note?: string;
+  ariaLabel?: string;
+}
+
+const { source, prefix, label, code = false, note, ariaLabel = label } = Astro.props;
+
+// A chart that can draw itself narrower is also drawn for a phone, and CSS shows the one that
+// suits the screen. Its text then stays at full size where the wide drawing would be shrunk.
+const PHONE_WIDTH = 320;
+// About the width a figure has in the docs column on a desktop screen.
+const COLUMN_WIDTH = 640;
+let wide: string | undefined;
+let narrow: string | undefined;
+let error: string | undefined;
+try {
+  const drawn = render(source, { idPrefix: prefix, maxWidth: COLUMN_WIDTH, icons: siteIcon });
+  const phone = render(source, { idPrefix: `${prefix}narrow-`, maxWidth: PHONE_WIDTH, icons: siteIcon });
+  wide = drawn.svg;
+  narrow = phone.width < drawn.width ? phone.svg : undefined;
+} catch (cause) {
+  error = cause instanceof Error ? cause.message : String(cause);
+}
+let href: string | undefined;
+try {
+  href = playgroundHref(source);
+} catch {
+  href = undefined;
+}
+---
+
+<figure class="example-card">
+  <figcaption class="example-label">
+    {code
+      ? <span class="example-opening">{label}</span>
+      : <span class="example-title">{label}{note && <span class="example-note"> — {note}</span>}</span>}
+    {href && <a class="playground-link text-action" href={href}>
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3" /></svg>
+      <span><span class="playground-link-prefix">Open in </span>Playground</span>
+    </a>}
+  </figcaption>
+  {wide
+    ? <div class="example-figure" data-pele-theme="dark" role="img" aria-label={ariaLabel}>
+        {narrow
+          ? <><div class="example-wide" set:html={wide} /><div class="example-narrow" set:html={narrow} /></>
+          : <Fragment set:html={wide} />}
+      </div>
+    : <pre class="example-error">{error}</pre>}
+</figure>

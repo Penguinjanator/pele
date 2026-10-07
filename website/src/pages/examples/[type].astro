@@ -1,0 +1,28 @@
+---
+import ExampleCard from '../../components/ExampleCard.astro';
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import { pages } from '../../lib/example-groups';
+import { documentationSlug, examplePageHeadings, examplePageHref, exampleLabel, type ExamplePage } from '../../lib/examples';
+
+export const getStaticPaths = () => pages.map((page) => ({ params: { type: page.type }, props: page }));
+
+type Props = ExamplePage;
+
+const { type, title, description, groups, sources } = Astro.props;
+const headings = examplePageHeadings(Astro.props);
+---
+
+<DocsLayout current="examples" title={title} description={description} headings={headings} markdownPath={`${examplePageHref(type)}.md`} child={title}>
+  {groups.map((group) => (
+    <>
+      <h2 id={group.slug}>{group.title}</h2>
+      {group.cases.map((item, index) => <ExampleCard source={item.source} prefix={`${group.slug}-${index}-`} label={item.title} note={item.note} />)}
+    </>
+  ))}
+  {groups.length > 0 && <h2 id={documentationSlug}>Documentation examples</h2>}
+  {sources.map((source, index) => <ExampleCard source={source} prefix={`${type}-${index}-`} label={exampleLabel(source, index)} />)}
+</DocsLayout>
+
+<script>
+  import '../../scripts/examples';
+</script>

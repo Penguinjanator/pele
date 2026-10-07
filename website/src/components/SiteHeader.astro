@@ -6,9 +6,10 @@ import type { DocsPageId, Heading } from '../lib/site';
 interface Props {
   current?: DocsPageId;
   headings?: Heading[];
+  child?: string;
 }
 
-const { current, headings = [] } = Astro.props;
+const { current, headings = [], child } = Astro.props;
 ---
 
 <div class="site-header-slot" data-scroll-header-slot>
@@ -21,6 +22,6 @@ const { current, headings = [] } = Astro.props;
       </svg>
       <span>Playground</span>
     </a>
-    <MobileDocsMenu current={current} headings={headings} />
+    <MobileDocsMenu current={current} headings={headings} child={child} />
   </nav>
 </div>
