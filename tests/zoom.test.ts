@@ -28,11 +28,19 @@ describe('zoom frame', () => {
     expect([inside.x, inside.y]).toEqual([300, 120]);
   });
 
-  it('centers a drawing that is smaller than what its box shows', () => {
-    // A box wider than the drawing at this scale, as when a small drawing is not stretched.
-    const shown = frame({ width: 100, height: 50 }, { width: 400, height: 100 }, 2, 30, 10);
-    expect(shown.width).toBe(200);
-    expect(shown.x).toBe(-50);
+  it('keeps a drawing that is smaller than the view whole inside it', () => {
+    // A panel larger than the drawing at this scale, as in a playground of a fixed height.
+    const small = { width: 100, height: 50 };
+    const panel = { width: 400, height: 300 };
+    const shown = frame(small, panel, 2, 30, 10);
+    expect([shown.width, shown.height]).toEqual([200, 150]);
+    // It cannot be pushed out of view on either side.
+    expect(shown.x).toBe(0);
     expect(shown.y).toBe(0);
+    const pulled = frame(small, panel, 2, -500, -500);
+    expect([pulled.x, pulled.y]).toEqual([100 - 200, 50 - 150]);
+    // Where it rests inside the panel is kept: a point between the two ends is left alone.
+    const resting = frame(small, panel, 2, -40, -60);
+    expect([resting.x, resting.y]).toEqual([-40, -60]);
   });
 });

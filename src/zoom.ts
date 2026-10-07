@@ -1,4 +1,4 @@
-import { windowOf } from './window.js';
+import { room, windowOf } from './window.js';
 
 export interface ZoomOptions {
   // Whether a drawing that fits its element can be enlarged as well. By default only one that
@@ -34,8 +34,8 @@ export interface Frame {
   height: number;
 }
 
-// The part of a drawing that shows at a scale. The box on the page keeps the size the whole
-// drawing fits in, so enlarging it moves nothing else: it shows less of the drawing, larger.
+// The part of a drawing that shows in a box at a scale. Enlarging a drawing never changes the
+// size of anything around it: the box shows less of the drawing, larger.
 export function frame(
   natural: { width: number; height: number },
   box: { width: number; height: number },
@@ -45,9 +45,9 @@ export function frame(
 ): Frame {
   const width = box.width / scale;
   const height = box.height / scale;
-  // A drawing smaller than its box is centered in it. A larger one stops at its own edges.
+  // A drawing larger than the view stops at its own edges. A smaller one stays whole inside it.
   const within = (at: number, view: number, whole: number): number =>
-    view >= whole ? (whole - view) / 2 : Math.min(Math.max(at, 0), whole - view);
+    view >= whole ? Math.min(Math.max(at, whole - view), 0) : Math.min(Math.max(at, 0), whole - view);
   return { x: within(x, width, natural.width), y: within(y, height, natural.height), width, height };
 }
 
@@ -67,7 +67,8 @@ const BUTTON_STYLE =
 const ICONS = {
   zoomIn: 'M5 12h14M12 5v14',
   zoomOut: 'M5 12h14',
-  reset: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
+  // Lucide's rotate-ccw. Its license is in the LICENSE file.
+  reset: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5',
 };
 const LABELS = { zoomIn: 'Zoom in', zoomOut: 'Zoom out', reset: 'Reset zoom' };
 
@@ -77,6 +78,11 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
   let svg: SVGSVGElement | null = null;
   let natural = { width: 0, height: 0 };
   let rest = { width: 0, height: 0 };
+  // The box an enlarged drawing is shown in: the room its element already has, where that is
+  // more than the drawing takes at rest, as in a panel of a fixed height.
+  let box = { width: 0, height: 0 };
+  let roomy = false;
+  let restStyle = { width: '', height: '' };
   // The scale shown, or 0 while the drawing rests at the size that fits.
   let scale = 0;
   let x = 0;
@@ -90,8 +96,13 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
 
   const measure = (): void => {
     if (!svg || scale !== 0) return;
-    const box = svg.getBoundingClientRect();
-    rest = { width: box.width, height: box.height };
+    const at = svg.getBoundingClientRect();
+    rest = { width: at.width, height: at.height };
+    const style = view().getComputedStyle(element);
+    const high = element.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
+    box = { width: Math.max(rest.width, room(element, style)), height: Math.max(rest.height, high) };
+    roomy = box.width > rest.width + 1 || box.height > rest.height + 1;
+    if (!roomy) box = rest;
   };
 
   let bar: HTMLElement | undefined;
@@ -148,6 +159,8 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     if (!svg) return;
     scale = 0;
     svg.setAttribute('viewBox', `0 0 ${natural.width} ${natural.height}`);
+    svg.style.width = restStyle.width;
+    svg.style.height = restStyle.height;
     svg.style.cursor = '';
     svg.style.userSelect = '';
     measure();
@@ -169,13 +182,19 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
       settle();
       return;
     }
-    const box = svg.getBoundingClientRect();
-    const atX = (clientX ?? box.left + box.width / 2) - box.left;
-    const atY = (clientY ?? box.top + box.height / 2) - box.top;
-    const pointX = (scale ? x : 0) + atX / from;
-    const pointY = (scale ? y : 0) + atY / from;
+    const before = svg.getBoundingClientRect();
+    const atX = clientX ?? before.left + before.width / 2;
+    const atY = clientY ?? before.top + before.height / 2;
+    const pointX = (scale ? x : 0) + (atX - before.left) / from;
+    const pointY = (scale ? y : 0) + (atY - before.top) / from;
     scale = to;
-    place(pointX - atX / scale, pointY - atY / scale);
+    let after = before;
+    if (roomy) {
+      svg.style.width = `${box.width}px`;
+      svg.style.height = `${box.height}px`;
+      after = svg.getBoundingClientRect();
+    }
+    place(pointX - (atX - after.left) / scale, pointY - (atY - after.top) / scale);
     svg.style.cursor = 'grab';
     svg.style.userSelect = 'none';
     svg.style.touchAction = 'none';
@@ -184,7 +203,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
 
   const place = (toX: number, toY: number): void => {
     if (!svg) return;
-    const shown = frame(natural, rest, scale, toX, toY);
+    const shown = frame(natural, box, scale, toX, toY);
     x = shown.x;
     y = shown.y;
     svg.setAttribute('viewBox', `${x} ${y} ${shown.width} ${shown.height}`);
@@ -203,6 +222,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
       return;
     }
     natural = { width: Number(svg.getAttribute('width')) || 0, height: Number(svg.getAttribute('height')) || 0 };
+    restStyle = { width: svg.style.width, height: svg.style.height };
     settle();
   };
 
@@ -325,17 +345,17 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
   ];
   for (const [type, listener, how] of listeners) element.addEventListener(type, listener, how);
 
-  // The size that fits changes with the element's width. An enlarged drawing goes back to it.
+  // The size that fits changes with the element's size. An enlarged drawing goes back to it.
   const Observer = view().ResizeObserver;
   const observer = Observer
     ? new Observer(() => {
-        const width = element.clientWidth;
-        if (width === watched) return;
-        watched = width;
+        const size = element.clientWidth + element.clientHeight;
+        if (size === watched) return;
+        watched = size;
         settle();
       })
     : undefined;
-  watched = element.clientWidth;
+  watched = element.clientWidth + element.clientHeight;
   observer?.observe(element);
 
   refresh();
