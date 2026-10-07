@@ -112,7 +112,7 @@ describe('ER diagram rendering', () => {
     const stripes = /<g class="pele-er-stripes" fill="var\(--_bg\)">(.*?)<\/g>/.exec(three)![1];
     // Rows one and three; the third is the last, so it is drawn as a rounded part and a square part.
     expect(count(stripes, '<rect')).toBe(3);
-    expect(count(stripes, 'rx="var(--pele-radius,4px)"')).toBe(1);
+    expect(count(stripes, 'rx:var(--_r)')).toBe(1);
     const two = svgOf('erDiagram\n  A {\n int a\n int b\n }');
     expect(count(/<g class="pele-er-stripes"[^>]*>(.*?)<\/g>/.exec(two)![1], '<rect')).toBe(1);
   });
@@ -246,8 +246,8 @@ describe('ER diagram rendering', () => {
     );
     expect(svg).toContain('<g class="pele-node pele-entity hot" data-id="A"');
     expect(svg).toContain('<g class="pele-node pele-entity hot" data-id="B"');
-    expect(svg).toContain('style="stroke-width:2px;fill:#f96;stroke:#333;"');
-    expect(svg).toMatch(/data-id="C"[^>]*><rect[^>]* style="stroke-width:2px;fill:#bbf;"/);
+    expect(svg).toContain('style="rx:var(--_r);stroke-width:2px;fill:#f96;stroke:#333;"');
+    expect(svg).toMatch(/data-id="C"[^>]*><rect[^>]* style="rx:var\(--_r\);stroke-width:2px;fill:#bbf;"/);
     expect(svg).toMatch(/<text class="pele-label" style="fill:#fff;"[^>]*>C<\/text>/);
     // Shading over a chosen fill is a tint of it rather than the page background.
     expect(svg).toContain('<g class="pele-er-stripes" fill="var(--_bg)" opacity="0.6">');
@@ -302,7 +302,7 @@ describe('ER diagram rendering', () => {
 
   it('styles a subgraph and lets it set its own direction', () => {
     const svg = svgOf('erDiagram\n subgraph g\n  direction LR\n  A ||--|| B : x\n end\n style g fill:#fee\n classDef k stroke:#c33\n class g k');
-    expect(svg).toMatch(/<g class="pele-cluster k" data-id="g"><rect[^>]* style="stroke:#c33;fill:#fee;"/);
+    expect(svg).toMatch(/<g class="pele-cluster k" data-id="g"><rect[^>]* style="rx:var\(--_r\);stroke:#c33;fill:#fee;"/);
     expect(box(svg, 'B').x).toBeGreaterThan(box(svg, 'A').x);
     expect(box(svg, 'B').y).toBeCloseTo(box(svg, 'A').y, 1);
   });

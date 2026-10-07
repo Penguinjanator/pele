@@ -82,7 +82,7 @@ ComponentQueue_Ext(cqe, "CQE")`);
     expect(svg).toContain('pele-shape-h-cyl pele-c4-external_component_queue pele-c4-external" data-id="cqe"');
     // External elements are hollow with a dashed border; the rest are filled.
     expect(svg).toMatch(/data-id="ce"[^>]*><rect[^>]*fill="var\(--_bg\)" stroke="var\(--_b\)" stroke-dasharray="4 3"/);
-    expect(svg).toMatch(/data-id="s"[^>]*><rect[^>]*fill="var\(--_s\)" stroke="var\(--_b\)"\/>/);
+    expect(svg).toMatch(/data-id="s"[^>]*><rect[^>]*fill="var\(--_s\)" stroke="var\(--_b\)" style="rx:var\(--_r\)"\/>/);
   });
 
   it('takes a shape from $shape, $sprite or $tags, as Mermaid does', () => {
@@ -172,9 +172,9 @@ Deployment_Node(outer, "Outer", "Linux", "A machine") {
     expect(svg).toContain('>A machine<');
     expect(svg).toContain('>[node]<');
     // Deployment nodes have a solid border; other boundaries are dashed.
-    expect(svg).toMatch(/class="pele-cluster pele-c4-node" data-id="outer"><rect[^>]*stroke="var\(--_b\)"\/>/);
+    expect(svg).toMatch(/class="pele-cluster pele-c4-node" data-id="outer"><rect[^>]*stroke="var\(--_b\)" style="rx:var\(--_r\)"\/>/);
     expect(draw('C4Context\nBoundary(b, "B") {\nSystem(s, "S")\n}').svg).toMatch(
-      /class="pele-cluster pele-c4-boundary" data-id="b"><rect[^>]*stroke-dasharray="6 4"\/>/
+      /class="pele-cluster pele-c4-boundary" data-id="b"><rect[^>]*stroke-dasharray="6 4" style="rx:var\(--_r\)"\/>/
     );
   });
 
@@ -318,7 +318,7 @@ UpdateElementStyle(nobody, "red")`);
     expect(svg).toMatch(/data-id="a"[^>]*><rect[^>]*style="fill:grey;stroke:blue;"/);
     expect(svg).toMatch(/data-id="a"[^>]*>.*?<circle[^>]*style="fill:grey;stroke:blue;"/);
     expect(count(svg, 'style="fill:red;"')).toBe(3);
-    expect(svg).toMatch(/data-id="b"><rect[^>]*style="fill:#eee;stroke:orange;"/);
+    expect(svg).toMatch(/data-id="b"><rect[^>]*style="rx:var\(--_r\);fill:#eee;stroke:orange;"/);
     expect(svg).toMatch(/class="pele-cluster-label"[^>]*style="fill:green;"/);
   });
 

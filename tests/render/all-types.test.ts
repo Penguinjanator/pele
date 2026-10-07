@@ -5,7 +5,8 @@ import { all } from '../../src/diagrams/registry.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 import { PAYLOADS, assertInert } from '../support/inert.js';
 
-const options = { measurer: metricsMeasurer };
+// A gantt chart marks the present, so the time is given: two drawings a moment apart could differ.
+const options = { measurer: metricsMeasurer, now: Date.UTC(2026, 0, 15, 12) };
 
 // Mermaid's documentation examples for every diagram type.
 const corpora = readdirSync('tests/corpus')

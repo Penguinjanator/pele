@@ -163,9 +163,9 @@ style c stroke:#0a0
 `,
       options
     );
-    expect(svg).toMatch(/class="pele-node pele-requirement hot" data-id="a"[^>]*><rect[^>]*style="fill:#f96;stroke:#333;stroke-width:4px;"/);
+    expect(svg).toMatch(/class="pele-node pele-requirement hot" data-id="a"[^>]*><rect[^>]*style="rx:var\(--_r\);fill:#f96;stroke:#333;stroke-width:4px;"/);
     expect(svg).toMatch(/class="pele-node pele-element cold" data-id="b"/);
-    expect(svg).toMatch(/class="pele-node pele-element hot cold" data-id="c"[^>]*><rect[^>]*style="fill:#f96;stroke:#0a0;stroke-width:4px;"/);
+    expect(svg).toMatch(/class="pele-node pele-element hot cold" data-id="c"[^>]*><rect[^>]*style="rx:var\(--_r\);fill:#f96;stroke:#0a0;stroke-width:4px;"/);
     expect(svg).toContain('style="fill:blue;"');
     // The divider takes the stroke but not the fill.
     expect(svg).toMatch(/class="pele-divider"[^>]*style="stroke:#333;stroke-width:4px;"/);

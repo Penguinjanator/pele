@@ -384,19 +384,19 @@ describe('class diagram rendering', () => {
     const svg = draw(
       'class A\nclass B:::hot\nclass C\nclass D {\n +x$\n}\nclassDef default stroke:#00f\nstyle A fill:#f9f,stroke:#333,stroke-width:4px\nclassDef hot fill:#fdd,color:#900\nclassDef cold fill:#ddf\ncssClass "C,D" cold\nstyle D color:#090'
     );
-    expect(group(svg, 'A')).toMatch(/<rect[^>]* style="stroke:#333;fill:#f9f;stroke-width:4px;"/);
+    expect(group(svg, 'A')).toMatch(/<rect[^>]* style="rx:var\(--_r\);stroke:#333;fill:#f9f;stroke-width:4px;"/);
     expect(group(svg, 'A')).toContain('<path class="pele-divider"');
     expect(group(svg, 'A')).toMatch(/pele-divider"[^>]* style="stroke:#333"/);
     expect(group(svg, 'B')).toContain('class="pele-node pele-class hot"');
-    expect(group(svg, 'B')).toMatch(/<rect[^>]* style="stroke:#00f;fill:#fdd;"/);
+    expect(group(svg, 'B')).toMatch(/<rect[^>]* style="rx:var\(--_r\);stroke:#00f;fill:#fdd;"/);
     expect(group(svg, 'B')).toMatch(/<text class="pele-label" font-weight="var\(--_hw\)" style="fill:#900;"/);
     expect(group(svg, 'C')).toContain('class="pele-node pele-class cold"');
-    expect(group(svg, 'C')).toMatch(/<rect[^>]* style="stroke:#00f;fill:#ddf;"/);
+    expect(group(svg, 'C')).toMatch(/<rect[^>]* style="rx:var\(--_r\);stroke:#00f;fill:#ddf;"/);
     expect(group(svg, 'D')).toContain('pele-static" style="fill:#090;text-decoration:underline"');
   });
 
   it('lets the later of a style and a classDef win, as Mermaid does', () => {
-    const fill = (body: string): string => /<rect[^>]* style="fill:([^;]+);"/.exec(group(draw(body), 'A'))![1];
+    const fill = (body: string): string => /<rect[^>]* style="rx:var\(--_r\);fill:([^;]+);"/.exec(group(draw(body), 'A'))![1];
     expect(fill('class A:::c\nclassDef c fill:#111\nstyle A fill:#222')).toBe('#222');
     expect(fill('class A:::c\nstyle A fill:#222\nclassDef c fill:#111')).toBe('#111');
     expect(fill('classDef c fill:#111\nclass A:::c\nstyle A fill:#222')).toBe('#222');

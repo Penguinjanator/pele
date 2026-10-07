@@ -135,7 +135,7 @@ describe('inert sequence output', () => {
   it('passes colors through the style filter', () => {
     const { svg } = render('sequenceDiagram\n  rect url(javascript:alert(1))\n  A->>B: hi\n  end\n  rect red\n  B->>A: yo\n  end', options);
     expect(svg).not.toContain('url(');
-    expect(svg).toContain('style="fill:red;"');
+    expect(svg).toContain('style="rx:var(--_r);fill:red;"');
   });
 
   it('does not pollute prototypes', () => {

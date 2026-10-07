@@ -65,7 +65,7 @@ describe('inert treemap output', () => {
     expect(svg).not.toContain('<script');
     expect(svg).not.toContain('<img');
     expect(svg).not.toContain('url(');
-    expect(svg).toContain('style="stroke:red;"');
+    expect(svg).toContain('style="rx:var(--_r);stroke:red;"');
   });
 
   it('keeps a value format from writing markup', () => {

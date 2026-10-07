@@ -96,7 +96,7 @@ describe('flowchart rendering', () => {
       'flowchart TD\n  A --> B\n  style A fill:#f9f,stroke:#333,stroke-width:4px,color:#fff\n  classDef warn fill:#ff0\n  class B warn\n  linkStyle 0 stroke:#f00,stroke-width:3px',
       options
     );
-    expect(svg).toContain('style="fill:#f9f;stroke:#333;stroke-width:4px;"');
+    expect(svg).toContain('style="rx:var(--_r);fill:#f9f;stroke:#333;stroke-width:4px;"');
     expect(svg).toContain('style="fill:#fff;"');
     expect(svg).toMatch(/class="pele-node pele-shape-rect warn" data-id="B"/);
     expect(svg).toContain('style="stroke:#f00;stroke-width:3px;"');

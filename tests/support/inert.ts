@@ -22,7 +22,7 @@ const ROOT_STYLES = new Set(['height:auto', 'color:var(--_fg)', 'text-transform:
 const RE_ROOT_FONT = /^font:\d+(?:\.\d+)?(?:e[-+]?\d+)?px sans-serif$/;
 const NUMERIC = new Set(['x', 'y', 'width', 'height', 'r', 'cx', 'cy', 'rx', 'ry']);
 
-const RE_NUMBER = /^(?:-?\d+(?:\.\d+)?(?:e[-+]?\d+)?|100%|var\(--pele-radius,4px\))$/;
+const RE_NUMBER = /^(?:-?\d+(?:\.\d+)?(?:e[-+]?\d+)?|100%)$/;
 const RE_SCRIPT_URL = /^[\s\u0000-\u001f]*(?:javascript|vbscript|data)\s*:/i;
 const RE_ALLOWED_URL = /^(?:about:blank$|(?:https?|mailto|tel):|(?![\\/]{2}|[a-z][a-z0-9+.-]*:))/i;
 const RE_TARGET = /^_(?:self|blank|parent|top)$/;

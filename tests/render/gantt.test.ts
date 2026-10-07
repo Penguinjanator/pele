@@ -87,7 +87,7 @@ describe('gantt rendering', () => {
     const paint = (id: string): string => new RegExp(`data-id="${id}"><rect [^>]*?(fill="[^/]*)/>`).exec(svg)![1];
     const all = ['p', 'a', 'd', 'c', 'cd'].map(paint);
     expect(new Set(all).size).toBe(5);
-    expect(paint('p')).toBe('fill="var(--_c)" stroke="var(--_c)"');
+    expect(paint('p')).toBe('fill="var(--_c)" stroke="var(--_c)" style="rx:var(--_r)"');
     expect(paint('a')).toContain('fill-opacity="0.25"');
     expect(paint('d')).toContain('fill="var(--_a)"');
     expect(paint('c')).toContain('stroke="var(--_l)" stroke-width="2"');

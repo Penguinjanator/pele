@@ -298,8 +298,8 @@ describe('block rendering', () => {
     const group = (id: string) => el.find((e) => e.attrs.get('data-id') === id)!;
     expect(group('a').attrs.get('class')).toBe('pele-node pele-shape-rect hot');
     expect(group('c').attrs.get('class')).toBe('pele-node pele-shape-rect hot');
-    expect(svg).toContain('style="fill:#f96;stroke:#333;"');
-    expect(svg).toContain('style="fill:red;stroke:blue;stroke-width:2px;"');
+    expect(svg).toContain('style="rx:var(--_r);fill:#f96;stroke:#333;"');
+    expect(svg).toContain('style="rx:var(--_r);fill:red;stroke:blue;stroke-width:2px;"');
     expect(svg).toContain('style="fill:#400;"');
     expect(boxes(svg).size).toBe(3);
   });
@@ -311,7 +311,7 @@ describe('block rendering', () => {
 
   it('styles a composite', () => {
     const { svg } = render('block\n  block:g\n    a\n  end\n  style g fill:#fee,stroke:#f00', options);
-    expect(svg).toMatch(/class="pele-cluster" data-id="g"><rect [^>]*style="fill:#fee;stroke:#f00;"/);
+    expect(svg).toMatch(/class="pele-cluster" data-id="g"><rect [^>]*style="rx:var\(--_r\);fill:#fee;stroke:#f00;"/);
   });
 
   it('draws the front matter title', () => {

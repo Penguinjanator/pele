@@ -397,7 +397,7 @@ describe('use case diagram rendering', () => {
     expect(actor).toContain('style="fill:#900;"');
     // A direct style beats the class, which beats the default class.
     expect(nodeGroup(svg, 'U')).toContain('<ellipse rx="44" ry="26" fill="var(--_s)" stroke="var(--_b)" style="stroke-width:2px;fill:#fee;stroke:#06c;"/>');
-    expect(svg).toMatch(/<g class="pele-cluster pele-boundary system-boundary system-boundary-rect hot" data-id="S"><rect[^>]* style="stroke-width:2px;fill:#fee;stroke:#c33;"/);
+    expect(svg).toMatch(/<g class="pele-cluster pele-boundary system-boundary system-boundary-rect hot" data-id="S"><rect[^>]* style="rx:var\(--_r\);stroke-width:2px;fill:#fee;stroke:#c33;"/);
     expect(svg).toContain('<g class="pele-edge pele-association hot" data-id="e" style="stroke-width:4px;stroke:#c33;">');
     // The arrowhead takes the colour of its line.
     expect(edges(svg)[0].body).toContain('fill="#c33" stroke="none"');

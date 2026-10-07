@@ -59,6 +59,17 @@ describe('fonts', () => {
     }
   });
 
+  it('writes the corner radius in a style, which every browser reads a variable from', () => {
+    const { svg } = render('flowchart LR\n  A[One] --> B[Two]\n  style B rx:10,fill:#eee', { measurer: metricsMeasurer });
+    expect(svg).toContain(';--_r:var(--pele-radius,4px)');
+    expect(svg).not.toContain('rx="var(');
+    expect(svg).toMatch(/<rect[^>]* style="rx:var\(--_r\)"\/>/);
+    // A radius the diagram sets for a node comes after the theme's, and so wins.
+    expect(svg).toContain('style="rx:var(--_r);rx:10;fill:#eee;"');
+    // A diagram with no rounded rectangle does not carry the variable.
+    expect(render('pie\n  "a": 1', { measurer: metricsMeasurer }).svg).not.toContain('--_r');
+  });
+
   it('does not write a font list that is more than names', () => {
     for (const family of ['x;color:red', 'x) ; y', 'url(//evil.example/f)', '"url(x)"', '"open', "it's", 'a\nb', 'x{}', '<b>', '"a";"b"', 'a,,b', ', a', '']) {
       const svg = render(FLOW, { measurer: metricsMeasurer, fontFamily: family, fontFamilyMono: family }).svg;

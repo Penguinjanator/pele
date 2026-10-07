@@ -263,9 +263,9 @@ describe('sequence rendering', () => {
     const svg = svgOf('sequenceDiagram\n  rect rgb(191, 223, 255)\n  A->>B: x\n  rect rgba(0, 0, 255, .1)\n  B->>A: y\n  end\n  end\n  rect\n  A->>B: z\n  end');
     const rects = [...svg.matchAll(/<rect class="pele-rect"[^>]*>/g)].map((m) => m[0]);
     expect(rects).toHaveLength(3);
-    expect(rects.some((r) => r.includes('style="fill:rgb(191, 223, 255);"'))).toBe(true);
-    expect(rects.some((r) => r.includes('style="fill:rgba(0, 0, 255, .1);"'))).toBe(true);
-    expect(rects.filter((r) => !r.includes('style=')).length).toBe(1);
+    expect(rects.some((r) => r.includes('style="rx:var(--_r);fill:rgb(191, 223, 255);"'))).toBe(true);
+    expect(rects.some((r) => r.includes('style="rx:var(--_r);fill:rgba(0, 0, 255, .1);"'))).toBe(true);
+    expect(rects.filter((r) => !r.includes('fill:')).length).toBe(1);
     expect(svg.indexOf('rgb(191, 223, 255)')).toBeLessThan(svg.indexOf('rgba(0, 0, 255, .1)'));
     expect(svg.indexOf('class="pele-rects"')).toBeLessThan(svg.indexOf('class="pele-lifelines"'));
   });
@@ -280,7 +280,7 @@ describe('sequence rendering', () => {
     ]);
     const svg = svgOf(src);
     expect(count(svg, 'class="pele-cluster pele-box"')).toBe(3);
-    expect(svg).toContain('style="fill:Aqua;"');
+    expect(svg).toContain('style="rx:var(--_r);fill:Aqua;"');
     expect(svg).toContain('>Group One</text>');
     expect(svg).toContain('>Group Two</text>');
     const x = lifelines(svg);

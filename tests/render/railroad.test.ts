@@ -103,7 +103,7 @@ describe('railroad rendering', () => {
     const { svg } = ebnf('r = "lit" name ;');
     const [terminal, nonterminal] = rects(svg);
     expect(svg).toMatch(/<g class="pele-node pele-terminal"><rect[^>]* rx="15" fill="var\(--_s\)"/);
-    expect(svg).toMatch(/<g class="pele-node pele-nonterminal" data-id="name"><rect[^>]* rx="var\(--pele-radius,4px\)" fill="var\(--_bg\)"/);
+    expect(svg).toMatch(/<g class="pele-node pele-nonterminal" data-id="name"><rect[^>]* fill="var\(--_bg\)"[^>]* style="rx:var\(--_r\)"/);
     expect(svg).toContain('font-family="var(--_fm)">lit</text>');
     expect(terminal.h).toBe(30);
     // Left to right on one baseline.
