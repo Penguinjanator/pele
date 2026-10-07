@@ -13,12 +13,13 @@ interface Props {
   markdownPath: string;
   // The page's own title in the navigation, when it is one of the pages under `current`.
   child?: string;
+  noindex?: boolean;
 }
 
-const { current, title, description, headings = [], markdownPath, child } = Astro.props;
+const { current, title, description, headings = [], markdownPath, child, noindex } = Astro.props;
 ---
 
-<BaseLayout title={title} description={description} markdownPath={markdownPath}>
+<BaseLayout title={title} description={description} markdownPath={markdownPath} noindex={noindex}>
   <main id="top" class="docs-page">
     <SiteHeader current={current} headings={headings} child={child} />
     <div class="docs-layout">

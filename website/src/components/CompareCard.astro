@@ -1,0 +1,51 @@
+---
+import { render } from 'pele';
+import { siteIcon } from '../lib/icons';
+import { playgroundHref } from '../lib/playground-link';
+
+interface Props {
+  source: string;
+  prefix: string;
+  label: string;
+  note?: string;
+}
+
+const { source, prefix, label, note } = Astro.props;
+
+// Pele's drawing is made with the page. Mermaid's is drawn in the browser once the card is near the screen.
+let svg: string | undefined;
+let error: string | undefined;
+try {
+  svg = render(source, { idPrefix: prefix, icons: siteIcon }).svg;
+} catch (cause) {
+  error = cause instanceof Error ? cause.message : String(cause);
+}
+let href: string | undefined;
+try {
+  href = playgroundHref(source);
+} catch {
+  href = undefined;
+}
+---
+
+<figure class="example-card compare-card">
+  <figcaption class="example-label">
+    <span class="example-title">{label}{note && <span class="example-note"> — {note}</span>}</span>
+    {href && <a class="playground-link text-action" href={href}>
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3" /></svg>
+      <span><span class="playground-link-prefix">Open in </span>Playground</span>
+    </a>}
+  </figcaption>
+  <div class="compare-pair">
+    <div class="compare-side">
+      <span class="compare-name">Pele</span>
+      {svg
+        ? <div class="compare-drawing" data-pele-theme="dark" role="img" aria-label={`${label}, drawn by Pele`} set:html={svg} />
+        : <pre class="example-error">{error}</pre>}
+    </div>
+    <div class="compare-side">
+      <span class="compare-name">Mermaid</span>
+      <div class="compare-drawing" role="img" aria-label={`${label}, drawn by Mermaid`} data-mermaid-source={source}></div>
+    </div>
+  </div>
+</figure>

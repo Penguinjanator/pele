@@ -83,3 +83,69 @@
   font-size: var(--font-size-small);
   white-space: pre-wrap;
 }
+
+// The compare pages, which the site does not link to: Pele's drawing beside Mermaid's.
+.compare-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 14px;
+
+  @media (max-width: 760px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.compare-side {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 10px;
+  min-width: 0;
+}
+
+.compare-name {
+  color: var(--muted);
+  font-size: var(--font-size-small);
+}
+
+.compare-drawing {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  min-height: 80px;
+
+  &[data-pele-theme] {
+    --pele-bg: var(--panel);
+    --pele-surface: var(--line);
+    --pele-surface-alt: var(--line-hover);
+    --pele-border: var(--line-active);
+  }
+
+  svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+.compare-list {
+  border-top: 1px solid var(--line);
+}
+
+.markdown-doc .compare-row {
+  display: grid;
+  grid-template-columns: 180px 1fr auto;
+  gap: 20px;
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  padding-block: 13px;
+  color: var(--muted);
+  font-size: var(--font-size-small);
+  text-decoration: none;
+
+  .compare-row-title { color: var(--paper); }
+
+  @media (hover: hover) {
+    &:hover { color: var(--paper); }
+  }
+}

@@ -1,0 +1,18 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import { pages } from '../../lib/example-groups';
+
+const count = (page: (typeof pages)[number]): number => page.sources.length + page.groups.reduce((sum, group) => sum + group.cases.length, 0);
+---
+
+<DocsLayout current="examples" title="Compare" description="Pele and Mermaid, side by side, for each diagram type." markdownPath="/examples.md" child="Compare" noindex>
+  <div class="compare-list">
+    {pages.map((page) => (
+      <a class="compare-row" href={`/compare/${page.type}`}>
+        <span class="compare-row-title">{page.title}</span>
+        <span>{count(page)} {count(page) === 1 ? 'diagram' : 'diagrams'}</span>
+        <span aria-hidden="true">→</span>
+      </a>
+    ))}
+  </div>
+</DocsLayout>

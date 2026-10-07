@@ -9,9 +9,11 @@ interface Props {
   title?: string;
   description?: string;
   markdownPath?: string;
+  // For a page that the site does not link to and that should stay out of search results.
+  noindex?: boolean;
 }
 
-const { title, description = siteDescription, markdownPath } = Astro.props;
+const { title, description = siteDescription, markdownPath, noindex = false } = Astro.props;
 const pageTitle = formatPageTitle(title);
 const canonicalPath = Astro.url.pathname.replace(/\/index\.html$/, '/').replace(/\.html$/, '');
 const canonicalUrl = new URL(canonicalPath, Astro.site);
@@ -25,6 +27,7 @@ const canonicalUrl = new URL(canonicalPath, Astro.site);
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <link rel="canonical" href={canonicalUrl} />
+    {noindex && <meta name="robots" content="noindex" />}
     {markdownPath && <link rel="alternate" type="text/markdown" href={markdownPath} title={`${title ?? 'Pele'} as Markdown`} />}
     <meta property="og:type" content="website" />
     <meta property="og:title" content={pageTitle} />
