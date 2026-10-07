@@ -180,6 +180,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     edgeSep: EDGE_SEP,
     rankSep: numberOption(flow, 'rankSpacing', RANK_SEP) * (tight ? 0.75 : 1),
     portSep: 20,
+    tracks: typeof flow.curve === 'string' && /^step/.test(flow.curve),
   });
 
   // Move everything once, to make room for the padding and the title.

@@ -177,6 +177,30 @@ describe('flowchart rendering', () => {
     }
   });
 
+  it('routes a stepped flowchart at right angles, clear of its nodes', () => {
+    const source = '---\nconfig:\n  flowchart:\n    curve: step\n---\nflowchart TD\n  A[Start] --> B[Parse]\n  A --> C[Measure]\n  A --> D[Theme]\n  B --> E[Fits]\n  C --> E\n  D --> E\n  E -->|Yes| F[Draw]\n  E -->|No| A';
+    const { svg } = render(source, options);
+    const boxes = [...svg.matchAll(/class="pele-node[^"]*" data-id="\w+" transform="translate\(([-\d.]+),([-\d.]+)\)"><rect x="([-\d.]+)" y="([-\d.]+)"/g)].map((m) => ({
+      x: Number(m[1]),
+      y: Number(m[2]),
+      w: -2 * Number(m[3]),
+      h: -2 * Number(m[4]),
+    }));
+    expect(boxes).toHaveLength(6);
+    const paths = [...svg.matchAll(/<g class="pele-edge"[^>]*><path d="([^"]+)"/g)].map((m) => m[1]);
+    expect(paths).toHaveLength(8);
+    for (const d of paths) {
+      // Straight runs and rounded corners only.
+      expect(d).toMatch(/^M[-\d.]+,[-\d.]+(?:L[-\d.]+,[-\d.]+|Q[-\d.]+,[-\d.]+ [-\d.]+,[-\d.]+)+$/);
+      const points = [...d.matchAll(/([-\d.]+),([-\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+      for (const [x, y] of points.slice(1, -1)) {
+        for (const box of boxes) expect(Math.abs(x - box.x) < box.w / 2 - 1 && Math.abs(y - box.y) < box.h / 2 - 1, d).toBe(false);
+      }
+    }
+    // Arrowheads point straight along the flow: the two back corners are level.
+    for (const m of svg.matchAll(/class="pele-marker" d="M[-\d.]+,[-\d.]+L[-\d.]+,([-\d.]+)L[-\d.]+,([-\d.]+)Z"/g)) expect(Number(m[1])).toBeCloseTo(Number(m[2]), 5);
+  });
+
   it('brings a lone edge to the tip of a diamond, and not to wherever it would run straight', () => {
     const { svg } = render('flowchart TD\n  A[A node wide enough to reach over the diamond] --> B[Left]\n  A --> C{Decide}\n  B --> D[End]\n  C --> D', options);
     const tipX = Number(svg.match(/data-id="C" transform="translate\(([-\d.]+),/)![1]);

@@ -46,6 +46,8 @@ export interface LayeredOptions {
   edgeSep: number;
   rankSep: number;
   portSep: number;
+  // Route edges at right angles, each on a track of its own across the gap between two ranks.
+  tracks?: boolean;
 }
 
 export interface LayeredResult {
@@ -90,13 +92,18 @@ const MIN_PITCH = 8;
 const MIN_SLOPE = 0.125;
 const MAX_GAP = 3;
 
+// Tracks: the room kept clear between a rank and the nearest track, the room between two tracks
+// when the gap has to grow to hold them, and the most they spread to when it has room to spare.
+const TRACK_MARGIN = 18;
+const TRACK_PITCH = 10;
+const TRACK_SPREAD = 14;
 // Curves that would run close beside each other across a gap turn at different levels instead:
 // how near both their ends must be for that, and the room between two levels. The gap grows by
 // that much for each level, so that every curve still turns in the height it would have had.
 const LEVEL_NEAR = 40;
 const LEVEL_PITCH = 16;
-// Past this many edges across one gap, none are given levels: weighing every pair of edges
-// against each other would take too long.
+// Past this many edges across one gap, tracks are given out in a plain order: weighing every
+// pair of edges against each other would take too long.
 const MAX_WEIGHED = 400;
 
 const enum End {
@@ -345,14 +352,14 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   // label or a twin. Its bends move onto the straight line between the ends of their edges, and
   // one that gets there is left out of the route, so that the edge is drawn as a single curve.
   const onLine = new Uint8Array(n);
-  if (empty) straighten(g, xs, empty, firstDummy, span, opt.edgeSep, onLine);
-  pastLabels(g, xs, firstDummy, span, opt.edgeSep, onLine);
+  if (empty && !opt.tracks) straighten(g, xs, empty, firstDummy, span, opt.edgeSep, onLine);
+  if (!opt.tracks) pastLabels(g, xs, firstDummy, span, opt.edgeSep, onLine);
   // An edge is cut where it passes a rank that holds something, and each piece crosses one gap.
-  // Where edges spread along their nodes, the pieces that run close together in a gap get tracks
-  // of their own, as the levels that their curves turn at. `pieceStart` gives every edge's run
-  // of pieces.
+  // The pieces that overlap in a gap get tracks of their own: with `tracks`, to run across on at
+  // right angles, and otherwise, where edges spread along their nodes, as the levels that their
+  // curves turn at. `pieceStart` gives every edge's run of pieces.
   const pieceStart = new Int32Array(m + 1);
-  const pieces: Pieces | undefined = EFK ? { from: [], to: [], rank: [], lower: [], track: [], levels: [] } : undefined;
+  const pieces: Pieces | undefined = opt.tracks || EFK ? { from: [], to: [], rank: [], lower: [], track: [], levels: [] } : undefined;
   const trackCount = new Int32Array(maxRank + 1);
   if (pieces) {
     for (let ei = 0; ei < m; ei++) {
@@ -364,7 +371,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
       for (let d = d0, end = d0 < 0 ? d0 : d0 + span[ei] - 1; d < end; d++) {
         // So is one that has a bend left out in a rank of labels: its curve crosses that rank.
         const bare = empty !== undefined && empty[RANK[d]] === 1;
-        if (bare !== (onLine[d] === 1)) twin = true;
+        if (!opt.tracks && bare !== (onLine[d] === 1)) twin = true;
       }
       if (twin) continue;
       let x = xs[EF[firstSeg[ei]]] + EFD[firstSeg[ei]];
@@ -384,7 +391,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
       pieces.lower.push(-1);
     }
     pieceStart[m] = pieces.from.length;
-    assignTracks(pieces, trackCount, LEVEL_NEAR);
+    assignTracks(pieces, trackCount, opt.tracks ? 0 : LEVEL_NEAR);
   }
 
   // Ranks that hold only border ports or their pass-through dummies need little room of their own.
@@ -408,13 +415,13 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   const bandTop = new Float64Array(maxRank + 1);
   const bandBottom = new Float64Array(maxRank + 1);
   const usual = (r: number): number => (r < startRanks || r >= maxRank - endRanks ? opt.portSep : opt.rankSep) / step;
-  // The room under each rank, which curves need more of where they run far across.
+  // The room under each rank. Curves need more where they run far across; tracks do not.
   const gapUnder = new Float64Array(maxRank + 1);
   for (let r = 0; r < maxRank; r++) {
-    gapUnder[r] = Math.max(usual(r), Math.min((MAX_GAP * opt.rankSep) / step, run[r] * MIN_SLOPE));
+    gapUnder[r] = opt.tracks ? usual(r) : Math.max(usual(r), Math.min((MAX_GAP * opt.rankSep) / step, run[r] * MIN_SLOPE));
   }
   // The rank that the pieces leaving each rank arrive at, past any that hold only bends. The
-  // gap between the two grows to hold the levels of its curves.
+  // gap between the two grows to hold its tracks, or the levels of its curves.
   const below = new Int32Array(maxRank + 1);
   if (pieces) {
     for (let r = 0; r < maxRank; r++) {
@@ -424,7 +431,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
       while (next < maxRank && empty && empty[next]) room += gapUnder[next++];
       below[r] = next;
       const count = trackCount[r];
-      gapUnder[r] += Math.max(0, count - 1) * LEVEL_PITCH;
+      gapUnder[r] += opt.tracks ? Math.max(0, 2 * TRACK_MARGIN + (count - 1) * TRACK_PITCH - room) : Math.max(0, count - 1) * LEVEL_PITCH;
     }
   }
   let y = 0;
@@ -436,6 +443,15 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     y += h + gapUnder[r];
   }
   const height = y;
+  // Where a piece runs across its gap: the tracks sit in the middle of it, the first at the top.
+  const trackY = (piece: number): number => {
+    const r = pieces!.rank[piece];
+    const top = bandBottom[r];
+    const bottom = bandTop[below[r]];
+    const count = trackCount[r];
+    const pitch = count > 1 ? Math.min(TRACK_SPREAD, (bottom - top - 2 * TRACK_MARGIN) / (count - 1)) : 0;
+    return (top + bottom) / 2 + (pieces!.track[piece] - (count - 1) / 2) * pitch;
+  };
 
   let minX = Infinity;
   let maxX = -Infinity;
@@ -472,7 +488,10 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     const d0 = firstDummy[ei];
     if (pieces && pieceStart[ei + 1] > pieceStart[ei]) {
       for (let k = pieceStart[ei]; k < pieceStart[ei + 1]; k++) {
-        if (pieces.levels[k] > 1) {
+        if (pieces.track[k] >= 0 && opt.tracks) {
+          const across = trackY(k);
+          pts.push(pieces.from[k] - minX, across, pieces.to[k] - minX, across);
+        } else if (pieces.levels[k] > 1) {
           // The curve runs straight down to its level, turns, and runs straight on from there.
           const r = pieces.rank[k];
           const count = pieces.levels[k];
@@ -881,11 +900,12 @@ function emptyRanks(g: Graph): Uint8Array | undefined {
   return any ? empty : undefined;
 }
 
-// Gives the pieces that run close together across a gap tracks of their own, and counts the
-// most that any group of them takes in each gap. Two pieces are kept apart when both their ends
-// are within `near` of each other, unless they leave from or arrive at the same point, as the
-// branches of a tree do. Which of two goes above the other is whichever makes them cross less.
-// Each group of such pieces counts its tracks from its own first.
+// Gives every piece that does not run straight down a track across its gap, and counts the
+// tracks of each gap. Two pieces in one gap share a track only where they cannot be mistaken
+// for each other: where they do not overlap, or where they leave from or arrive at the same
+// point, as the branches of a tree do. Which of two goes above the other is whichever makes
+// them cross less. With `near`, only two pieces whose ends are both that close are kept apart,
+// and each group of such pieces counts its tracks from its own first.
 function assignTracks(pieces: Pieces, trackCount: Int32Array, near: number): void {
   const { from, to, rank, track, levels } = pieces;
   const total = from.length;
@@ -905,7 +925,7 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, near: number): voi
   const overlap = (a: number, b: number): boolean => lo(a) < hi(b) - 0.5 && lo(b) < hi(a) - 0.5;
   // Whether a and b need tracks of their own.
   const clash = (a: number, b: number): boolean =>
-    overlap(a, b) && !mates(a, b) && Math.abs(from[a] - from[b]) <= near && Math.abs(to[a] - to[b]) <= near;
+    overlap(a, b) && !mates(a, b) && (near === 0 || (Math.abs(from[a] - from[b]) <= near && Math.abs(to[a] - to[b]) <= near));
   // How often a and b cross with a on the higher track: a's way down through b, and b's way down to itself through a.
   const crossings = (a: number, b: number): number => within(to[a], b) + within(from[b], a);
 
@@ -914,7 +934,7 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, near: number): voi
     // reach furthest go first, so that those of one fan nest.
     list.sort((a, b) => hi(b) - lo(b) - (hi(a) - lo(a)) || lo(a) - lo(b) || a - b);
     const count = list.length;
-    if (count > MAX_WEIGHED) continue;
+    if (near > 0 && count > MAX_WEIGHED) continue;
     const above: number[][] = [];
     // The group each piece is in, with those it clashes with, found by joining them up.
     const group = list.map((_, i) => i);
@@ -937,8 +957,10 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, near: number): voi
         for (let j = i + 1; j < count; j++) {
           const a = list[i];
           const b = list[j];
-          if (!clash(a, b)) continue;
-          group[find(i)] = find(j);
+          if (near > 0) {
+            if (!clash(a, b)) continue;
+            group[find(i)] = find(j);
+          } else if (!overlap(a, b) && !within(to[a], b) && !within(from[b], a) && !within(to[b], a) && !within(from[a], b)) continue;
           const ab = crossings(a, b);
           const ba = crossings(b, a);
           if (ab === ba) continue;
@@ -983,6 +1005,7 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, near: number): voi
       track[k] = t;
     }
     trackCount[r] = rows.length;
+    if (near === 0) continue;
     // Each group's tracks count from its own first, and a piece alone in its group has none.
     const first = new Map<number, number>();
     const lastOf = new Map<number, number>();

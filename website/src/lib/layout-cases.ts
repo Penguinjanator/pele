@@ -44,6 +44,9 @@ flowchart TD
   E -->|No| A
 `;
 
+// The same diagram with its edges at right angles.
+const stepped = (source: string): string => `---\nconfig:\n  flowchart:\n    curve: step\n---\n${source}`;
+
 const notes = ['Flex layout', 'New home page and PARA design', '2024-07-15', '2024-06-13', '2025-04-17', 'Test note', 'Medium draft', 'Reading list', 'Garden', 'Inbox', 'Archive', 'Ideas'];
 let vault = 'flowchart TD\n';
 notes.forEach((name, i) => (vault += `  a${i}["${name}"] --> MOC[_MOC]\n`));
@@ -159,6 +162,23 @@ const flowchart: LayoutGroup[] = [
       { title: 'Labels on a fan', source: 'flowchart TD\n  A{Which way?} -->|The first and longest of the answers| B\n  A -->|Second| C\n  A -->|A third answer| D\n  A -->|Fourth| E\n  B -->|Back| A\n' },
       { title: 'Labels on a two-way pair', source: 'flowchart LR\n  A[Client] -->|request| B[Server]\n  B -->|response| A\n  B -->|query| C[(Database)]\n  C -->|rows| B\n' },
       { title: 'Tall and wide nodes', source: 'flowchart TD\n  A["One line"] --> B["A node whose label is long enough that it wraps onto several lines of text"]\n  A --> C["Short"]\n  B --> D["Line one<br>line two<br>line three<br>line four"]\n  C --> D\n  D --> A\n  D --> B\n' },
+    ],
+  },
+  {
+    title: 'Right angles',
+    slug: 'right-angles',
+    cases: [
+      { title: 'Decision with a way back', note: 'With `curve: step`, each edge runs on a track of its own and turns in rounded corners.', source: withCurve('step') },
+      { title: 'Tall and wide nodes', source: stepped('flowchart TD\n  A["One line"] --> B["A node whose label is long enough that it wraps onto several lines of text"]\n  A --> C["Short"]\n  B --> D["Line one<br>line two<br>line three<br>line four"]\n  C --> D\n  D --> A\n  D --> B\n') },
+      { title: 'Decision with loops', source: stepped('flowchart TD\n  A[Christmas] -->|Get money| B(Go shopping)\n  B --> C{Let me think}\n  C -->|One| D[Laptop]\n  C -->|Two| E[iPhone]\n  C -->|Three| F[Car]\n  D --> B\n  E --> A\n') },
+      { title: 'Left to right', source: stepped(decision('LR')) },
+      { title: 'Hub with edges both ways', source: stepped('flowchart TD\n  a --> hub[A wide hub with room]\n  b --> hub\n  hub --> a\n  c --> hub\n  hub --> d\n  hub --> e\n  e --> hub\n  f --> hub\n  hub --> f\n') },
+      { title: 'Edges across and onto groups', source: stepped('flowchart TD\n  subgraph one [Group one]\n    a1 --> a2\n    a1 --> a3\n  end\n  subgraph two [Group two]\n    b1 --> b2\n  end\n  a2 --> b1\n  a3 --> b1\n  b2 --> a1\n  c --> one\n  c --> two\n  one --> d\n  two --> d\n') },
+      { title: 'Notes into two hubs', source: stepped(vault) },
+      { title: 'Wide graph with a repeated edge', source: stepped(repeated) },
+      { title: 'Two dense ranks', source: stepped(mesh) },
+      { title: 'Chain with edges that skip ranks', source: stepped(ladder) },
+      { title: 'Fan in, 30', source: stepped(fan('TD', 30, true)) },
     ],
   },
   {

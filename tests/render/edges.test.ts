@@ -26,6 +26,23 @@ describe('edge paths', () => {
     expect(x2).toBeCloseTo(32, 5);
   });
 
+  it('rounds the corner where two straight runs meet, by up to half of a run with a corner at each end', () => {
+    expect(routePath([0, 0, 0, 0, 20, 0, 100, 20, 0, 100, 48, 0], undefined, 0, 0).d).toBe('M0,0L0,8Q0,20 12,20L88,20Q100,20 100,32L100,48');
+    // The run in the middle is 10 long, so each of its corners takes 5.
+    expect(routePath([0, 0, 0, 0, 20, 0, 10, 20, 0, 10, 48, 0], undefined, 0, 0).d).toBe('M0,0L0,15Q0,20 5,20L5,20Q10,20 10,25L10,48');
+    expect(routePath([0, 0, 0, 0, 20, 0, 100, 20, 0, 100, 48, 0], 'linear', 0, 0).d).toBe('M0,0L0,20L100,20L100,48');
+    // Two runs in one line have no corner between them.
+    expect(routePath([0, 0, 0, 0, 20, 0, 0, 48, 0], undefined, 0, 0).d).toBe('M0,0L0,20L0,48');
+  });
+
+  it('turns a stepped route at right angles, with arrowheads along its last run', () => {
+    const step = routePath([0, 0, 0, 100, 48, 0], 'step', 0, 7);
+    expect(step.d).toBe('M0,0L0,12Q0,24 12,24L88,24Q100,24 100,36L100,41');
+    expect([step.edx, step.edy]).toEqual([0, 1]);
+    expect(routePath([0, 0, 0, 100, 48, 0], 'stepAfter', 0, 0).d).toBe('M0,0L0,36Q0,48 12,48L100,48');
+    expect(routePath([0, 0, 1, 48, 100, 1], 'stepBefore', 0, 0).d).toBe('M0,0L0,88Q0,100 12,100L48,100');
+  });
+
   it('runs a curve straight for a little way into the marker at its end', () => {
     // Seven for the arrowhead, then six straight, and the curve turns in what is left.
     expect(routePath([0, 0, 0, 100, 48, 0], undefined, 0, 7).d).toBe('M0,0C0,17.5 100,17.5 100,35L100,41');

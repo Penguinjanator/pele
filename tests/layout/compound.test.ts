@@ -311,6 +311,81 @@ describe('compound layout', () => {
     expect(Math.abs(a[3] - b[3])).toBeCloseTo(OPTIONS.edgeSep, 5);
   });
 
+  it('routes edges at right angles on tracks, where no two can be taken for each other', () => {
+    for (let seed = 1; seed <= 120; seed++) {
+      const rnd = random(seed * 7919);
+      const int = (n: number): number => Math.floor(rnd() * n);
+      const nodes: CNode[] = [];
+      const count = 3 + int(14);
+      for (let i = 0; i < count; i++) {
+        const node = cnode(40 + int(120), 30 + int(60));
+        node.seq = i;
+        node.span = node.w - 24;
+        nodes.push(node);
+      }
+      const edges: CEdge[] = [];
+      for (let i = 0, wanted = int(count * 2.5); i < wanted; i++) {
+        const src = int(count);
+        const dst = int(count);
+        if (src !== dst) edges.push(edge(src, dst, rnd() < 0.2 ? 30 + int(40) : 0, 20));
+      }
+      compoundLayout(nodes, edges, 'TB', { ...OPTIONS, tracks: true });
+      const where = `seed ${seed}`;
+      // Every run across, with the x where the edge comes down to it and where it goes down from it.
+      const runs: { y: number; lo: number; hi: number; from: number; to: number }[] = [];
+      edges.forEach((e, ei) => {
+        const r = e.route;
+        expect(onBorder(nodes[e.src], r[0], r[1]), `${where} edge ${ei} starts on its source`).toBe(true);
+        expect(onBorder(nodes[e.dst], r[r.length - 3], r[r.length - 2]), `${where} edge ${ei} ends on its target`).toBe(true);
+        for (let k = 3; k < r.length; k += 3) {
+          // Two ends less than half a unit out of line are joined directly.
+          const across = Math.abs(r[k + 1] - r[k - 2]) < 0.01;
+          const down = Math.abs(r[k] - r[k - 3]) < 0.5;
+          expect(across || down, `${where} edge ${ei} turns at right angles`).toBe(true);
+          if (!across || down) continue;
+          // The route runs upwards when the edge does, so the higher end is the one it comes down to.
+          const before = k >= 6 ? r[k - 5] : r[k - 2];
+          const fromFirst = before < r[k - 2] - 0.01 || (k + 4 < r.length && r[k + 4] > r[k + 1] + 0.01);
+          runs.push({
+            y: r[k + 1],
+            lo: Math.min(r[k], r[k - 3]),
+            hi: Math.max(r[k], r[k - 3]),
+            from: fromFirst ? r[k - 3] : r[k],
+            to: fromFirst ? r[k] : r[k - 3],
+          });
+        }
+      });
+      for (let a = 0; a < runs.length; a++) {
+        for (let b = a + 1; b < runs.length; b++) {
+          if (Math.abs(runs[a].y - runs[b].y) > 0.01) continue;
+          const overlap = runs[a].lo < runs[b].hi - 0.5 && runs[b].lo < runs[a].hi - 0.5;
+          const mates = Math.abs(runs[a].from - runs[b].from) < 0.5 || Math.abs(runs[a].to - runs[b].to) < 0.5;
+          expect(overlap && !mates, `${where} runs ${a} and ${b} lie on one track`).toBe(false);
+        }
+      }
+      // No run across passes through a node.
+      for (const run of runs) {
+        for (const node of nodes) {
+          const inside = Math.abs(run.y - node.y) < node.h / 2 - 0.5 && run.lo < node.x + node.w / 2 - 0.5 && run.hi > node.x - node.w / 2 + 0.5;
+          expect(inside, `${where} a run crosses a node`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('nests the tracks of a fan so that its edges do not cross', () => {
+    const nodes = [cnode(120, 40), cnode(60, 40), cnode(60, 40), cnode(60, 40), cnode(60, 40)];
+    nodes.forEach((node, i) => (node.seq = i));
+    nodes[0].span = 96;
+    const edges = [edge(0, 1), edge(0, 2), edge(0, 3), edge(0, 4)];
+    compoundLayout(nodes, edges, 'TB', { ...OPTIONS, tracks: true });
+    const acrossY = (e: CEdge): number => e.route[4];
+    const left = edges.filter((e) => nodes[e.dst].x < nodes[0].x).sort((a, b) => nodes[a.dst].x - nodes[b.dst].x);
+    const right = edges.filter((e) => nodes[e.dst].x > nodes[0].x).sort((a, b) => nodes[b.dst].x - nodes[a.dst].x);
+    // The edge that reaches furthest turns first, so the nearer ones pass under it.
+    for (const side of [left, right]) for (let i = 1; i < side.length; i++) expect(acrossY(side[i - 1])).toBeLessThan(acrossY(side[i]));
+  });
+
   it('survives groups that contain each other', () => {
     const a = cnode(0, 0, 1);
     const b = cnode(0, 0, 0);
