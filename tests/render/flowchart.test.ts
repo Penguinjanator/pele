@@ -201,6 +201,14 @@ describe('flowchart rendering', () => {
     for (const m of svg.matchAll(/class="pele-marker" d="M[-\d.]+,[-\d.]+L[-\d.]+,([-\d.]+)L[-\d.]+,([-\d.]+)Z"/g)) expect(Number(m[1])).toBeCloseTo(Number(m[2]), 5);
   });
 
+  it('keeps nodes in the order they are written, where the mirror image would cross no less', () => {
+    const { svg } = render('flowchart TD\n  A[Christmas] -->|Get money| B(Go shopping)\n  B --> C{Let me think}\n  C -->|One| D[Laptop]\n  C -->|Two| E[iPhone]\n  C -->|Three| F[Car]\n  D --> B\n  E --> A', options);
+    const x = (id: string): number => Number(svg.match(new RegExp(`data-id="${id}" transform="translate\\(([-\\d.]+),`))![1]);
+    // The car goes between the two that have a way back up, and the laptop, written first, goes on the left.
+    expect(x('D')).toBeLessThan(x('F'));
+    expect(x('F')).toBeLessThan(x('E'));
+  });
+
   it('brings a lone edge to the tip of a diamond, and not to wherever it would run straight', () => {
     const { svg } = render('flowchart TD\n  A[A node wide enough to reach over the diamond] --> B[Left]\n  A --> C{Decide}\n  B --> D[End]\n  C --> D', options);
     const tipX = Number(svg.match(/data-id="C" transform="translate\(([-\d.]+),/)![1]);
@@ -216,6 +224,12 @@ describe('flowchart rendering', () => {
     const curves = [...back.matchAll(/([-\d.]+),([-\d.]+)C[-\d.]+,[-\d.]+ [-\d.]+,[-\d.]+ [-\d.]+,([-\d.]+)/g)];
     const last = curves[curves.length - 1];
     expect(Number(last[2])).toBeGreaterThan((y('A') + y('B')) / 2 + 10);
+  });
+
+  it('keeps the branches of a decision in the order they are written when no order crosses less', () => {
+    const { svg } = render('flowchart TD\n  A{Which way?} -->|The first and longest of the answers| B\n  A -->|Second| C\n  A -->|A third answer| D\n  A -->|Fourth| E\n  B -->|Back| A', options);
+    const xs = ['B', 'C', 'D', 'E'].map((id) => Number(svg.match(new RegExp(`data-id="${id}" transform="translate\\(([-\\d.]+),`))![1]));
+    expect(xs).toEqual([...xs].sort((a, b) => a - b));
   });
 
   it('keeps invisible links out of the drawing but in the layout', () => {

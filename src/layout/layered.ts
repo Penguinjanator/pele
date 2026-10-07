@@ -1268,17 +1268,66 @@ function reduceCrossings(g: Graph, nodes: LNode[]): void {
     }
   };
 
-  for (let i = 0, stale = 0; stale < 4 && i < MAX_SWEEPS; i++, stale++) {
-    sweep(i % 2 === 0, i % 4 >= 2);
-    const c = count();
-    if (c < best) {
-      best = c;
-      bestOrder.set(order);
-      stale = 0;
-      if (c === 0) break;
+  // How many pairs of nodes in one rank are not in the order they were given.
+  const outOfOrder = (): number => {
+    let total = 0;
+    for (let r = 0; r <= maxRank; r++) {
+      for (let i = layerStart[r]; i < layerStart[r + 1]; i++) {
+        if (order[i] >= real) continue;
+        for (let j = i + 1; j < layerStart[r + 1]; j++) if (order[j] < order[i]) total++;
+      }
+    }
+    return total;
+  };
+  const settlePositions = (): void => {
+    for (let r = 0; r <= maxRank; r++) for (let i = layerStart[r]; i < layerStart[r + 1]; i++) pos[order[i]] = i - layerStart[r];
+  };
+
+  // The sweeps are run twice from the same start, going down first and going up first. They
+  // often end with as few crossings either way but a different order, and then the one that
+  // keeps more of the nodes in the order they were given is the less surprising.
+  // Only for graphs small enough to be read node by node: a second run costs as much as the first.
+  const initial = order.slice();
+  const start = best;
+  const small = n <= 600;
+  let chosen = bestOrder;
+  let chosenOut = Infinity;
+  for (let attempt = 0; attempt < (small ? 2 : 1); attempt++) {
+    if (attempt > 0) {
+      order.set(initial);
+      settlePositions();
+    }
+    let found = start;
+    const foundOrder = initial.slice();
+    for (let i = 0, stale = 0; stale < 4 && i < MAX_SWEEPS; i++, stale++) {
+      sweep((i + attempt) % 2 === 0, i % 4 >= 2);
+      const c = count();
+      if (c < found) {
+        found = c;
+        foundOrder.set(order);
+        stale = 0;
+        if (c === 0) break;
+      }
+    }
+    order.set(foundOrder);
+    const out = small ? outOfOrder() : 0;
+    if (attempt === 0 || found < best || (found === best && out < chosenOut)) {
+      best = found;
+      chosen = foundOrder;
+      chosenOut = out;
     }
   }
-  order.set(bestOrder);
+  order.set(chosen);
+  settlePositions();
+  bestOrder.set(chosen);
+
+  // A drawing and its mirror image cross as often too. Of those two, likewise.
+  if (!small) return;
+  for (let i = 0; i < real; i++) if (nodes[i].pin !== 0) return;
+  if (chosenOut === 0) return;
+  for (let r = 0; r <= maxRank; r++) order.subarray(layerStart[r], layerStart[r + 1]).reverse();
+  settlePositions();
+  if (count() > best || outOfOrder() >= chosenOut) order.set(bestOrder);
 }
 
 // Brandes-Köpf horizontal coordinate assignment: four aligned layouts, balanced.
