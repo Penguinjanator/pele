@@ -83,7 +83,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
   let box = { width: 0, height: 0 };
   let roomy = false;
   let bleed = '';
-  let restStyle = { width: '', height: '', maxWidth: '', margin: '' };
+  let restStyle = { width: '', height: '', maxWidth: '', margin: '', display: '' };
   // The scale shown, or 0 while the drawing rests at the size that fits.
   let scale = 0;
   let x = 0;
@@ -168,6 +168,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     svg.style.height = restStyle.height;
     svg.style.maxWidth = restStyle.maxWidth;
     svg.style.margin = restStyle.margin;
+    svg.style.display = restStyle.display;
     svg.style.cursor = '';
     svg.style.userSelect = '';
     measure();
@@ -199,6 +200,9 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     if (roomy) {
       svg.style.maxWidth = 'none';
       svg.style.margin = bleed;
+      // An inline drawing sits on a line of text, with room under it for descenders. That room
+      // is part of the box, so left in place it would make the element taller.
+      svg.style.display = 'block';
       svg.style.width = `${box.width}px`;
       svg.style.height = `${box.height}px`;
       after = svg.getBoundingClientRect();
@@ -231,7 +235,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
       return;
     }
     natural = { width: Number(svg.getAttribute('width')) || 0, height: Number(svg.getAttribute('height')) || 0 };
-    restStyle = { width: svg.style.width, height: svg.style.height, maxWidth: svg.style.maxWidth, margin: svg.style.margin };
+    restStyle = { width: svg.style.width, height: svg.style.height, maxWidth: svg.style.maxWidth, margin: svg.style.margin, display: svg.style.display };
     settle();
   };
 
