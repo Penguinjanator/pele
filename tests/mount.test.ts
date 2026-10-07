@@ -198,6 +198,26 @@ describe('mount', () => {
     expect(listeners.size).toBe(0);
   });
 
+  it('draws again with the page\'s fonts once an element mounted outside the document is in it', async () => {
+    const { mountWith } = await import('../src/mount.js');
+    const { el, seen, spy } = styled({ fontFamily: '' });
+    const outside = el as unknown as { isConnected: boolean; clientWidth: number };
+    outside.isConnected = false;
+    outside.clientWidth = 0;
+    let renders = 0;
+    mountWith(spy, el, FLOW, { onRender: () => renders++ });
+    expect([...new Set(seen)]).toEqual(['undefined|undefined']);
+    // Put in the document: it has a font and a width now, and the observer reports its size.
+    globals.getComputedStyle = () => ({ fontFamily: 'Georgia', paddingLeft: '0px', paddingRight: '0px', getPropertyValue: () => '' });
+    outside.isConnected = true;
+    outside.clientWidth = 500;
+    seen.length = 0;
+    resize(el, 500);
+    expect([...new Set(seen)]).toEqual(['Georgia|undefined']);
+    expect(el.innerHTML).toContain('font-family:var(--pele-font,Georgia)');
+    expect(renders).toBe(2);
+  });
+
   it('makes a zoom for the diagram unless told not to', () => {
     expect(mount(element(500), FLOW, options).zoom).toBeDefined();
     expect(mount(element(500), FLOW, { ...options, zoom: true }).zoom).toBeDefined();

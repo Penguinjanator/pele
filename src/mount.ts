@@ -112,7 +112,20 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
   draw(true);
   zoom();
 
+  // An element that is not in the document yet has neither fonts nor a width to read, so what
+  // was drawn for it is a guess. It is drawn again when the element is first given room.
+  let placed = element.isConnected !== false;
   const resized = (): void => {
+    if (!placed) {
+      if (!element.isConnected) return;
+      placed = true;
+      try {
+        draw(true, true);
+      } catch {
+        // As below.
+      }
+      return;
+    }
     if (adapts === false || settings.maxWidth !== undefined) return;
     const available = room(element, windowOf(element).getComputedStyle(element));
     // An element that wraps the drawing follows its width, which is not a change of room.
