@@ -6,8 +6,8 @@ export interface ZoomOptions {
   always?: boolean;
   // The most a drawing is enlarged, as a multiple of its natural size. 3 by default.
   maxScale?: number;
-  // Whether buttons to enlarge, reduce and reset are shown over a drawing that can be enlarged.
-  // They are by default.
+  // Whether buttons to enlarge and reduce are shown over a drawing that can be enlarged, and
+  // one to reset it while it is. They are by default.
   controls?: boolean;
   // What the buttons are called, for a page that is not in English.
   labels?: { zoomIn?: string; zoomOut?: string; reset?: string };
@@ -59,7 +59,7 @@ const PAN = 48;
 const BAR_STYLE =
   '--_bg:var(--pele-bg,#fff);--_fg:var(--pele-fg,#1f1f1f);--_b:var(--pele-border,#8a8a8a);' +
   'position:absolute;top:var(--pele-zoom-top,8px);right:var(--pele-zoom-right,8px);' +
-  'bottom:var(--pele-zoom-bottom,auto);left:var(--pele-zoom-left,auto);display:flex;gap:2px;padding:2px;' +
+  'bottom:var(--pele-zoom-bottom,auto);left:var(--pele-zoom-left,auto);display:flex;flex-direction:column;gap:2px;padding:2px;' +
   'width:auto;max-width:none;border:1px solid var(--_b);border-radius:var(--pele-radius,4px);background:var(--_bg);color:var(--_fg);line-height:0';
 const BUTTON_STYLE =
   'appearance:none;display:grid;place-items:center;width:24px;height:24px;margin:0;padding:0;border:0;' +
@@ -109,7 +109,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
       bar.className = 'pele pele-zoom';
       bar.setAttribute('style', BAR_STYLE);
       const act = { zoomIn: () => show((scale || fit()) * STEP * STEP), zoomOut: () => show((scale || fit()) / (STEP * STEP)), reset: () => settle() };
-      for (const name of ['zoomOut', 'zoomIn', 'reset'] as const) {
+      for (const name of ['zoomIn', 'zoomOut', 'reset'] as const) {
         const button = doc.createElement('button');
         const label = options.labels?.[name] ?? LABELS[name];
         button.type = 'button';
@@ -139,7 +139,8 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     };
     dim(buttons.zoomIn, (scale || fit()) >= most() * 0.999);
     dim(buttons.zoomOut, scale === 0);
-    dim(buttons.reset, scale === 0);
+    // There is nothing to reset until the drawing is enlarged.
+    if (buttons.reset) buttons.reset.style.display = scale === 0 ? 'none' : 'grid';
   };
   const ours = (event: Event): boolean => bar !== undefined && event.target instanceof view().Node && bar.contains(event.target as Node);
 

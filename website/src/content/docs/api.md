@@ -193,7 +193,7 @@ With [`pele/lazy`](#imports), `mountAsync()` takes the same arguments, fetches t
 
 A zoomed diagram keeps the size of its box. The SVG shows part of the diagram at a larger scale, so nothing around it moves.
 
-A diagram that can be zoomed has buttons to zoom in, zoom out, and reset.
+A diagram that can be zoomed has buttons to zoom in and out, and a reset button while it is zoomed.
 
 | Input | Action |
 | --- | --- |
