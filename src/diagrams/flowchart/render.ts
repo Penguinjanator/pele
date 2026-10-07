@@ -3,9 +3,9 @@ import type { LayeredOptions } from '../../layout/layered.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, struckTitle, titleCrossed, type Crossings } from '../../svg/cluster.js';
-import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
+import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, sideReach, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
-import { drawShape, insetRoute, shapeCentered, shapeHasLabel, shapeSize, shapeSpan } from '../../svg/shapes.js';
+import { drawShape, endSide, insetRoute, shapeHasLabel, shapeSize, shapeSpan } from '../../svg/shapes.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
@@ -141,10 +141,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
   // The edges on one side of a node spread along it; a picture or an icon keeps them at its middle.
   views.forEach((view, i) => {
     if (view.node.isGroup) cnodes[i].span = Infinity;
-    else if (!view.node.img && !view.node.icon) {
-      cnodes[i].span = shapeSpan(view.shape, view.w, view.h, flowsSideways(i));
-      cnodes[i].centered = shapeCentered(view.shape, flowsSideways(i));
-    }
+    else if (!view.node.img && !view.node.icon) cnodes[i].span = shapeSpan(view.shape, view.w, view.h, flowsSideways(i));
   });
 
   const cedges: CEdge[] = [];
@@ -181,6 +178,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     rankSep: numberOption(flow, 'rankSpacing', RANK_SEP) * (tight ? 0.75 : 1),
     portSep: 20,
     tracks: typeof flow.curve === 'string' && /^step/.test(flow.curve),
+    straight: flow.curve === 'linear',
   });
 
   // Move everything once, to make room for the padding and the title.
@@ -289,6 +287,15 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     )},${num(y)})">${body}</g>`;
   }
 
+  // Where the edges on each side of each node start to turn.
+  const reach = sideReach();
+  for (let i = 0; i < cedges.length; i++) {
+    const ce = cedges[i];
+    if (ce.src === ce.dst || drawn[i].thickness === 'invisible' || ce.route.length < 6) continue;
+    reach.add(ce.src, endSide(ce.route, 0, cnodes[ce.src]), drawn[i].arrowTypeStart);
+    reach.add(ce.dst, endSide(ce.route, ce.route.length - 3, cnodes[ce.dst]), drawn[i].arrowTypeEnd);
+  }
+
   let edgesOut = '';
   let labelsOut = '';
   const loopSeen = new Map<number, number>();
@@ -308,9 +315,11 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
         path = loopPath(cnodes[ce.src], view.w, view.h, k, flowsSideways(ce.src), LOOP, markerTrim(endType), ce);
       } else {
         const route = ce.route.slice();
+        const leaves = reach.of(ce.src, endSide(route, 0, cnodes[ce.src]));
+        const arrives = reach.of(ce.dst, endSide(route, route.length - 3, cnodes[ce.dst]));
         insetRoute(route, 0, views[ce.src], cnodes[ce.src]);
         insetRoute(route, route.length - 3, views[ce.dst], cnodes[ce.dst]);
-        path = routePath(route, edge.curve, markerTrim(startType), markerTrim(endType));
+        path = routePath(route, edge.curve, markerTrim(startType), markerTrim(endType), leaves, arrives);
       }
       const color = style?.stroke && edge.thickness !== 'invisible' ? esc(style.stroke) : 'var(--_l)';
       let attrs = '';

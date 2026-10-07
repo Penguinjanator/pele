@@ -21,8 +21,6 @@ export interface CNode {
   seq: number;
   // How much of a side its edges may spread along, measured across the flow; 0 keeps them at its middle.
   span: number;
-  // Its ends stay around the middle of the side, and are not moved to let an edge run straight.
-  centered: boolean;
   x: number;
   y: number;
 }
@@ -98,7 +96,7 @@ export function shiftLayout(nodes: CNode[], edges: CEdge[], ox: number, oy: numb
 }
 
 export function cnode(w: number, h: number, parent = -1): CNode {
-  return { w, h, parent, isGroup: false, dir: undefined, padX: 0, padTop: 0, padBottom: 0, minW: 0, seq: 0, span: 0, centered: false, x: 0, y: 0 };
+  return { w, h, parent, isGroup: false, dir: undefined, padX: 0, padTop: 0, padBottom: 0, minW: 0, seq: 0, span: 0, x: 0, y: 0 };
 }
 
 function startSide(dir: Dir): Side {
@@ -259,7 +257,6 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       const node = nodes[item];
       const ln = sized ? lnode(vertical ? node.w : node.h, vertical ? node.h : node.w) : lnode(0, 0);
       ln.span = node.isGroup ? Math.min(node.span, ln.w - 2 * node.padX) : node.span;
-      ln.centered = node.centered;
       lnodes.push(ln);
     });
     const held = (item: number, ei: number, out: boolean): boolean => nodes[item].isGroup && endpointBelow(item, edges[ei], out);

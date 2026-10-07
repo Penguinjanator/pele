@@ -1,7 +1,8 @@
 import { cnode, compoundLayout, direction, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
-import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
+import { edgeLabelSvg, marker, markerTrim, routePath, sideReach, type EdgePath } from '../../svg/edges.js';
+import { endSide } from '../../svg/shapes.js';
 import { svgDocument } from '../../svg/root.js';
 import { withTitle } from '../../svg/title.js';
 import { classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
@@ -563,6 +564,14 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
     }
   };
 
+  // Where the transitions on each side of each state start to turn.
+  const reach = sideReach();
+  for (let i = 0; i < cedges.length; i++) {
+    const ce = cedges[i];
+    if (ce.src === ce.dst || ce.route.length < 6 || drawn[i].pattern === 'dashed') continue;
+    reach.add(ce.dst, endSide(ce.route, ce.route.length - 3, cnodes[ce.dst]), 'arrow_point');
+  }
+
   let edgesOut = '';
   let labelsOut = '';
   const loopSeen = new Int32Array(states);
@@ -612,6 +621,8 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
       ce.labelY = side ? a.y - loopHeight[ce.src] / 2 + below : a.y + out + furthest * 0.75 + 4 + below;
     } else {
       let route = ce.route.slice();
+      const leaves = reach.of(ce.src, endSide(route, 0, cnodes[ce.src]));
+      const arrives = reach.of(ce.dst, endSide(route, route.length - 3, cnodes[ce.dst]));
       for (let k = 0; k < route.length; k += 3) {
         route[k] += pad;
         route[k + 1] += pad;
@@ -629,7 +640,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
           : [g.x + pad + (near ? -g.w / 2 : g.w / 2), route[at + 1], 1];
         route = inward ? point.concat(route) : route.concat(point);
       }
-      path = routePath(route, undefined, 0, markerTrim(endType));
+      path = routePath(route, undefined, 0, markerTrim(endType), leaves, arrives);
     }
     edgesOut +=
       `<g class="pele-edge ${note ? 'pele-note-edge" stroke="var(--_b)" stroke-dasharray="3 4' : 'pele-transition'}" data-id="${escText(edge.id)}">` +

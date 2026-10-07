@@ -154,7 +154,7 @@ const SHAPES: Record<string, ShapeDef> = {
   },
   diam: {
     inset: (w, h, side, t) => (side & 1 ? (Math.abs(t) * w) / h : (Math.abs(t) * h) / w),
-    span: (w, h, sideways) => (sideways ? h : w) * 0.4,
+    span: (w, h, sideways) => (sideways ? h : w) * 0.6,
     size: (tw, th) => {
       const a = tw + 16;
       const b = th + 8;
@@ -649,16 +649,6 @@ export function shapeInset(shape: string, w: number, h: number, side: number, t 
   return BY_NAME.get(shape)?.inset?.(w, h, side, t) ?? 0;
 }
 
-// Shapes whose every side comes to a point or a curve, and those whose left and right sides do.
-const ROUND = new Set(['diam', 'circle', 'dbl-circ', 'ellipse', 'sm-circ', 'f-circ', 'fr-circ', 'cross-circ']);
-const ROUND_ENDS = new Set(['hex', 'stadium']);
-
-// Whether the side that edges meet has a middle that a lone edge should keep to: the tip of a
-// diamond, the top of a circle. A flat side has no such place.
-export function shapeCentered(shape: string, sideways: boolean): boolean {
-  return ROUND.has(shape) || (sideways && ROUND_ENDS.has(shape));
-}
-
 // How much of a side of the shape edges may spread along, when the flow runs down or, if `sideways`, across.
 export function shapeSpan(shape: string, w: number, h: number, sideways: boolean): number {
   return Math.max(0, BY_NAME.get(shape)?.span?.(w, h, sideways) ?? 0);
@@ -668,18 +658,24 @@ export function shapeHasLabel(shape: string): boolean {
   return BY_NAME.get(shape)?.noLabel !== true;
 }
 
+// The side of a node's layout box that a route end lies on: 0 top, 1 right, 2 bottom, 3 left, or -1 for none.
+export function endSide(route: number[], at: number, c: CNode): number {
+  const dx = route[at] - c.x;
+  const dy = route[at + 1] - c.y;
+  if (Math.abs(Math.abs(dy) - c.h / 2) < 0.5) return dy < 0 ? 0 : 2;
+  if (Math.abs(Math.abs(dx) - c.w / 2) < 0.5) return dx < 0 ? 3 : 1;
+  return -1;
+}
+
 // Moves a route end from a node's layout box onto the outline of the shape drawn in it.
 export function insetRoute(route: number[], at: number, view: { shape: string; w: number; h: number }, c: CNode): void {
   if (c.isGroup) return;
-  const dx = route[at] - c.x;
-  const dy = route[at + 1] - c.y;
-  if (Math.abs(Math.abs(dy) - c.h / 2) < 0.5) {
-    const side = dy < 0 ? 0 : 2;
-    const amount = shapeInset(view.shape, view.w, view.h, side, dx) + (c.h - view.h) / 2;
+  const side = endSide(route, at, c);
+  if (side === 0 || side === 2) {
+    const amount = shapeInset(view.shape, view.w, view.h, side, route[at] - c.x) + (c.h - view.h) / 2;
     route[at + 1] += side === 0 ? amount : -amount;
-  } else if (Math.abs(Math.abs(dx) - c.w / 2) < 0.5) {
-    const side = dx < 0 ? 3 : 1;
-    const amount = shapeInset(view.shape, view.w, view.h, side, dy) + (c.w - view.w) / 2;
+  } else if (side >= 0) {
+    const amount = shapeInset(view.shape, view.w, view.h, side, route[at + 1] - c.y) + (c.w - view.w) / 2;
     route[at] += side === 3 ? amount : -amount;
   }
 }

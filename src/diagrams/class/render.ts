@@ -4,6 +4,7 @@ import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, struckTitle, titleCrossed, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
+import { endSide } from '../../svg/shapes.js';
 import { withTitle } from '../../svg/title.js';
 import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
@@ -76,15 +77,6 @@ const NO_TEXT: string[] = [];
 function memberLine(member: ClassMember, measurer: TextMeasurer, size: number): Line {
   const text = decodeEntities(member.getDisplayDetails().displayText).trim();
   return { text, width: measurer.width(text, size, member.classifier === '*' ? Style.Italic : 0), classifier: member.classifier };
-}
-
-// 0 top, 1 right, 2 bottom, 3 left: the side of a node's layout box that a route end lies on.
-function sideOf(x: number, y: number, c: CNode): number {
-  if (Math.abs(y - (c.y - c.h / 2)) < 0.5) return 0;
-  if (Math.abs(y - (c.y + c.h / 2)) < 0.5) return 2;
-  if (Math.abs(x - (c.x - c.w / 2)) < 0.5) return 3;
-  if (Math.abs(x - (c.x + c.w / 2)) < 0.5) return 1;
-  return -1;
 }
 
 export function renderClass(db: ClassDb, config: Config, options: RenderOptions): Rendered {
@@ -305,6 +297,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
     edgeSep: EDGE_SEP,
     rankSep: numberOption(conf, 'rankSpacing', lettered ? RANK_SEP + 16 : RANK_SEP),
     portSep: 20,
+    apart: true,
   });
 
   // Every edge reaches the middle of a side. Where several share a side they are spread along it,
@@ -316,7 +309,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
   const attach = (ce: CEdge, at: number, item: number, room: number, order: number): End | undefined => {
     const route = ce.route;
     const c = cnodes[item];
-    const side = sideOf(route[at], route[at + 1], c);
+    const side = endSide(route, at, c);
     if (side < 0) return undefined;
     const slack = (c.w - views[item].w) / 2;
     if (side === 1) route[at] -= slack;
@@ -339,6 +332,16 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
     starts.push(routed ? attach(ce, 0, ce.src, startRoom[i], i) : undefined);
     ends.push(routed ? attach(ce, ce.route.length - 3, ce.dst, endRoom[i], i) : undefined);
   }
+  // Whether a point lies on the border of one of the namespaces around a class.
+  const onBorder = (item: number, x: number, y: number): boolean => {
+    for (let g = cnodes[item].parent, hops = 0; g >= 0 && hops < 10000; g = cnodes[g].parent, hops++) {
+      const c = cnodes[g];
+      const dx = Math.abs(x - c.x);
+      const dy = Math.abs(y - c.y);
+      if ((Math.abs(dy - c.h / 2) < 0.5 && dx <= c.w / 2 + 0.5) || (Math.abs(dx - c.w / 2) < 0.5 && dy <= c.h / 2 + 0.5)) return true;
+    }
+    return false;
+  };
   const gaps: number[] = [];
   for (const [key, list] of sides) {
     if (list.length < 2) continue;
@@ -360,7 +363,20 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
     if (scale <= 0) continue;
     let at = (across ? cnodes[item].y : cnodes[item].x) - (total * scale) / 2;
     for (let j = 0; j < list.length; j++) {
-      list[j].route[list[j].at + across] = at;
+      const { route, at: end } = list[j];
+      // An edge that crosses the border of the class's namespace close by runs straight to it:
+      // the point where it crosses moves into line with its end.
+      const step = end === 0 ? 3 : -3;
+      const first = end + step;
+      let border = -1;
+      for (let k = first; k >= 0 && k < route.length && Math.abs(route[k + across] - route[first + across]) < 0.5; k += step) {
+        if (onBorder(item, route[k], route[k + 1])) {
+          border = k;
+          break;
+        }
+      }
+      if (border >= 0 && Math.abs(route[first + across] - at) <= 24) for (let k = first; k !== border + step; k += step) route[k + across] = at;
+      route[end + across] = at;
       at += gaps[j] * scale;
     }
   }

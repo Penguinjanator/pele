@@ -1,46 +1,94 @@
 import { describe, expect, it } from 'vitest';
-import { routePath } from '../../src/svg/edges.js';
+import { LEAD, routePath } from '../../src/svg/edges.js';
 
 // The numbers of the one curve in a path between two points: the two handles and where it ends.
-// The path runs straight for a little way before and after it.
-function curve(route: number[]): number[] {
-  const { d } = routePath(route, undefined, 0, 0);
-  expect(d).toMatch(/^M[-\d.,]+L[-\d.,]+C[-\d., ]+L[-\d.,]+$/);
-  return d.slice(d.indexOf('C') + 1, d.lastIndexOf('L')).split(/[ ,]/).map(Number);
+// The path may run straight for a little way before and after it.
+function curve(...args: Parameters<typeof routePath>): number[] {
+  const { d } = routePath(...args);
+  expect(d).toMatch(/^M[-\d.,]+(L[-\d.,]+)?C[-\d., ]+(L[-\d.,]+)?$/);
+  return d.slice(d.indexOf('C') + 1).split('L')[0].split(/[ ,]/).map(Number);
 }
 
 describe('edge paths', () => {
-  it('runs straight for a fifth of the way at each end, and draws an even S between', () => {
-    expect(routePath([0, 0, 0, 100, 48, 0], undefined, 0, 0).d).toBe('M0,0L0,9.6C0,24 100,24 100,38.4L100,48');
-    expect(routePath([0, 0, 1, 48, -100, 1], undefined, 0, 0).d).toBe('M0,0L9.6,0C24,0 24,-100 38.4,-100L48,-100');
-    // With room to spare, the straight part is no longer than it needs to be.
-    expect(routePath([0, 0, 0, 100, 200, 0], undefined, 0, 0).d).toBe('M0,0L0,10C0,100 100,100 100,190L100,200');
+  it('draws one curve between two points that are not in line, leaving and arriving along the flow', () => {
+    for (const [across, along] of [[100, 48], [-100, 48], [100, 200], [30, 48]]) {
+      const down = routePath([0, 0, 0, across, along, 0], undefined, 0, 0);
+      expect(down.d).toMatch(/^M0,0C[-\d., ]+$/);
+      // Each handle is in line with its end, so the curve leaves and arrives straight down.
+      const [x1, y1, x2, y2, x, y] = curve([0, 0, 0, across, along, 0], undefined, 0, 0);
+      expect([x1, x2, x, y]).toEqual([0, across, across, along]);
+      expect(y1).toBeGreaterThan(0);
+      expect(y2).toBeLessThan(along);
+      expect([down.sdx + 0, down.sdy, down.edx + 0, down.edy]).toEqual([0, -1, 0, 1]);
+      // And the same on its side, in a diagram that runs from left to right.
+      const [sx1, sy1, sx2, sy2] = curve([0, 0, 1, along, across, 1], undefined, 0, 0);
+      expect([sx1, sy1, sx2, sy2]).toEqual([y1, 0, y2, across]);
+    }
   });
 
   it('turns sooner on a run much wider than the gap it crosses, and never sharper than a limit', () => {
-    // 28.8 to turn in and 200 across: the handles reach half of the way, as in an even S.
-    const [, even1, , even2] = curve([0, 0, 0, 200, 48, 0]);
+    // Up to eight times as far across as along, the handles reach half of the way: an even S.
+    const [, even1, , even2] = curve([0, 0, 0, 200, 48, 0], undefined, 0, 0);
     expect(even1).toBeCloseTo(24, 5);
     expect(even2).toBeCloseTo(24, 5);
-    // 480 across is more than eight times as far, and 4800 no sharper than that.
-    const [, y1, , y2] = curve([0, 0, 0, 480, 48, 0]);
-    expect(y1).toBeCloseTo(16.8, 5);
-    expect(y2).toBeCloseTo(31.2, 5);
-    const [, far1, , far2] = curve([0, 0, 0, -4800, 48, 0]);
-    expect(far1).toBeCloseTo(16.8, 5);
-    expect(far2).toBeCloseTo(31.2, 5);
-    const [x1, , x2] = curve([0, 0, 1, 40, 400, 1]);
-    expect(x1).toBeCloseTo(14, 5);
-    expect(x2).toBeCloseTo(26, 5);
+    // 480 across is ten times as far, and 4800 no sharper than sixteen times.
+    const [, y1, , y2] = curve([0, 0, 0, 480, 48, 0], undefined, 0, 0);
+    expect(y1).toBeCloseTo(19.2, 5);
+    expect(y2).toBeCloseTo(28.8, 5);
+    const [, far1, , far2] = curve([0, 0, 0, -4800, 48, 0], undefined, 0, 0);
+    expect(far1).toBeCloseTo(12, 5);
+    expect(far2).toBeCloseTo(36, 5);
+    const [x1, , x2] = curve([0, 0, 1, 40, 400, 1], undefined, 0, 0);
+    expect(x1).toBeCloseTo(16, 5);
+    expect(x2).toBeCloseTo(24, 5);
   });
 
-  it('rounds the corner where two straight runs meet, by up to half of a run with a corner at each end', () => {
-    expect(routePath([0, 0, 0, 0, 20, 0, 100, 20, 0, 100, 48, 0], undefined, 0, 0).d).toBe('M0,0L0,8Q0,20 12,20L88,20Q100,20 100,32L100,48');
+  it('runs straight into a marker, and turns as far from a node whatever marker its end carries', () => {
+    const route = [0, 0, 0, 40, 48, 0];
+    // The curve stops short of the arrowhead, which takes seven, and a straight run joins them.
+    const arrow = routePath(route, undefined, 0, 7);
+    expect(arrow.d).toMatch(/C[-\d., ]+ 40,35L40,41$/);
+    expect(curve(route, undefined, 0, 7).slice(4)).toEqual([40, 48 - 7 - LEAD]);
+    const leaving = routePath(route, undefined, 7, 0);
+    expect(leaving.d).toMatch(/^M0,7L0,13C/);
+    // An end without a marker turns where its neighbours on the same side of the node do.
+    expect(curve(route, undefined, 0, 0, 0, 7 + LEAD).slice(4)).toEqual([40, 35]);
+    expect(curve(route, undefined, 0, 8, 0, 8 + LEAD).slice(4)).toEqual(curve(route, undefined, 0, 7, 0, 8 + LEAD).slice(4));
+    // With little room, the straight run takes no more than a quarter of the way.
+    expect(curve([0, 0, 0, 15, 19, 0], undefined, 0, 7).slice(4)).toEqual([15, 9]);
+    // A straight edge has nothing to run clear of.
+    expect(routePath([0, 0, 0, 0, 48, 0], undefined, 0, 7).d).toBe('M0,0L0,41');
+  });
+
+  it('leans a curve into a marker where it runs further across than along, by no more than a limit', () => {
+    const lean = (path: { edx: number; edy: number }): number => (Math.atan2(path.edx, path.edy) * 180) / Math.PI;
+    // No further across than along: square to the node.
+    expect(lean(routePath([0, 0, 0, 40, 48, 0], undefined, 0, 7))).toBeCloseTo(0, 5);
+    // Twice as far across: a few degrees the way the curve runs, and never more than twelve.
+    const twice = routePath([0, 0, 0, 96, 48, 0], undefined, 0, 7);
+    expect(lean(twice)).toBeGreaterThan(5);
+    expect(lean(twice)).toBeLessThan(12);
+    expect(lean(routePath([0, 0, 0, -96, 48, 0], undefined, 0, 7))).toBeCloseTo(-lean(twice), 5);
+    expect(lean(routePath([0, 0, 0, 900, 48, 0], undefined, 0, 7))).toBeCloseTo(12, 5);
+    // The end of the curve, the straight run and the arrowhead are in one line.
+    const [, , x2, y2, x, y] = curve([0, 0, 0, 96, 48, 0], undefined, 0, 7);
+    expect(Math.atan2(x - x2, y - y2)).toBeCloseTo(Math.atan2(twice.edx, twice.edy), 2);
+    expect(Math.atan2(twice.ex - x, twice.ey - y)).toBeCloseTo(Math.atan2(twice.edx, twice.edy), 2);
+    // The end without a marker stays square, and so does an end with none beside one that has.
+    expect([twice.sdx + 0, twice.sdy]).toEqual([0, -1]);
+    expect(lean(routePath([0, 0, 0, 96, 48, 0], undefined, 0, 0, 0, 7 + LEAD))).toBeCloseTo(0, 5);
+  });
+
+  it('turns a corner of the route as widely as its legs allow, rounds it in a stepped route, and leaves it sharp in a linear one', () => {
+    const route = [0, 0, 0, 0, 20, 0, 100, 20, 0, 100, 48, 0];
+    // Each turn takes the whole of the leg that ends at a node and half of the one they share.
+    expect(routePath(route, undefined, 0, 0).d).toMatch(/^M0,0C[-\d., ]+ 50,20C[-\d., ]+ 100,48$/);
+    expect(routePath(route, 'step', 0, 0).d).toBe('M0,0L0,8Q0,20 12,20L88,20Q100,20 100,32L100,48');
     // The run in the middle is 10 long, so each of its corners takes 5.
-    expect(routePath([0, 0, 0, 0, 20, 0, 10, 20, 0, 10, 48, 0], undefined, 0, 0).d).toBe('M0,0L0,15Q0,20 5,20L5,20Q10,20 10,25L10,48');
-    expect(routePath([0, 0, 0, 0, 20, 0, 100, 20, 0, 100, 48, 0], 'linear', 0, 0).d).toBe('M0,0L0,20L100,20L100,48');
-    // Two runs in one line have no corner between them.
-    expect(routePath([0, 0, 0, 0, 20, 0, 0, 48, 0], undefined, 0, 0).d).toBe('M0,0L0,20L0,48');
+    expect(routePath([0, 0, 0, 0, 20, 0, 10, 20, 0, 10, 48, 0], 'step', 0, 0).d).toBe('M0,0L0,15Q0,20 5,20Q10,20 10,25L10,48');
+    expect(routePath(route, 'linear', 0, 0).d).toBe('M0,0L0,20L100,20L100,48');
+    // Two runs in one line are one line.
+    expect(routePath([0, 0, 0, 0, 20, 0, 0, 48, 0], undefined, 0, 0).d).toBe('M0,0L0,48');
   });
 
   it('turns a stepped route at right angles, with arrowheads along its last run', () => {
@@ -49,19 +97,5 @@ describe('edge paths', () => {
     expect([step.edx, step.edy]).toEqual([0, 1]);
     expect(routePath([0, 0, 0, 100, 48, 0], 'stepAfter', 0, 0).d).toBe('M0,0L0,36Q0,48 12,48L100,48');
     expect(routePath([0, 0, 1, 48, 100, 1], 'stepBefore', 0, 0).d).toBe('M0,0L0,88Q0,100 12,100L48,100');
-  });
-
-  it('turns a curve as far from a node whatever marker its end carries', () => {
-    // The arrowhead takes seven of the 9.6, and the curve turns where it would without one.
-    expect(routePath([0, 0, 0, 100, 48, 0], undefined, 0, 7).d).toBe('M0,0L0,9.6C0,24 100,24 100,38.4L100,41');
-    expect(routePath([0, 0, 0, 100, 48, 0], undefined, 8, 0).d).toBe('M0,8L0,9.6C0,24 100,24 100,38.4L100,48');
-    // With too little room to run straight past a marker, the curve runs up to it.
-    expect(routePath([0, 0, 0, 100, 19, 0], undefined, 0, 7).d).toBe('M0,0L0,3.8C0,6.49 100,9.31 100,12');
-  });
-
-  it('keeps both ends of an eased curve heading along the flow', () => {
-    const path = routePath([0, 0, 0, 900, 48, 0], undefined, 0, 7);
-    expect([path.sdx, path.sdy]).toEqual([-0, -1]);
-    expect([path.edx, path.edy]).toEqual([0, 1]);
   });
 });

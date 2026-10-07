@@ -1,3 +1,4 @@
+import { ease } from '../layout/layered.js';
 import type { Label } from '../text/label.js';
 import type { IconResolver } from '../types.js';
 import { escText, labelSvg, num } from './builder.js';
@@ -18,14 +19,49 @@ export interface EdgePath {
 
 // Marker types are Mermaid's: arrow_point, arrow_circle, arrow_cross; anything else draws nothing.
 
-// The most a corner between two straight runs is rounded by.
+// The most a corner is rounded by in a stepped route.
 const CORNER = 12;
-// How far from a node a curve starts to turn, where it has the room.
-const LEAD = 10;
+// How far the handles of a wide turn reach along its two legs. A little more than a circle's,
+// which makes the turn fuller.
+const HANDLE = 0.62;
+// How far an edge runs straight before a marker at its end, where it has the room.
+export const LEAD = 6;
+// A curve that runs further across than along need not meet its node square to it at an end
+// with a marker, where the marker and the straight run before it leave the curve little room
+// and it would turn sharply: it leans the way it runs, by this much for each time further
+// across than along that it runs, and by no more than MAX_LEAN (in radians).
+const LEAN = 0.15;
+const MAX_LEAN = Math.PI / 15;
+
+// How far from each side of each node the edges that meet it start to turn: as far as the
+// largest marker there needs, for every edge on the side, so that none turns sooner than its
+// neighbour and crosses it. `add` takes a node, the side of it, and the marker of an end there.
+export function sideReach(): { add(node: number, side: number, type: string): void; of(node: number, side: number): number } {
+  const reach = new Map<number, number>();
+  return {
+    add(node, side, type) {
+      const trim = markerTrim(type);
+      if (side >= 0 && trim > 0 && trim + LEAD > (reach.get(node * 4 + side) ?? 0)) reach.set(node * 4 + side, trim + LEAD);
+    },
+    of: (node, side) => (side >= 0 ? (reach.get(node * 4 + side) ?? 0) : 0),
+  };
+}
 
 // Builds the path for a route of x, y, axis triples, trimming both ends to leave room for markers.
-// Where two straight runs meet at a right angle, the corner is rounded, except in a linear route.
-export function routePath(route: number[], curve: string | undefined, startTrim: number, endTrim: number): EdgePath {
+// Between two points that are not in line, a route is one S that leaves and arrives along the
+// flow, or a step in a stepped route. Where the route itself turns a corner, a stepped route
+// rounds it a little, and any other but a linear one turns as widely as it can: the turn takes
+// the whole of a leg that ends at a node and half of a leg it shares with the next turn.
+// `startReach` and `endReach` say how far from its nodes the edge starts to turn, where the
+// other edges on the same side of a node need it to; by default, far enough to clear its own marker.
+export function routePath(
+  route: number[],
+  curve: string | undefined,
+  startTrim: number,
+  endTrim: number,
+  startReach = startTrim > 0 ? startTrim + LEAD : 0,
+  endReach = endTrim > 0 ? endTrim + LEAD : 0
+): EdgePath {
   const linear = curve === 'linear';
   const stepped = curve === 'step' || curve === 'stepBefore' || curve === 'stepAfter';
   const xs: number[] = [];
@@ -55,20 +91,30 @@ export function routePath(route: number[], curve: string | undefined, startTrim:
     ys.push(y);
     axes.push(axis);
   }
-  let count = xs.length;
+  let last = xs.length - 1;
   const aligned = (i: number): boolean => Math.abs(xs[i] - xs[i - 1]) < 0.01 || Math.abs(ys[i] - ys[i - 1]) < 0.01;
-  const straight = (i: number): boolean => linear || aligned(i);
-
-  const unit = (i: number, j: number, axis: number, bent: boolean): [number, number] => {
-    if (bent) return axis === 0 ? [0, Math.sign(ys[j] - ys[i]) || 1] : [Math.sign(xs[j] - xs[i]) || 1, 0];
+  // The straight runs before a marker at each end, once they are in the route.
+  let startLead = -1;
+  let endLead = -1;
+  const straight = (i: number): boolean => linear || aligned(i) || i === startLead || i === endLead;
+  // The way the route heads from point i to point j, at an end of the route: where an S joins
+  // them, along the flow, or leaning a little the way the S runs if `marked`.
+  const unit = (i: number, j: number, axis: number, marked = false): [number, number] => {
     const dx = xs[j] - xs[i];
     const dy = ys[j] - ys[i];
+    if (!straight(Math.max(i, j))) {
+      const across = axis === 0 ? dx : dy;
+      const along = axis === 0 ? dy : dx;
+      const lean = marked ? Math.max(0, Math.min(MAX_LEAN, LEAN * (Math.abs(across / (along || 1)) - 1))) : 0;
+      const a = Math.sin(lean) * Math.sign(across);
+      const b = Math.cos(lean) * (Math.sign(along) || 1);
+      return axis === 0 ? [a, b] : [b, a];
+    }
     const len = Math.hypot(dx, dy) || 1;
     return [dx / len, dy / len];
   };
-  let last = count - 1;
-  const [sdx, sdy] = unit(0, 1, axes[1], !straight(1));
-  const [edx, edy] = unit(last - 1, last, axes[last], !straight(last));
+  const [sdx, sdy] = unit(0, 1, axes[1], startTrim > 0);
+  const [edx, edy] = unit(last - 1, last, axes[last], endTrim > 0);
   const sx = xs[0];
   const sy = ys[0];
   const ex = xs[last];
@@ -77,73 +123,84 @@ export function routePath(route: number[], curve: string | undefined, startTrim:
   ys[0] += sdy * startTrim;
   xs[last] -= edx * endTrim;
   ys[last] -= edy * endTrim;
-  // A curve that meets a node runs straight for a little way there: it leaves and arrives square
-  // to the node, and a marker does not sit on the bend. The straight part reaches as far from
-  // the node whatever marker the end carries, so that the curves on one side of a node all turn
-  // at one level, and none crosses another for having a larger marker.
-  const reach = (i: number, ux: number, uy: number): number =>
-    Math.min(LEAD, (Math.abs(xs[i] - xs[i - 1]) * Math.abs(ux) + Math.abs(ys[i] - ys[i - 1]) * Math.abs(uy) + (i === 1 ? startTrim : 0) + (i === last ? endTrim : 0)) / 5);
-  const leaving = straight(1) ? 0 : reach(1, sdx, sdy) - startTrim;
-  const arriving = straight(last) ? 0 : reach(last, edx, edy) - endTrim;
-  if (arriving >= 1) {
-    xs.splice(last, 0, xs[last] - edx * arriving);
-    ys.splice(last, 0, ys[last] - edy * arriving);
-    axes.splice(last, 0, axes[last]);
-    count++;
-    last++;
-  }
-  if (leaving >= 1) {
-    xs.splice(1, 0, xs[0] + sdx * leaving);
-    ys.splice(1, 0, ys[0] + sdy * leaving);
-    axes.splice(1, 0, axes[1]);
-    count++;
-    last++;
-  }
-
-  // How far each corner is rounded: up to all of a run that ends the route, and half of one
-  // that has a corner at its other end too.
   const length = (i: number): number => Math.abs(xs[i] - xs[i - 1]) + Math.abs(ys[i] - ys[i - 1]);
-  const radius = (i: number): number => {
-    if (linear || i < 1 || i >= last || !aligned(i) || !aligned(i + 1)) return 0;
-    const turns = Math.abs(xs[i] - xs[i - 1]) < 0.01 !== Math.abs(xs[i + 1] - xs[i]) < 0.01;
-    if (!turns) return 0;
-    return Math.max(0, Math.min(CORNER, length(i) / (i === 1 ? 1 : 2), length(i + 1) / (i + 1 === last ? 1 : 2)));
+  // Whether the route turns a corner at point i, from running one way to running the other.
+  const turns = (i: number): boolean =>
+    !linear && i > 0 && i < last && aligned(i) && aligned(i + 1) && length(i) >= 0.01 && length(i + 1) >= 0.01 && Math.abs(xs[i] - xs[i - 1]) < 0.01 !== Math.abs(xs[i + 1] - xs[i]) < 0.01;
+  // An edge that curves into a marker runs straight for a little way first, where it has the
+  // room, so that the marker does not sit on the bend.
+  const along = (i: number, ux: number, uy: number): number => Math.abs(xs[i] - xs[i - 1]) * Math.abs(ux) + Math.abs(ys[i] - ys[i - 1]) * Math.abs(uy);
+  // Of the way from the end of a run to where it turns, the part that makes up for a larger
+  // marker beside this one is kept where it can be, and the rest is at most a quarter of what
+  // is left, so that ends on one side of a node turn equally far from it.
+  const lead = (reach: number, trim: number, run: number): number => {
+    const room = Math.min(Math.max(0, reach - LEAD - trim), run / 4);
+    return room + Math.min(reach - trim - room, (run - room) / 4);
   };
+  const arrives = endReach > endTrim && (!straight(last) || turns(last - 1)) ? lead(endReach, endTrim, along(last, edx, edy)) : 0;
+  const leaves = startReach > startTrim && (!straight(1) || turns(1)) ? lead(startReach, startTrim, along(1, sdx, sdy)) : 0;
+  if (arrives >= 1) {
+    xs.splice(last, 0, xs[last] - edx * arrives);
+    ys.splice(last, 0, ys[last] - edy * arrives);
+    axes.splice(last, 0, axes[last]);
+    last++;
+  }
+  if (leaves >= 1) {
+    xs.splice(1, 0, xs[0] + sdx * leaves);
+    ys.splice(1, 0, ys[0] + sdy * leaves);
+    axes.splice(1, 0, axes[1]);
+    last++;
+    startLead = 1;
+  }
+  if (arrives >= 1) endLead = last;
+  // The curves that leave the first node and reach the last, which head the way the ends do.
+  const firstCurve = startLead + 2;
+  const lastCurve = endLead < 0 ? last : last - 1;
 
   let d = `M${num(xs[0])},${num(ys[0])}`;
-  for (let i = 1; i < count; i++) {
+  let atX = xs[0];
+  let atY = ys[0];
+  const lineTo = (x: number, y: number): void => {
+    if (near(x, y, atX, atY)) return;
+    d += `L${num(x)},${num(y)}`;
+    atX = x;
+    atY = y;
+  };
+  for (let i = 1; i <= last; i++) {
     const x = xs[i];
     const y = ys[i];
-    const px = xs[i - 1];
-    const py = ys[i - 1];
-    const axis = axes[i];
-    if (straight(i)) {
-      const r = radius(i);
-      if (r < 0.5) {
-        d += `L${num(x)},${num(y)}`;
-        continue;
-      }
-      const [ux, uy] = unit(i - 1, i, axis, false);
-      const [vx, vy] = unit(i, i + 1, axis, false);
-      d += `L${num(x - ux * r)},${num(y - uy * r)}Q${num(x)},${num(y)} ${num(x + vx * r)},${num(y + vy * r)}`;
-    } else if (axis === 0) {
-      const k = (y - py) * ease(x - px, y - py);
-      d += `C${num(px)},${num(py + k)} ${num(x)},${num(y - k)} ${num(x)},${num(y)}`;
-    } else {
-      const k = (x - px) * ease(y - py, x - px);
-      d += `C${num(px + k)},${num(py)} ${num(x - k)},${num(y)} ${num(x)},${num(y)}`;
+    if (!straight(i)) {
+      const down = axes[i] === 0;
+      const along = down ? y - atY : x - atX;
+      const k = Math.abs(along) * ease(down ? x - atX : y - atY, along);
+      const flow = down ? [0, Math.sign(along)] : [Math.sign(along), 0];
+      const [ux, uy] = i === firstCurve ? [sdx, sdy] : flow;
+      const [vx, vy] = i === lastCurve ? [edx, edy] : flow;
+      d += `C${num(atX + ux * k)},${num(atY + uy * k)} ${num(x - vx * k)},${num(y - vy * k)} ${num(x)},${num(y)}`;
+      atX = x;
+      atY = y;
+      continue;
     }
+    if (!turns(i)) {
+      // A point part of the way along one straight run adds nothing to the path.
+      if (i < last && aligned(i) && aligned(i + 1) && (x - xs[i - 1]) * (xs[i + 1] - x) + (y - ys[i - 1]) * (ys[i + 1] - y) > 0) continue;
+      lineTo(x, y);
+      continue;
+    }
+    // How much of the leg before the turn and of the leg after it the turn takes: all of one
+    // that ends at a node, short of the straight run into a marker, and half of one it shares.
+    let before = turns(i - 1) ? length(i) / 2 : length(i);
+    let after = turns(i + 1) ? length(i + 1) / 2 : length(i + 1);
+    if (stepped) before = after = Math.min(CORNER, before, after);
+    const [ux, uy] = unit(i - 1, i, axes[i]);
+    const [vx, vy] = unit(i, i + 1, axes[i + 1]);
+    lineTo(x - ux * before, y - uy * before);
+    atX = x + vx * after;
+    atY = y + vy * after;
+    if (stepped) d += `Q${num(x)},${num(y)} ${num(atX)},${num(atY)}`;
+    else d += `C${num(x - ux * before * (1 - HANDLE))},${num(y - uy * before * (1 - HANDLE))} ${num(x + vx * after * (1 - HANDLE))},${num(y + vy * after * (1 - HANDLE))} ${num(atX)},${num(atY)}`;
   }
   return { d, sx, sy, sdx: -sdx, sdy: -sdy, ex, ey, edx, edy };
-}
-
-// How far along the flow a curve's handles reach, as a share of the way it travels along it. Half
-// gives an even S. A curve that runs more than eight times as far across as along turns sooner
-// and crosses in a straighter line, so that the edges sharing a gap fan out and do not run
-// together. A gap grows to keep its curves from running that far across, so this is for the
-// widest only.
-function ease(across: number, along: number): number {
-  return Math.max(0.25, Math.min(0.5, (4 * Math.abs(along)) / (Math.abs(across) || 1)));
 }
 
 export function markerTrim(type: string): number {

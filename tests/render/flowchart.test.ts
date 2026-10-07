@@ -232,13 +232,18 @@ describe('flowchart rendering', () => {
     expect(xs).toEqual([...xs].sort((a, b) => a - b));
   });
 
-  it('labels an edge that runs back up nearer the node it starts from', () => {
+  it('labels an edge that passes a row of nodes level with that row', () => {
     const { svg } = render('flowchart TD\n  A[Start] --> B[Parse]\n  A --> C[Measure]\n  B --> E{Fits?}\n  C --> E\n  E -->|Yes| F[Draw]\n  E -->|No| A', options);
     const y = (id: string): number => Number(svg.match(new RegExp(`data-id="${id}" transform="translate\\([-\\d.]+,([-\\d.]+)\\)`))![1]);
-    const label = svg.match(/class="pele-edge-label" data-id="L_E_A_0"><rect x="[-\d.]+" y="([-\d.]+)"/)!;
-    // Below the row in the middle, on the way out of the decision, and not up beside the start.
-    expect(Number(label[1])).toBeGreaterThan(y('B'));
-    expect(Number(label[1])).toBeLessThan(y('E'));
+    const label = (id: string): number => {
+      const rect = svg.match(new RegExp(`class="pele-edge-label" data-id="${id}"><rect x="[-\\d.]+" y="([-\\d.]+)" width="[-\\d.]+" height="([-\\d.]+)"`))!;
+      return Number(rect[1]) + Number(rect[2]) / 2;
+    };
+    // The edge back up to the start passes the row in the middle, and its label sits in that row.
+    expect(label('L_E_A_0')).toBeCloseTo(y('B'), 1);
+    // The label of an edge from one row to the next sits between the two.
+    expect(label('L_E_F_0')).toBeGreaterThan(y('E'));
+    expect(label('L_E_F_0')).toBeLessThan(y('F'));
   });
 
   it('keeps invisible links out of the drawing but in the layout', () => {

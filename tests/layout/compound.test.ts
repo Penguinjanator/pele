@@ -137,6 +137,29 @@ describe('compound layout', () => {
     expect(xs.size).toBe(1);
   });
 
+  it('runs an edge that skips ranks in line with one of its ends, so that it turns once, at the other', () => {
+    // A chain of eight, with edges that skip ranks down it and back up.
+    const nodes = Array.from({ length: 8 }, () => cnode(80, 40));
+    nodes.forEach((node, i) => {
+      node.seq = i;
+      node.span = 56;
+    });
+    const edges = [edge(0, 1), edge(1, 2), edge(2, 3), edge(3, 4), edge(4, 5), edge(5, 6), edge(6, 7), edge(0, 3), edge(0, 7), edge(1, 5), edge(2, 6), edge(6, 1), edge(7, 0)];
+    compoundLayout(nodes, edges, 'TB', OPTIONS);
+    // How many times the route changes its place across the flow.
+    const turns = (route: number[]): number => {
+      let count = 0;
+      for (let i = 3; i < route.length; i += 3) if (Math.abs(route[i] - route[i - 3]) > 0.01) count++;
+      return count;
+    };
+    for (const e of edges.slice(7)) expect(turns(e.route), `${e.src} to ${e.dst}`).toBe(1);
+    // The edge from the second node down and the one back up to it both meet it in line.
+    const down = edges[9].route;
+    const up = edges[11].route;
+    expect(down[3]).toBeCloseTo(down[0], 5);
+    expect(up[up.length - 6]).toBeCloseTo(up[up.length - 3], 5);
+  });
+
   it('keeps the edges on one side of a node at its middle unless the node has a span', () => {
     const nodes = [cnode(120, 40), cnode(60, 40), cnode(60, 40), cnode(60, 40)];
     nodes.forEach((node, i) => (node.seq = i));
@@ -217,23 +240,78 @@ describe('compound layout', () => {
     expect(plain[2].y).toBeCloseTo(plain[3].y, 5);
   });
 
-  it('gives the gap between two ranks more room when edges run far across it', () => {
-    const gapUnder = (children: number): number => {
-      const nodes = [cnode(100, 40)];
-      const edges: CEdge[] = [];
-      for (let i = 1; i <= children; i++) {
-        nodes.push(cnode(100, 40));
-        edges.push(edge(0, i));
-      }
-      nodes.forEach((node, i) => (node.seq = i));
-      compoundLayout(nodes, edges, 'TB', OPTIONS);
-      return nodes[1].y - nodes[0].y - 40;
+  // A node above a row of `children`, with an edge to each. With a `span`, the edges spread along the nodes' sides.
+  const fan = (children: number, span = 0): { nodes: CNode[]; edges: CEdge[]; gap: number } => {
+    const nodes = [cnode(100, 40)];
+    const edges: CEdge[] = [];
+    for (let i = 1; i <= children; i++) {
+      nodes.push(cnode(100, 40));
+      edges.push(edge(0, i));
+    }
+    nodes.forEach((node, i) => {
+      node.seq = i;
+      node.span = span;
+    });
+    compoundLayout(nodes, edges, 'TB', OPTIONS);
+    return { nodes, edges, gap: nodes[1].y - nodes[0].y - 40 };
+  };
+
+  it('gives the gap between two ranks more room when edges that meet at the middle of their nodes run far across it', () => {
+    expect(fan(3).gap).toBeCloseTo(OPTIONS.rankSep, 5);
+    // Seven children reach 420 across from the middle, and the gap is an eighth of that.
+    expect(fan(7).gap).toBeCloseTo(420 / 8, 5);
+    expect(fan(40).gap).toBeCloseTo(3 * OPTIONS.rankSep, 5);
+  });
+
+  it('turns edges that run far across side by side at levels of their own, in a gap that grows to hold them', () => {
+    // With three children nothing runs far, and each edge is one curve across the usual gap.
+    const few = fan(3, 76);
+    expect(few.gap).toBeCloseTo(OPTIONS.rankSep, 5);
+    for (const e of few.edges) expect(e.route).toHaveLength(6);
+    // With seven, the three on each side run down, across and down again.
+    const { nodes, edges, gap } = fan(7, 76);
+    const level = (e: CEdge): number => {
+      expect(e.route).toHaveLength(12);
+      expect(e.route[3]).toBeCloseTo(e.route[0], 5);
+      expect(e.route[7]).toBeCloseTo(e.route[4], 5);
+      expect(e.route[9]).toBeCloseTo(e.route[6], 5);
+      return e.route[4];
     };
-    expect(gapUnder(3)).toBeCloseTo(OPTIONS.rankSep, 5);
-    // Seven children reach 420 across from the middle. The gap is an eighth of that, and the 20
-    // that curves run straight in at their ends.
-    expect(gapUnder(7)).toBeCloseTo(20 + 420 / 8, 5);
-    expect(gapUnder(40)).toBeCloseTo(3 * OPTIONS.rankSep, 5);
+    // The edge that runs furthest turns first, and each of the others 12 further down.
+    expect(level(edges[1]) - level(edges[0])).toBeCloseTo(12, 5);
+    expect(level(edges[2]) - level(edges[1])).toBeCloseTo(12, 5);
+    for (let i = 0; i < 3; i++) expect(level(edges[6 - i])).toBeCloseTo(level(edges[i]), 5);
+    // The one in the middle runs straight down.
+    expect(edges[3].route).toHaveLength(6);
+    expect(edges[3].route[3]).toBeCloseTo(edges[3].route[0], 5);
+    // The levels keep 28 from the ranks above and below.
+    expect(level(edges[0]) - nodes[0].y - 20).toBeCloseTo(28, 5);
+    expect(gap).toBeCloseTo(2 * 28 + 2 * 12, 5);
+  });
+
+  it('turns an edge that runs far across at a level of its own where a shorter one would run close beside it', () => {
+    // A node above a row of three, and an edge back up to it from below the row.
+    const nodes = [cnode(80, 40), cnode(80, 40), cnode(80, 40), cnode(80, 40), cnode(80, 40)];
+    nodes.forEach((node, i) => {
+      node.seq = i;
+      node.span = 56;
+    });
+    const edges = [edge(0, 1), edge(0, 2), edge(0, 3), edge(1, 4), edge(2, 4), edge(3, 4), edge(4, 0)];
+    compoundLayout(nodes, edges, 'TB', OPTIONS);
+    // The edge back up passes the row on one side, then runs across to the top node and up into it.
+    const back = edges[6].route;
+    const n = back.length;
+    const level = back[n - 5];
+    expect(back[n - 8]).toBeCloseTo(level, 5);
+    expect(back[n - 6]).toBeCloseTo(back[n - 3], 5);
+    expect(Math.abs(back[n - 9] - back[n - 6])).toBeGreaterThan(2 * OPTIONS.rankSep);
+    // The edge down to the node on that side leaves next to where it arrives. It runs straight
+    // down as far as that level and curves below it.
+    const down = edges[2].route;
+    expect(Math.abs(down[0] - back[n - 3])).toBeLessThan(20);
+    expect(down).toHaveLength(9);
+    expect(down[3]).toBeCloseTo(down[0], 5);
+    expect(down[4]).toBeGreaterThan(level - 0.01);
   });
 
   it('moves an end along its side to let its edge run straight, and no closer to its neighbour than a pitch', () => {
@@ -289,8 +367,8 @@ describe('compound layout', () => {
     // The twins make every edge take a rank in the middle, but none of them needs a bend there.
     for (const e of twinned.slice(0, 2)) expect(e.route).toHaveLength(6);
     expect(twinned[0].route[1]).toBeCloseTo(plain[0].route[1], 5);
-    // The gap is one level taller, for the twins to turn at two.
-    expect(twinned[0].route[4]).toBeCloseTo(plain[0].route[4] + 16, 5);
+    // The gap is tall enough for the twins to turn at two levels, 12 apart and 28 from the ranks.
+    expect(twinned[0].route[4]).toBeCloseTo(plain[0].route[4] + 2 * 28 + 12 - OPTIONS.rankSep, 5);
     // The twins leave and arrive at places of their own.
     const [one, other] = [twinned[2].route, twinned[3].route];
     expect(Math.abs(one[0] - other[0])).toBeGreaterThanOrEqual(8);
