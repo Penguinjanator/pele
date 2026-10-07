@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { PeleError, render } from '../../src/index.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs of about 50,000 characters built to hit the worst cases of the architecture lexer,
-// grid placement, and renderer. Each must finish quickly. The valid ones must render;
-// the rest must either render or fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 const head = 'architecture-beta\n';

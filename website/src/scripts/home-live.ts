@@ -14,7 +14,6 @@ function highlight(code: HTMLElement, value: string, language: CodeLanguage): vo
 
 let drawing = 0;
 
-// Puts the caret where an error was found.
 function select(area: HTMLTextAreaElement, line: number, column: number): void {
   const lines = area.value.split('\n');
   let at = area.value.length;

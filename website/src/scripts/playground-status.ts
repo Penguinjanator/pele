@@ -27,7 +27,6 @@ export function setStatus(element: HTMLElement, text: string, state = '') {
   element.replaceChildren(message);
 }
 
-// Where an error is and what it is, in one line.
 export function diagnosis(error: unknown): { text: string; line: number; column: number } {
   const message = error instanceof Error ? error.message : String(error);
   const title = (message.split('\n')[0] ?? '').replace(/ on line \d+/, '').replace(/:$/, '');

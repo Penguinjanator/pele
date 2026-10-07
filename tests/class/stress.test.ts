@@ -5,10 +5,6 @@ import { ClassMember } from '../../src/diagrams/class/members.js';
 import { parseGenericTypes } from '../../src/diagrams/common/generics.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs of about 50,000 characters built to hit the worst cases of the class diagram code:
-// lookahead that could rescan, patterns that could backtrack, deep nesting, and huge counts.
-// Each must finish quickly and either succeed or fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 const repeat = (count: number, line: (i: number) => string): string => Array.from({ length: count }, (_, i) => line(i)).join('');

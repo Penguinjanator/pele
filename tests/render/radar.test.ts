@@ -32,7 +32,6 @@ describe('radar rendering', () => {
     expect(svg).toContain('data-id="one" fill="var(--pele-series-1,');
     expect(svg).toContain('data-id="two" fill="var(--pele-series-2,');
     expect(svg).toContain('fill-opacity="0.2"');
-    // Four spokes from the center.
     expect(svg.match(/class="pele-axes" d="([^"]*)"/)![1].match(/M0,0L/g)?.length).toBe(4);
   });
 

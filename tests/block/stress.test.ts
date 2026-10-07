@@ -3,10 +3,6 @@ import { PeleError, parse, render } from '../../src/index.js';
 import { tokenize } from '../../src/diagrams/block/lexer.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Block diagram inputs of about 50,000 characters built to hit worst cases: long runs the lexer
-// could rescan, deep nesting, huge counts, and layouts with many blocks and edges.
-// Each must finish quickly and either succeed or fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 const repeat = (count: number, line: (i: number) => string): string => Array.from({ length: count }, (_, i) => line(i)).join('');

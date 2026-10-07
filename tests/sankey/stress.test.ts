@@ -4,9 +4,6 @@ import { tokenize } from '../../src/diagrams/sankey/lexer.js';
 import { prepareTextForParsing } from '../../src/diagrams/sankey/parser.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs of about 50,000 characters built to hit the sankey lexer's, parser's and layout's
-// worst cases. Each must finish quickly and either succeed or fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 const repeat = (count: number, line: (i: number) => string): string => Array.from({ length: count }, (_, i) => line(i)).join('');

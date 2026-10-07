@@ -123,7 +123,6 @@ describe('use case diagram rendering', () => {
     expect(normal).toContain('<circle cy="-21" r="9"');
     expect(normal).toContain('M0,-12V10M-14,-3H14M0,10L-12,30M0,10L12,30');
     expect(normal).toContain('>Normal one</text>');
-    // The name is below the figure.
     const figureY = Number(/pele-actor-figure" transform="translate\(0,([-\d.]+)\)/.exec(normal)![1]);
     const labelY = Number(/<text class="pele-label" x="0" y="([-\d.]+)"/.exec(normal)![1]);
     expect(labelY).toBeGreaterThan(figureY + 30);
@@ -399,7 +398,6 @@ describe('use case diagram rendering', () => {
     expect(nodeGroup(svg, 'U')).toContain('<ellipse rx="44" ry="26" fill="var(--_s)" stroke="var(--_b)" style="stroke-width:2px;fill:#fee;stroke:#06c;"/>');
     expect(svg).toMatch(/<g class="pele-cluster pele-boundary system-boundary system-boundary-rect hot" data-id="S"><rect[^>]* style="rx:var\(--_r\);stroke-width:2px;fill:#fee;stroke:#c33;"/);
     expect(svg).toContain('<g class="pele-edge pele-association hot" data-id="e" style="stroke-width:4px;stroke:#c33;">');
-    // The arrowhead takes the colour of its line.
     expect(edges(svg)[0].body).toContain('fill="#c33" stroke="none"');
   });
 

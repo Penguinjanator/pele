@@ -1,4 +1,3 @@
-// A line of status with an icon, shared by the playground and the home page's editors.
 .playground-status-message { display: flex; align-items: flex-start; gap: 6px; }
 .playground-status-icon { flex-shrink: 0; margin-top: 0.1em; }
 .playground-status-icon-success { color: var(--syntax-green); }

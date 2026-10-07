@@ -450,7 +450,6 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
   const height = Math.ceil(maxY - minY + 2 * pad);
   const links: LinkInfo[] = [];
 
-  // Route points by rounded y, to find the edges that cross a namespace's top border.
   const crossings: Crossings = new Map();
   if (graph.nodes.length > 0 && graph.nodes[0].isGroup) {
     for (const e of cedges) markCrossings(crossings, e.route);

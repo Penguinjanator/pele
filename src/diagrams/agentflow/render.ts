@@ -202,7 +202,6 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
     portSep: 20,
   });
 
-  // Move everything once, to make room for the padding and the title.
   const title = layoutLabel(db.title, false, measurer, size, 4000, Style.Bold);
   const titleHeight = title.height > 0 ? title.height + 12 : 0;
   const inner = Math.max(layout.width, title.width);
@@ -271,7 +270,6 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
     heldPaths.push(routePath(drawnRoute, 'linear', 0, markerTrim(edge.arrowTypeEnd)));
   }
 
-  // Route points by rounded y, to find the edges that cross a container's top border.
   const crossings: Crossings = new Map();
   let anyGroup = false;
   for (const c of cnodes) if (c.isGroup) anyGroup = true;

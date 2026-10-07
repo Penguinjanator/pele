@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { PeleError, render } from '../../src/index.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs built to hit the worst cases of the eventmodeling lexer, parser, model, and renderer.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 const repeat = (count: number, line: (i: number) => string): string => Array.from({ length: count }, (_, i) => line(i)).join('');

@@ -82,7 +82,6 @@ function compareTokens(src: string): void {
   expect(peleTokens(src), `tokens of ${JSON.stringify(src)}`).toEqual(referenceTokens(src));
 }
 
-// Returns whether the text was accepted.
 async function compare(src: string): Promise<boolean> {
   compareTokens(src);
   const expected = await referenceParse(src);

@@ -32,7 +32,6 @@ function count(svg: string, needle: string): number {
   return svg.split(needle).length - 1;
 }
 
-// The x of every lifeline, by participant id.
 function lifelines(svg: string): Map<string, number> {
   const out = new Map<string, number>();
   for (const m of svg.matchAll(/<path class="pele-lifeline" data-id="([^"]*)" d="M(-?[\d.]+),/g)) out.set(m[1], Number(m[2]));

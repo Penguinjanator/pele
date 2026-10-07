@@ -125,7 +125,6 @@ function renderPele() {
   try {
     // Labels are measured with the font the preview uses, so text fits its nodes.
     const style = getComputedStyle(peleOutput);
-    // The room the preview has, so a chart that can be drawn narrower keeps its text at full size.
     drawnWidth = peleOutput.clientWidth;
     const maxWidth = drawnWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
     const font = (name: string): string | undefined => style.getPropertyValue(name).trim() || undefined;
@@ -178,7 +177,6 @@ async function updateMermaid() {
   showOutputStatus();
   try {
     const result = await renderMermaid(source, 'dark');
-    // A newer edit supersedes this render.
     if (revision !== mermaidRevision) return;
     mermaidRendered = { source };
     mermaidOutput.innerHTML = result.svg;

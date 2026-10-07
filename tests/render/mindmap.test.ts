@@ -134,7 +134,6 @@ describe('mindmap rendering', () => {
     const src = 'mindmap\n  root\n    A\n    ::icon(fa fa-book)\n    :::urgent large\n    B';
     const plain = render(src, options);
     expect(plain.svg).toContain('class="pele-node pele-shape-text urgent large" data-id="A"');
-    // An icon the host does not have takes no room and leaves no empty slot.
     expect(plain.svg).not.toContain('pele-icon');
     expect(plain.width).toBe(render('mindmap\n  root\n    A\n    B', options).width);
     const drawn = render(src, { ...options, icons: (name) => (name === 'fa fa-book' ? '<path d="M0,0H24"/>' : null) });
@@ -184,7 +183,6 @@ describe('mindmap rendering', () => {
     expect(kinds.get('Plan')).toBe('branch');
     expect(kinds.get('Research')).toBe('branch');
     for (const leaf of ['Read', 'Ask', 'Build', 'Ship']) expect(kinds.get(leaf), leaf).toBe('text');
-    // A pill is tinted with its branch's color and outlined in it; a leaf has no box at all.
     expect(svg).toMatch(/pele-shape-branch" data-id="Plan"[^>]*><rect[^>]* fill="var\(--pele-series-\d,[^"]*\)" fill-opacity="0.22" stroke="var\(--pele-series-\d,[^"]*\)"\/>/);
     expect(svg).toMatch(/pele-shape-text" data-id="Read"[^>]*><text/);
     expect(svg).not.toContain('pele-marker');

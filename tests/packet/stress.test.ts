@@ -3,9 +3,6 @@ import { PeleError, parse, render } from '../../src/index.js';
 import { parsePacket } from '../../src/diagrams/packet/parser.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs of about 50,000 characters built to hit the worst cases of the packet lexer, the row
-// splitting, and the label fitting. Each must finish quickly and succeed or fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 const repeat = (count: number, line: (i: number) => string): string => Array.from({ length: count }, (_, i) => line(i)).join('');

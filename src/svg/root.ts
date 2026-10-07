@@ -32,7 +32,6 @@ export interface Accessible {
   accDescr?: string;
 }
 
-// Wraps a diagram's content in the root <svg>, with theme aliases, size, and accessible names.
 export function svgDocument(
   type: string,
   width: number,

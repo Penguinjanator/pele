@@ -148,7 +148,6 @@ function measure(root: RailroadNode, m: Metrics): Box {
       case 'repetition': {
         const { min, max } = node;
         const kid = kids[0];
-        // Exactly once is the element itself.
         if (min === 1 && max === 1) return kid;
         const text = count(min, max);
         const reach = Math.max(kid.down + m.sep, 2 * m.arc);

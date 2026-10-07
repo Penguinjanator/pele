@@ -8,7 +8,6 @@ import { PAYLOADS, assertInert } from '../support/inert.js';
 // A gantt chart marks the present, so the time is given: two drawings a moment apart could differ.
 const options = { measurer: metricsMeasurer, now: Date.UTC(2026, 0, 15, 12) };
 
-// Mermaid's documentation examples for every diagram type.
 const corpora = readdirSync('tests/corpus')
   .filter((file) => file.endsWith('-docs.json'))
   .sort()
@@ -253,14 +252,11 @@ describe('every diagram type', () => {
       ['kanban', 'kanban\n  todo[Todo]\n    a[Call]@{ icon: phone }', 'kanban\n  todo[Todo]\n    a[Call]'],
     ];
     for (const [name, withIcon, without] of cases) {
-      // No icons from the host: the drawing is the one the diagram would have without them.
       const plain = render(withIcon, options);
       expect(plain.svg, name).not.toContain('pele-icon');
       expect(plain.svg, name).toBe(render(without, options).svg);
-      // An icon the host does not know is treated the same way.
       expect(render(withIcon, { ...options, icons: () => null }).svg, name).toBe(plain.svg);
       expect(render(withIcon, { ...options, icons: () => '' }).svg, name).toBe(plain.svg);
-      // With the icon, there is a slot for it, holding what the host gave.
       const drawn = render(withIcon, { ...options, icons: () => '<path d="M1,1H9"/>' });
       expect(drawn.svg, name).toMatch(/<svg class="pele-icon" data-icon="[^"]+"[^>]*><path d="M1,1H9"\/><\/svg>/);
       expect(drawn.width, name).toBeGreaterThanOrEqual(plain.width);

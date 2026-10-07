@@ -214,7 +214,6 @@ function statements(lines: string[], declaration: number, type: string, until: n
   return fields;
 }
 
-// The names a diagram already uses: node ids, participants, classes, entities.
 export function diagramNames(source: string, type: string): string[] {
   const { lines, declaration } = body(source);
   const reserved = new Set((keywords[type] ?? []).map(([label]) => label));

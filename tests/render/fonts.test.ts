@@ -66,7 +66,6 @@ describe('fonts', () => {
     expect(svg).toMatch(/<rect[^>]* style="rx:var\(--_r\)"\/>/);
     // A radius the diagram sets for a node comes after the theme's, and so wins.
     expect(svg).toContain('style="rx:var(--_r);rx:10;fill:#eee;"');
-    // A diagram with no rounded rectangle does not carry the variable.
     expect(render('pie\n  "a": 1', { measurer: metricsMeasurer }).svg).not.toContain('--_r');
   });
 

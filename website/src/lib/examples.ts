@@ -209,7 +209,6 @@ function sampleLabel(source: string, index: number): string {
   return `${index + 1}. ${text.length > 48 ? `${text.slice(0, 47)}…` : text}`;
 }
 
-// The fullest few examples of each diagram type, from Mermaid's documentation.
 function pick(sources: string[], own: string[]): PlaygroundSample[] {
   const longest = new Set([...sources].sort((a, b) => b.length - a.length).slice(0, SAMPLES_PER_TYPE - own.length));
   const picked = sources.filter((source) => longest.has(source));
@@ -227,7 +226,6 @@ export function sampleGroups(corpora: Record<string, unknown>): SampleGroup[] {
     .sort((a, b) => Number(b.type === 'flowchart') - Number(a.type === 'flowchart') || Number(a.beta) - Number(b.beta) || a.type.localeCompare(b.type));
 }
 
-// Names for the examples page, which lists the types by name.
 const TYPE_TITLES = new Map([
   ['flowchart', 'Flowchart'],
   ['swimlane', 'Swimlane'],
@@ -263,7 +261,6 @@ const TYPE_TITLES = new Map([
   ['treemap', 'Treemap'],
 ]);
 
-// What each type of diagram is for, under the title on the page of its examples.
 const TYPE_DESCRIPTIONS = new Map([
   ['flowchart', 'Show the steps and decisions in a process.'],
   ['swimlane', 'Show a process divided by who performs each step.'],
@@ -364,7 +361,6 @@ export interface ExamplePage {
 
 export const documentationSlug = 'documentation';
 
-// A page for each type the examples page lists, at /examples/<type>.
 export function examplePages(corpora: Record<string, unknown>): ExamplePage[] {
   return Object.entries(corpora)
     .map(([path, corpus]) => {

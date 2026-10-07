@@ -1,4 +1,3 @@
-// Shared colors and hover fades for body and navigation links.
 :where(.lede, .used-by-heading, .get-started-link, .markdown-doc, .site-header-links, .site-footer, .footer-nav) a,
 :where(.playground-link) {
   --link-color: var(--link-default-color, var(--paper));

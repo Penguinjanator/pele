@@ -286,7 +286,6 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
     layoutWidth = Math.max(layoutWidth, c.x + c.w / 2 + MARKER_LENGTH + LOOP * 0.75 + 10 + reach);
   }
 
-  // Move everything once, to make room for the padding and the title.
   const title = layoutLabel(db.title, false, measurer, size, 4000, Style.Bold);
   const titleHeight = title.height > 0 ? title.height + 12 : 0;
   const inner = Math.max(layoutWidth, title.width);
@@ -297,7 +296,6 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
   const height = Math.ceil(layout.height + titleHeight + 2 * pad);
   const links: LinkInfo[] = [];
 
-  // Route points by rounded y, to find the edges that cross a cluster's top border.
   const crossings: Crossings = new Map();
   let anyGroup = false;
   for (const c of cnodes) if (c.isGroup) anyGroup = true;
@@ -485,7 +483,6 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
   return { svg, width, height, links };
 }
 
-// Drops the points in the middle of a straight vertical or horizontal run.
 function straighten(route: number[]): number[] {
   const out = route.slice(0, 3);
   for (let k = 3; k < route.length; k += 3) {

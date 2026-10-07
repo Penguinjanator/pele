@@ -38,7 +38,6 @@ export interface Transition {
   label?: string;
 }
 
-// Mermaid's Cynefin database.
 export class CynefinDb {
   domains = new Map<DomainName, CynefinDomain>();
   transitions: CynefinTransition[] = [];
@@ -52,7 +51,6 @@ export class CynefinDb {
     }
   }
 
-  // Transitions from a domain to itself are dropped.
   setTransitions(transitions: Transition[] | null | undefined): void {
     if (!transitions) return;
     this.transitions = transitions

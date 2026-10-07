@@ -3,9 +3,6 @@ import { PeleError, render } from '../../src/index.js';
 import { parseInfo } from '../../src/diagrams/info/parser.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs of about 50,000 characters built to hit the worst cases of the info lexer. Each must
-// finish quickly and succeed or fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 

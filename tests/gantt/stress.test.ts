@@ -3,10 +3,6 @@ import { PeleError, parse, render } from '../../src/index.js';
 import { tokenize } from '../../src/diagrams/gantt/lexer.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Gantt inputs of about 50,000 characters built to trigger worst cases: regex backtracking in the lexer,
-// day-by-day scheduling, date formats and reference lists the diagram supplies, and oversized charts.
-// Each must finish quickly and either succeed or fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity, now: new Date(2024, 0, 15) };
 const repeat = (count: number, line: (i: number) => string): string => Array.from({ length: count }, (_, i) => line(i)).join('');

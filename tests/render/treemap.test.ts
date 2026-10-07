@@ -176,7 +176,6 @@ describe('treemap rendering', () => {
     expect(svg).toMatch(/data-id="a"><rect[^>]* style="rx:var\(--_r\);fill:red;stroke:#FFD600;"\/><text[^>]* style="fill:blue;">a</);
     const frame = rects(svg).find((r) => r.id === 'S')!;
     expect(frame.attrs.get('style')).toBe('rx:var(--_r);fill:#eee;stroke-width:2px;');
-    // A section with its own fill is not tinted.
     expect(frame.attrs.has('fill-opacity')).toBe(false);
     expect(svg).toContain('class="pele-node pele-section frame"');
   });

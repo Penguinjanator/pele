@@ -115,7 +115,6 @@ interface Card {
   height: number;
 }
 
-// An icon takes room only when the host has it.
 const has = (name: string | undefined): boolean => !!name && iconMarkup(name) !== '';
 
 export function renderKanban(model: KanbanModel, config: Config, options: RenderOptions): Rendered {
@@ -162,7 +161,6 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
       const label = fitLabel(item.label, true, measurer, small, textWidth - (has(item.icon) ? glyph + ICON_GAP : 0));
       const ticket = fitLabel(item.ticket, false, measurer, small, textWidth);
       const assigned = fitLabel(item.assigned, false, measurer, small, textWidth);
-      // Ticket and assignee share a row when they fit side by side.
       const meta =
         ticket.width + assigned.width + 8 > textWidth
           ? ticket.height + assigned.height
@@ -175,7 +173,6 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
     bodyHeights.push(height);
   }
   headHeight += 2 * COLUMN_PAD;
-  // The columns of a row are as tall as the tallest of them.
   const rowHeights: number[] = [];
   const rowTops: number[] = [];
   for (let first = 0, y = 0; first < sections.length; first += perRow) {

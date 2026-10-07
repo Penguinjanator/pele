@@ -3,10 +3,6 @@ import { PeleError, parse, render } from '../../src/index.js';
 import { tokenize } from '../../src/diagrams/agentflow/lexer.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs built to trigger worst cases in the agentflow lexer, parser, model and renderer: lookahead
-// that could rescan, quadratic bookkeeping, deep nesting and oversized layouts. Each must finish
-// quickly and either succeed or fail with a PeleError.
-
 const N = 50000;
 const H = 'agentflow-beta TB\n';
 const big = { measurer: metricsMeasurer, limit: Infinity };

@@ -310,7 +310,6 @@ export function renderGantt(model: GanttDb, config: Config, options: RenderOptio
     let shape = '';
     let textFill = '';
     if (Number.isNaN(bar.x0)) {
-      // A task whose start or end never resolved has no bar.
       classes += ' pele-unscheduled';
       textFill = ' fill="var(--_m)"';
     } else {

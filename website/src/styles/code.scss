@@ -148,7 +148,6 @@
   color: var(--syntax-comment);
 }
 
-// Inline code in prose: the docs, and the home page.
 .markdown-doc :not(pre) > code,
 .install-note code {
   border-radius: 0.38em;

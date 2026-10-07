@@ -3,9 +3,6 @@ import { PeleError, parse, render } from '../../src/index.js';
 import { tokenize } from '../../src/diagrams/kanban/parser.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs of about 50,000 characters built to trigger worst cases in the kanban lexer, parser,
-// model and layout. Each must finish quickly and either succeed or fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 const linked = { ...big, config: { kanban: { ticketBaseUrl: 'https://example.com/browse/#TICKET#' } } };

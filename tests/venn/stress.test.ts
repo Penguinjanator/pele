@@ -3,10 +3,6 @@ import { PeleError, parse, render } from '../../src/index.js';
 import { T, VennLexer } from '../../src/diagrams/venn/lexer.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs built to trigger worst cases in the venn lexer, parser, layout and renderer: patterns
-// that could rescan, quadratic bookkeeping, many circles and regions, and sizes that make no
-// geometric sense. Each must finish quickly and either succeed or fail with a PeleError.
-
 const N = 50000;
 const V = 'venn-beta\n';
 const big = { measurer: metricsMeasurer, limit: Infinity };

@@ -3,10 +3,6 @@ import { PeleError, parse, render } from '../../src/index.js';
 import { tokenize } from '../../src/diagrams/usecase/lexer.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs built to trigger worst cases in the use case lexer, parser, model builder and renderer:
-// searches that could rescan, lookahead over long runs, quadratic bookkeeping, deep JSON and
-// oversized layouts. Each must finish quickly and either succeed or fail with a PeleError.
-
 const N = 50000;
 const U = 'usecase-beta\n';
 const big = { measurer: metricsMeasurer, limit: Infinity };

@@ -114,7 +114,6 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
   const buttons: Partial<Record<keyof typeof ICONS, HTMLButtonElement>> = {};
   let positioned = false;
 
-  // Shows the buttons a drawing that can be enlarged has, and which of them have something to do.
   const offer = (): void => {
     if (options.controls === false) return;
     const can = zoomable();
@@ -155,7 +154,6 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     };
     dim(buttons.zoomIn, (scale || fit()) >= most() * 0.999);
     dim(buttons.zoomOut, scale === 0);
-    // There is nothing to reset until the drawing is enlarged.
     if (buttons.reset) buttons.reset.style.display = scale === 0 ? 'none' : 'grid';
   };
   const ours = (event: Event): boolean => bar !== undefined && event.target instanceof view().Node && bar.contains(event.target as Node);

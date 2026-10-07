@@ -13,7 +13,6 @@ export interface MountOptions extends RenderOptions {
 }
 
 export interface Mounted {
-  // What the element shows now.
   readonly result: RenderResult;
   // The diagram's zoom, unless the `zoom` option is false.
   readonly zoom: Zoom | undefined;
@@ -122,7 +121,6 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
       try {
         draw(true, true);
       } catch {
-        // As below.
       }
       return;
     }
@@ -145,7 +143,6 @@ export function mountWith(render: Render, element: HTMLElement, text: string, op
     try {
       draw(true, true);
     } catch {
-      // As above.
     }
   };
 

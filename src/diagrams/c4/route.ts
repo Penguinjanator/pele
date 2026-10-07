@@ -205,7 +205,6 @@ export function route(
   endTrim: number
 ): Route {
   if (a === b) {
-    // A relation from a shape to itself loops out of its right side.
     const spread = Math.min(a.h / 2 - 4, 10);
     const len = Math.hypot(LOOP, spread);
     const x = a.x + a.w;

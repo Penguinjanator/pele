@@ -18,7 +18,6 @@ export function withIcons<T>(icons: IconResolver | undefined, run: () => T): T {
   }
 }
 
-// The markup the host has for an icon, or an empty string when it has none.
 export function iconMarkup(name: string): string {
   if (resolver === undefined) return '';
   let markup = found.get(name);

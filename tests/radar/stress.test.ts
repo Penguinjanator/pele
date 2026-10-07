@@ -3,9 +3,6 @@ import { PeleError, render } from '../../src/index.js';
 import { parseRadar } from '../../src/diagrams/radar/parser.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs of about 50,000 characters built to hit the worst cases of the radar lexer, the lookup
-// of named entries, and the drawing. Each must finish quickly and succeed or fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 const list = (count: number, item: (i: number) => string): string => Array.from({ length: count }, (_, i) => item(i)).join(',');

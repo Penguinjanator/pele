@@ -18,7 +18,6 @@ function tryRender(src: string): string | undefined {
   }
 }
 
-// The group drawn for a node, edge or namespace with the given id.
 function group(svg: string, id: string): string {
   const start = svg.indexOf(`data-id="${id}"`);
   expect(start, `group ${id}`).toBeGreaterThan(-1);

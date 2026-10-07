@@ -182,7 +182,6 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     headRoom: markerTrim('arrow_point'),
   });
 
-  // Move everything once, to make room for the padding and the title.
   const title = layoutLabel(db.title, false, measurer, size, 4000, Style.Bold);
   const titleHeight = title.height > 0 ? title.height + 12 : 0;
   const inner = Math.max(layout.width, title.width);
@@ -193,7 +192,6 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
   const height = Math.ceil(layout.height + titleHeight + 2 * pad);
   const links: LinkInfo[] = [];
 
-  // Route points by rounded y, to find the edges that cross a cluster's top border.
   const crossings: Crossings = new Map();
   let anyGroup = false;
   for (const c of cnodes) if (c.isGroup) anyGroup = true;
@@ -288,7 +286,6 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     )},${num(y)})">${body}</g>`;
   }
 
-  // Where the edges on each side of each node start to turn.
   const reach = sideReach();
   for (let i = 0; i < cedges.length; i++) {
     const ce = cedges[i];

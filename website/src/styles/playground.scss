@@ -132,7 +132,6 @@
   }
 }
 
-// One output panel, four views. The copy button belongs to the SVG source.
 #output-panel {
   &:not([data-view="svg"]) > .playground-editor,
   &:not([data-view="svg"]) .playground-copy { display: none; }

@@ -565,7 +565,6 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
     }
   };
 
-  // Where the transitions on each side of each state start to turn.
   const reach = sideReach();
   for (let i = 0; i < cedges.length; i++) {
     const ce = cedges[i];

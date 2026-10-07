@@ -3,10 +3,6 @@ import { PeleError, parse, render } from '../../src/index.js';
 import { tokenize } from '../../src/diagrams/ishikawa/lexer.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs built to trigger worst cases in the Ishikawa lexer, parser, model and renderer: white
-// space that could be scanned again and again, outlines nested as deep as the text allows, and
-// very many or very long lines. Each must finish quickly and either succeed or fail with a PeleError.
-
 const N = 50000;
 const I = 'ishikawa-beta\n';
 const big = { measurer: metricsMeasurer, limit: Infinity };

@@ -158,7 +158,6 @@ describe('railroad rendering', () => {
     expect(abnf('r = ' + '9'.repeat(400) + 'a ;')).toContain('>∞×</text>');
     expect(abnf('r = *a ;')).not.toContain('pele-count');
     expect(abnf('r = 1*a ;')).not.toContain('pele-count');
-    // Exactly once is the element; zero or one is an optional element.
     expect(abnf('r = 1a ;')).toBe(abnf('r = a ;'));
     expect(abnf('r = 0*1a ;')).toBe(abnf('r = [ a ] ;'));
   });
@@ -228,7 +227,6 @@ describe('railroad rendering', () => {
     expect(withConfig('    markerRadius: 8').svg).toContain('r="8"');
     expect(withConfig('    showMarkers: false').svg).not.toContain('<circle');
     expect(withConfig('    showMarkers: false').width).toBe(plain.width - 16);
-    // Values of the wrong kind are ignored.
     expect(withConfig('    arcRadius: wide\n    padding: -4\n    fontSize: "x"').svg).toBe(plain.svg);
     expect(render(src, { ...options, config: { railroad: { arcRadius: 20 } } }).svg).toBe(withConfig('    arcRadius: 20').svg);
   });

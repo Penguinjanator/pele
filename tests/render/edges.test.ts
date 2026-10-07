@@ -76,7 +76,6 @@ describe('edge paths', () => {
     // The run in the middle is 10 long, so each of its corners takes 5.
     expect(routePath([0, 0, 0, 0, 20, 0, 10, 20, 0, 10, 48, 0], 'step', 0, 0).d).toBe('M0,0L0,15Q0,20 5,20Q10,20 10,25L10,48');
     expect(routePath(route, 'linear', 0, 0).d).toBe('M0,0L0,20L100,20L100,48');
-    // Two runs in one line are one line.
     expect(routePath([0, 0, 0, 0, 20, 0, 0, 48, 0], undefined, 0, 0).d).toBe('M0,0L0,48');
   });
 

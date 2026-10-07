@@ -7,10 +7,6 @@ import { IR_TOKENS } from '../../src/diagrams/railroad/ir.js';
 import { PEG_TOKENS } from '../../src/diagrams/railroad/peg.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Inputs of about 50,000 characters built to trigger worst cases in the railroad lexers, parsers,
-// model and renderer: patterns that could rescan, deep nesting, and oversized layouts. Each must
-// finish quickly and either succeed or fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 const repeat = (count: number, part: (i: number) => string): string => Array.from({ length: count }, (_, i) => part(i)).join('');

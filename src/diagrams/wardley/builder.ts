@@ -78,7 +78,6 @@ export interface WardleyBuildResult {
   size?: { width: number; height: number };
 }
 
-// Mermaid's WardleyBuilder.
 export class WardleyBuilder {
   private nodes = new Map<string, WardleyNode>();
   private labels: Map<string, string> | undefined;

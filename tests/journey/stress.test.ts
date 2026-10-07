@@ -3,10 +3,6 @@ import { PeleError, render } from '../../src/index.js';
 import { tokenize } from '../../src/diagrams/journey/lexer.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 
-// Journey inputs of about 50,000 characters built to hit worst cases: rescanning in the lexer,
-// huge counts, and text that is expensive to wrap. Each must finish quickly and either render or
-// fail with a PeleError.
-
 const N = 50000;
 const big = { measurer: metricsMeasurer, limit: Infinity };
 const draw = (body: string) => (): unknown => render('journey\n' + body, big);

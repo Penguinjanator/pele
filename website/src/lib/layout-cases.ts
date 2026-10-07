@@ -44,7 +44,6 @@ flowchart TD
   E -->|No| A
 `;
 
-// The same diagram with its edges at right angles.
 const stepped = (source: string): string => `---\nconfig:\n  flowchart:\n    curve: step\n---\n${source}`;
 
 const notes = ['Flex layout', 'New home page and PARA design', '2024-07-15', '2024-06-13', '2025-04-17', 'Test note', 'Medium draft', 'Reading list', 'Garden', 'Inbox', 'Archive', 'Ideas'];
@@ -191,7 +190,6 @@ const flowchart: LayoutGroup[] = [
 // The other types that are laid out in ranks, as flowcharts are.
 const edges = (cases: LayoutCase[]): LayoutGroup[] => [{ title: 'Edges', slug: 'edges', cases }];
 
-// The groups of cases for each diagram type that has any, by the type's name in the corpus.
 export const layoutCases: Record<string, LayoutGroup[]> = {
   flowchart,
   state: edges([
