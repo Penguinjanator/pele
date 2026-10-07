@@ -40,6 +40,56 @@ export const playgroundExample = `flowchart TD
 // Pele's own examples. They take the place of the examples of their type from Mermaid's
 // documentation, in order, and each keeps the shape of the one it replaces with other labels.
 const OWN = new Map([
+  ['class', [`---
+config:
+  class:
+    hierarchicalNamespaces: false
+---
+classDiagram
+    namespace Earth.Volcano.Summit {
+        class Crater {
+            +erupt()
+        }
+    }
+    namespace Earth.Volcano.Slope {
+        class LavaFlow {
+            +buildLand()
+        }
+    }
+    namespace Earth {
+        class Hotspot {
+            +meltRock()
+        }
+    }
+    Hotspot --> Crater : feeds
+    Hotspot --> LavaFlow : feeds
+`, `---
+title: Reef animal example
+---
+classDiagram
+    note "From Turtle till Whale"
+    Animal <|-- Turtle
+    note for Turtle "can swim<br>can dive<br>can nest on beaches<br>can live for decades"
+    Animal <|-- Shark
+    Animal <|-- Whale
+    Animal : +int age
+    Animal : +String name
+    Animal: +isMammal()
+    Animal: +migrate()
+    class Turtle{
+        +String shellColor
+        +swim()
+        +nest()
+    }
+    class Shark{
+        -int sizeInFeet
+        -canHunt()
+    }
+    class Whale{
+        +bool is_humpback
+        +sing()
+    }
+`]],
   ['mindmap', [`mindmap
   root((Hawaiʻi))
     History
@@ -57,6 +107,12 @@ const OWN = new Map([
     Culture
       Hula and lei
       ʻUkulele
+`, `mindmap
+    id1["\`**Pele** is the
+goddess of volcanoes
+Unicode works too: 🌋\`"]
+      id2["\`She lives in **the** crater of Kīlauea... a *very old story* that is still told today\`"]
+      id3[Lava builds new land]
 `]],
   ['pie', [`pie title Fish caught by the crew
     "ʻAhi" : 386
@@ -82,6 +138,24 @@ const OWN = new Map([
                   : Ships from around the world stop to trade.
           1882 : ʻIolani Palace is completed in Honolulu.<br> It soon has electric lights and telephones.
                   : Most people in the kingdom can read and write.
+`]],
+  ['xychart', [`xychart
+    title "Ocean Temperature"
+    x-axis [jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec]
+    y-axis "Temperature (in °F)" 74 --> 82
+    bar [76.3, 75.9, 76.0, 76.7, 77.8, 78.9, 79.9, 80.7, 81.1, 80.5, 79.1, 77.4]
+    line [76.3, 75.9, 76.0, 76.7, 77.8, 78.9, 79.9, 80.7, 81.1, 80.5, 79.1, 77.4]
+`, `---
+config:
+    xyChart:
+        showDataLabel: true
+        showDataLabelOutsideBar: true
+---
+xychart
+    title "Animals seen in reef survey of 2025"
+    x-axis [turtles, eels, tangs, wrasses, "parrot fish", other]
+    y-axis "Number of Animals" 0 --> 30
+    bar [12,2,20,25,17,24]
 `]],
 ]);
 
