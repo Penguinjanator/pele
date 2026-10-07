@@ -37,6 +37,56 @@ export const playgroundExample = `flowchart TD
   F -.-> G[Theme with CSS]
 `;
 
+// Pele's own examples. They take the place of the examples of their type from Mermaid's
+// documentation, in order, and each keeps the shape of the one it replaces with other labels.
+const OWN = new Map([
+  ['mindmap', [`mindmap
+  root((Hawaiʻi))
+    History
+      Old legends
+      ::icon(fa fa-book)
+      Voyaging
+        Polynesian navigators who sailed by the stars
+    Nature
+      Mountains<br/>and volcanoes
+      Ocean life
+        Reef
+            Sea turtles
+            Monk seals
+            Parrotfish
+    Culture
+      Hula and lei
+      ʻUkulele
+`]],
+  ['pie', [`pie title Fish caught by the crew
+    "ʻAhi" : 386
+    "Mahimahi" : 85
+    "Ono" : 15
+`]],
+  ['timeline', [`timeline
+    title Timeline of the Hawaiian Islands
+    section Older islands
+        Kauaʻi : 5 million years old, Canyons, Sea <br>cliffs
+        Oʻahu : 3 million years old, Diamond Head, Surf breaks
+        Molokaʻi : 2 million years old, Fishponds, Tall cliffs
+    section Younger islands
+        Maui : 1 million years old, Haleakalā, Whale watching
+        Hawaiʻi : Still growing, Mauna Kea, Kīlauea
+`, `timeline
+        title Hawaiʻi's History Timeline
+        section Voyagers
+          1000 AD : Polynesian voyagers reach Hawaiʻi in sailing canoes
+          1778 : Captain Cook lands on Kauaʻi.<br> Islanders and Europeans meet for the first time.
+        section Kingdom
+          1810 : King Kamehameha unites the islands. <br>They are ruled as one kingdom for the first time.
+                  : Ships from around the world stop to trade.
+          1882 : ʻIolani Palace is completed in Honolulu.<br> It soon has electric lights and telephones.
+                  : Most people in the kingdom can read and write.
+`]],
+]);
+
+const typeOf = (path: string): string => path.match(/([\w-]+)-docs\.json$/)?.[1] ?? path;
+
 export interface PlaygroundSample {
   label: string;
   source: string;
@@ -83,16 +133,18 @@ function sampleLabel(source: string, index: number): string {
 }
 
 // The fullest few examples of each diagram type, from Mermaid's documentation.
-function pick(sources: string[]): PlaygroundSample[] {
-  const longest = new Set([...sources].sort((a, b) => b.length - a.length).slice(0, SAMPLES_PER_TYPE));
-  return sources.filter((source) => longest.has(source)).map((source, index) => ({ label: sampleLabel(source, index), source }));
+function pick(sources: string[], own: string[]): PlaygroundSample[] {
+  const longest = new Set([...sources].sort((a, b) => b.length - a.length).slice(0, SAMPLES_PER_TYPE - own.length));
+  const picked = sources.filter((source) => longest.has(source));
+  return [...own, ...picked].map((source, index) => ({ label: sampleLabel(source, index), source }));
 }
 
 export function sampleGroups(corpora: Record<string, unknown>): SampleGroup[] {
   return Object.entries(corpora)
     .map(([path, corpus]) => {
       const sources = sourcesOf(corpus);
-      return { type: path.match(/([\w-]+)-docs\.json$/)?.[1] ?? path, samples: pick(sources), beta: isBeta(sources) };
+      const type = typeOf(path);
+      return { type, samples: pick(sources, OWN.get(type) ?? []), beta: isBeta(sources) };
     })
     .filter((group) => group.samples.length > 0)
     .sort((a, b) => Number(b.type === 'flowchart') - Number(a.type === 'flowchart') || Number(a.beta) - Number(b.beta) || a.type.localeCompare(b.type));
@@ -171,16 +223,16 @@ const ownColors = (source: string, svg: string): boolean => RE_OWN_PAINT.test(sv
 export function exampleGroups(corpora: Record<string, unknown>, draw: (source: string) => string | undefined): ExampleGroup[] {
   return Object.entries(corpora)
     .map(([path, corpus]) => {
-      const type = path.match(/([\w-]+)-docs\.json$/)?.[1] ?? path;
+      const type = typeOf(path);
       const all = sourcesOf(corpus);
       const drawn = [...new Set(all)].map((source) => ({ source, svg: draw(source) })).filter((example) => example.svg !== undefined);
       const themed = drawn.filter((example) => !ownColors(example.source, example.svg!));
       const usable = (themed.length > 0 ? themed : drawn).map((example) => example.source);
       const bySize = [...usable].sort((a, b) => b.length - a.length);
       const first = bySize.find((source) => source.length <= FIRST_LIMIT) ?? bySize.at(-1);
-      const sources = first === undefined ? [] : [first];
       const fuller = bySize.find((source) => source !== first && source.length <= FULLER_LIMIT && overlap(source, first!) < 0.5);
-      if (fuller !== undefined) sources.push(fuller);
+      const own = OWN.get(type) ?? [];
+      const sources = [own[0] ?? first, own[1] ?? fuller].filter((source) => source !== undefined);
       const title = TYPE_TITLES.get(type) ?? type;
       return { type, title, slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), sources, beta: isBeta(all) };
     })
