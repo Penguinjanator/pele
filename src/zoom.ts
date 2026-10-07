@@ -1,4 +1,4 @@
-import { room, windowOf } from './window.js';
+import { windowOf } from './window.js';
 
 export interface ZoomOptions {
   // Whether a drawing that fits its element can be enlarged as well. By default only one that
@@ -78,11 +78,12 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
   let svg: SVGSVGElement | null = null;
   let natural = { width: 0, height: 0 };
   let rest = { width: 0, height: 0 };
-  // The box an enlarged drawing is shown in: the room its element already has, where that is
-  // more than the drawing takes at rest, as in a panel of a fixed height.
+  // The box an enlarged drawing is shown in: the room its element already has, padding and
+  // all, where that is more than the drawing takes at rest, as in a panel of a fixed height.
   let box = { width: 0, height: 0 };
   let roomy = false;
-  let restStyle = { width: '', height: '' };
+  let bleed = '';
+  let restStyle = { width: '', height: '', maxWidth: '', margin: '' };
   // The scale shown, or 0 while the drawing rests at the size that fits.
   let scale = 0;
   let x = 0;
@@ -98,11 +99,15 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     if (!svg || scale !== 0) return;
     const at = svg.getBoundingClientRect();
     rest = { width: at.width, height: at.height };
-    const style = view().getComputedStyle(element);
-    const high = element.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0);
-    box = { width: Math.max(rest.width, room(element, style)), height: Math.max(rest.height, high) };
+    box = { width: Math.max(rest.width, element.clientWidth), height: Math.max(rest.height, element.clientHeight) };
     roomy = box.width > rest.width + 1 || box.height > rest.height + 1;
     if (!roomy) box = rest;
+    // Padding keeps a drawing at rest off the element's edges. An enlarged one is a view, which
+    // reaches them: margins of the opposite size carry it over the padding.
+    const style = view().getComputedStyle(element);
+    bleed = ['Top', 'Right', 'Bottom', 'Left']
+      .map((side) => `${-(parseFloat(style.getPropertyValue(`padding-${side.toLowerCase()}`)) || 0)}px`)
+      .join(' ');
   };
 
   let bar: HTMLElement | undefined;
@@ -161,6 +166,8 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     svg.setAttribute('viewBox', `0 0 ${natural.width} ${natural.height}`);
     svg.style.width = restStyle.width;
     svg.style.height = restStyle.height;
+    svg.style.maxWidth = restStyle.maxWidth;
+    svg.style.margin = restStyle.margin;
     svg.style.cursor = '';
     svg.style.userSelect = '';
     measure();
@@ -190,6 +197,8 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     scale = to;
     let after = before;
     if (roomy) {
+      svg.style.maxWidth = 'none';
+      svg.style.margin = bleed;
       svg.style.width = `${box.width}px`;
       svg.style.height = `${box.height}px`;
       after = svg.getBoundingClientRect();
@@ -222,7 +231,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
       return;
     }
     natural = { width: Number(svg.getAttribute('width')) || 0, height: Number(svg.getAttribute('height')) || 0 };
-    restStyle = { width: svg.style.width, height: svg.style.height };
+    restStyle = { width: svg.style.width, height: svg.style.height, maxWidth: svg.style.maxWidth, margin: svg.style.margin };
     settle();
   };
 

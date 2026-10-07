@@ -191,7 +191,7 @@ With [`pele/lazy`](#imports), `mountAsync()` takes the same arguments, fetches t
 
 ### Zoom
 
-Zooming never changes the size of the container. The SVG shows part of the diagram at a larger scale. In a container sized by the diagram, the SVG keeps its size. In a container with room to spare, such as a panel of a fixed height, the zoomed SVG fills it.
+Zooming never changes the size of the container. The SVG shows part of the diagram at a larger scale. In a container sized by the diagram, the SVG keeps its size. In a container with room to spare, such as a panel of a fixed height, the zoomed SVG fills it, padding included.
 
 A diagram that can be zoomed has buttons to zoom in and out, and a reset button while it is zoomed.
 
