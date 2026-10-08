@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
 import { groups } from '../lib/example-groups';
-import { examplesDescription, examplesTitle } from '../lib/examples';
+import { examplePageHref, examplesDescription, examplesTitle } from '../lib/examples';
 import { formatPageTitle } from '../lib/page-title';
 
 const body = groups.map((group) =>
-  `## ${group.title}\n\n` + group.sources.map((source) => '```mermaid\n' + source.trimEnd() + '\n```\n').join('\n'),
+  `## ${group.title}\n\n` + group.sources.map((source) => '```mermaid\n' + source.trimEnd() + '\n```\n').join('\n') + `\n[All examples](${examplePageHref(group.type)})\n`,
 ).join('\n');
 
 export const GET: APIRoute = () => new Response(

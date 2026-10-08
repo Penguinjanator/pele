@@ -299,6 +299,9 @@ const TYPE_DESCRIPTIONS = new Map([
 // Info only prints a version number, which is not much of an example.
 const UNLISTED = new Set(['info']);
 
+// Types that show one example on the Examples page.
+const SINGLE = new Set(['cynefin']);
+
 const FIRST_LIMIT = 500;
 const FULLER_LIMIT = 1000;
 
@@ -342,7 +345,7 @@ export function exampleGroups(corpora: Record<string, unknown>, draw: (source: s
       const first = bySize.find((source) => source.length <= FIRST_LIMIT) ?? bySize.at(-1);
       const fuller = bySize.find((source) => source !== first && source.length <= FULLER_LIMIT && overlap(source, first!) < 0.5);
       const own = OWN.get(type) ?? [];
-      const sources = [own[0] ?? first, own[1] ?? fuller].filter((source) => source !== undefined);
+      const sources = [own[0] ?? first, SINGLE.has(type) ? undefined : own[1] ?? fuller].filter((source) => source !== undefined);
       const title = TYPE_TITLES.get(type) ?? type;
       return { type, title, slug: title.toLowerCase().replace(/[^a-z0-9]+/g, '-'), sources, beta: isBeta(all) };
     })

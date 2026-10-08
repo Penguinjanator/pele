@@ -2,7 +2,7 @@
 import ExampleCard from '../components/ExampleCard.astro';
 import DocsLayout from '../layouts/DocsLayout.astro';
 import { groups } from '../lib/example-groups';
-import { examplesDescription, examplesTitle } from '../lib/examples';
+import { examplePageHref, examplesDescription, examplesTitle } from '../lib/examples';
 
 const headings = groups.map((group) => ({ depth: 2, slug: group.slug, text: group.title }));
 
@@ -20,6 +20,7 @@ const opening = (source: string): string =>
       {group.sources.map((source, index) => (
         <ExampleCard source={source} prefix={`${group.type}-${index}-`} label={opening(source)} code ariaLabel={`${group.title} diagram rendered by Pele`} />
       ))}
+      <p><a href={examplePageHref(group.type)} aria-label={`All examples: ${group.title}`}>All examples</a></p>
     </>
   ))}
 </DocsLayout>
