@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { PeleError, render } from '../../src/index.js';
+import { PeleError, parse, render } from '../../src/index.js';
 import { all } from '../../src/diagrams/registry.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 import { PAYLOADS, assertInert } from '../support/inert.js';
@@ -41,6 +41,33 @@ describe('every diagram type', () => {
       }
     }
     expect(count).toBeGreaterThan(500);
+  });
+
+  it('draws a model that parse() returned as it draws the text, however often and at any width', { timeout: 120000 }, () => {
+    for (const { name, sources } of corpora) {
+      for (const src of sources) {
+        const at = where(name, src);
+        const model = parse(src);
+        for (const maxWidth of [undefined, 320, 500, undefined]) {
+          expect(render(model, { ...options, maxWidth }).svg, at).toBe(render(src, { ...options, maxWidth }).svg);
+        }
+      }
+    }
+  });
+
+  it('reads the limits and the configuration when the text is parsed', () => {
+    const src = 'flowchart LR\n  A --> B --> C';
+    expect(() => parse(src, { maxEdges: 1 })).toThrow(PeleError);
+    expect(() => parse(src, { limit: 5 })).toThrow(PeleError);
+    // A model that was parsed is drawn whatever limits the render names.
+    expect(render(parse(src), { ...options, maxEdges: 1, limit: 5 }).type).toBe('flowchart');
+    const config = { flowchart: { useMaxWidth: false } };
+    expect(render(parse(src, { config }), options).svg).toBe(render(src, { ...options, config }).svg);
+    expect(render(parse(src, { config }), options).svg).not.toBe(render(src, options).svg);
+  });
+
+  it('refuses a model that parse() did not return', () => {
+    expect(() => render({ ...parse('flowchart LR\n  A --> B') }, options)).toThrow(TypeError);
   });
 
   it('draws a title given in front matter', () => {

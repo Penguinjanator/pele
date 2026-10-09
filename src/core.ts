@@ -55,6 +55,9 @@ interface Parsed {
   config: Config;
 }
 
+// What parse() learned besides the model it returns, for a render() that is given the model.
+const parsedModels = new WeakMap<object, Parsed>();
+
 function parseSource(
   text: string,
   limit: number = DEFAULT_LIMIT,
@@ -79,6 +82,13 @@ function parseSource(
   return { type, diagram, model, config };
 }
 
+function parsedFrom(source: string | DiagramModel, options: ParseOptions): Parsed {
+  if (typeof source === 'string') return parseSource(source, options.limit, options.maxEdges, options.config);
+  const parsed = parsedModels.get(source);
+  if (parsed === undefined) throw new TypeError('render() takes diagram text or a model that parse() returned.');
+  return parsed;
+}
+
 export function detectType(text: string): DiagramType | null {
   return detect(preprocess(text).text);
 }
@@ -92,13 +102,23 @@ export function supports(text: string): boolean {
   }
 }
 
-export function parse(text: string, options: { limit?: number; maxEdges?: number } = {}): DiagramModel {
-  return guarded(() => parseSource(text, options.limit, options.maxEdges, undefined).model as DiagramModel);
+// The options that are read when the text is parsed. A render() that is given a model has
+// nothing left to do with them.
+export type ParseOptions = Pick<RenderOptions, 'limit' | 'maxEdges' | 'config'>;
+
+// The model can be given to render() in place of the text, any number of times, so that a
+// diagram drawn again for another width or font is not parsed again.
+export function parse(text: string, options: ParseOptions = {}): DiagramModel {
+  return guarded(() => {
+    const parsed = parseSource(text, options.limit, options.maxEdges, options.config);
+    if (typeof parsed.model === 'object' && parsed.model !== null) parsedModels.set(parsed.model, parsed);
+    return parsed.model as DiagramModel;
+  });
 }
 
-export function render(text: string, options: RenderOptions = {}): RenderResult {
+export function render(source: string | DiagramModel, options: RenderOptions = {}): RenderResult {
   return guarded(() => {
-    const { type, diagram, model, config } = parseSource(text, options.limit, options.maxEdges, options.config);
+    const { type, diagram, model, config } = parsedFrom(source, options);
     const section = config[diagram.section ?? type];
     const fixed = typeof section === 'object' && section !== null && !Array.isArray(section) && section.useMaxWidth === false;
     const responsive = options.responsive ?? !fixed;

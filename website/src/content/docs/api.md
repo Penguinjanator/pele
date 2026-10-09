@@ -75,7 +75,7 @@ With `core` and `lazy`, [`supports()`](#supports) is `true` only for types that 
 ## render
 
 ```ts
-function render(text: string, options?: RenderOptions): RenderResult
+function render(source: string | DiagramModel, options?: RenderOptions): RenderResult
 ```
 
 Parses Mermaid text, lays out the diagram, and returns it as an SVG string. Throws a [`PeleError`](#peleerror) if the text cannot be rendered.
@@ -99,7 +99,7 @@ All options are optional.
 | `directionBreakpoint` | `number` | Width threshold in pixels for `autoDirection`. Defaults to `640`. |
 | `now` | `number \| Date` | Reference time for Gantt today markers and tasks without a start date. Defaults to the current time. |
 | `padding` | `number` | Space around the diagram in pixels. |
-| `limit` | `number` | Maximum length of `text` in characters. The default is 50,000, as in Mermaid. Longer input throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
+| `limit` | `number` | Maximum length of the text in characters. The default is 50,000, as in Mermaid. Longer input throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
 | `outputLimit` | `number` | Maximum length of the SVG in characters. The default is 4,000,000. A larger diagram throws a `PeleError` with the code `limit`. Pass `Infinity` for no limit. |
 | `maxEdges` | `number` | Maximum number of edges in a flowchart. The default is 5,000. A diagram with more throws a `PeleError` with the code `limit`. Diagram configuration cannot change it. Pass `Infinity` for no limit. |
 | `linkSchemes` | `string[]` | URL schemes a link may use. The default is `['http', 'https', 'mailto', 'tel']`. Relative addresses are always kept. See [Security](/security#links-and-images). |
@@ -242,10 +242,18 @@ The buttons are in a `<div class="pele pele-zoom">` after the SVG, with the clas
 ## parse
 
 ```ts
-function parse(text: string, options?: { limit?: number; maxEdges?: number }): DiagramModel
+function parse(text: string, options?: { limit?: number; maxEdges?: number; config?: object }): DiagramModel
 ```
 
 Parses Mermaid text and returns the diagram model without laying it out or rendering it. Throws a `PeleError` for unsupported diagram types and syntax errors.
+
+Pass the model to [`render()`](#render) in place of the text. The `limit`, `maxEdges`, and `config` options apply when the text is parsed, so `render()` ignores them for a model.
+
+```ts
+const model = parse(source);
+const wide = render(model);
+const narrow = render(model, { maxWidth: 320 });
+```
 
 For a flowchart, the model has `direction`, `nodes`, `edges`, `subgraphs`, `classes`, and `tooltips`, along with `title`, `accTitle`, and `accDescr` when the source sets them.
 
