@@ -12,7 +12,7 @@ import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { runsAcross, tighten, turnToFit } from '../common/fit-width.js';
-import { linkUrl, relAttr } from '../../util/url.js';
+import { linked } from '../../util/url.js';
 import type { ClassDb } from './db.js';
 import { buildClassGraph, type GraphEdge, type GraphNode } from './graph.js';
 import { classMarker, classMarkerTrim } from './markers.js';
@@ -539,12 +539,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
       body += `<g class="pele-members" font-size="${memberSize}">${lines(view.attributes, 'attribute', first)}${lines(view.methods, 'method', second)}</g>`;
     }
     if (cls.tooltip) body = `<title>${escText(cls.tooltip)}</title>` + body;
-    if (cls.link) {
-      const target = cls.linkTarget && TARGETS.has(cls.linkTarget) ? ` target="${cls.linkTarget}"` : '';
-      const href = linkUrl(cls.link, options);
-      body = `<a href="${esc(href)}"${target}${relAttr(options)}>${body}</a>`;
-      links.push({ id: cls.id, href, internal: false });
-    }
+    if (cls.link) body = linked(body, cls.link, cls.id, links, options, cls.linkTarget && TARGETS.has(cls.linkTarget) ? ` target="${cls.linkTarget}"` : '');
     return `<g class="pele-node pele-class${classNames(cls.cssClasses.replace(/^default\s?/, ''))}" data-id="${id}"${at}>${body}</g>`;
   }
 

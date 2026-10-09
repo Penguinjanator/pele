@@ -105,6 +105,8 @@ All options are optional.
 | `linkSchemes` | `string[]` | URL schemes a link may use. The default is `['http', 'https', 'mailto', 'tel']`. Relative addresses are always kept. See [Security](/security#links-and-images). |
 | `imageSchemes` | `string[]` | URL schemes an image may use. The default is `['http', 'https']`. |
 | `linkRel` | `string` | The `rel` attribute of every link. The default is `'noopener'`. An empty string omits the attribute. See [Security](/security#links-and-images). |
+| `links` | `boolean` | Set `false` to render the diagram without links, including relative links and `internal-link` nodes. Defaults to `true`. |
+| `images` | `boolean` | Set `false` to render the diagram without images, including relative ones. Defaults to `true`. |
 | `icons` | `(name: string) => string \| null \| undefined` | Returns the inner SVG markup for an icon name such as `fa:fa-car`. Icons without markup are omitted. The markup is inserted without filtering, so return only markup you trust. |
 | `config` | `object` | Mermaid configuration. Frontmatter and directives in the text take precedence over it. |
 
@@ -118,7 +120,7 @@ All options are optional.
 | `type` | `DiagramType` | The detected diagram type, such as `'flowchart'`. |
 | `links` | `LinkInfo[]` | Diagram links for attaching navigation handlers. |
 
-Each `LinkInfo` has the `id` of the node that carries the link, its `href`, and `internal`. A node with a `click` link is reported with `internal: false`. A node with the class `internal-link` is reported with `internal: true` and its label text as the `href`. An address that is [not allowed](/security#links-and-images) is reported as `about:blank`.
+Each `LinkInfo` has the `id` of the node that carries the link, its `href`, and `internal`. A node with a `click` link is reported with `internal: false`. A node with the class `internal-link` is reported with `internal: true` and its label text as the `href`. A link with an address that is [not allowed](/security#links-and-images) is not reported.
 
 ### Narrow screens
 

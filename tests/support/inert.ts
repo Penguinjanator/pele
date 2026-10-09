@@ -24,7 +24,7 @@ const NUMERIC = new Set(['x', 'y', 'width', 'height', 'r', 'cx', 'cy', 'rx', 'ry
 
 const RE_NUMBER = /^(?:-?\d+(?:\.\d+)?(?:e[-+]?\d+)?|100%)$/;
 const RE_SCRIPT_URL = /^[\s\u0000-\u001f]*(?:javascript|vbscript|data)\s*:/i;
-const RE_ALLOWED_URL = /^(?:about:blank$|(?:https?|mailto|tel):|(?![\\/]{2}|[a-z][a-z0-9+.-]*:))/i;
+const RE_ALLOWED_URL = /^(?:(?:https?|mailto|tel):|(?![\\/]{2}|[a-z][a-z0-9+.-]*:))/i;
 const RE_TARGET = /^_(?:self|blank|parent|top)$/;
 const RE_UNSAFE_STYLE = /url\s*\(|expression|@import|javascript:|[<>{}\\]/i;
 const RE_UNSAFE_PAINT = /url\s*\(|javascript:/i;

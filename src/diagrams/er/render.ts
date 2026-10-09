@@ -332,9 +332,9 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
     const shape = `x="${num(x0)}" y="${num(y0)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}"`;
     let name = labelSvg(view.label, 0, view.rows.length > 0 ? y0 + view.headH / 2 : 0, ` class="pele-label"${text}`, icons);
     const display = decodeEntities(node.alias || node.label);
-    if (/ internal-link(?: |$)/.test(classes + ' ') && name !== '') {
+    if (/ internal-link(?: |$)/.test(classes + ' ') && name !== '' && options.links !== false) {
       // The name ends up in an href, so it gets the same check as a URL.
-      const safe = linkUrl(sanitizeUrl(display), options) !== 'about:blank';
+      const safe = linkUrl(sanitizeUrl(display), options) !== undefined;
       const target = esc(display);
       name = `<a class="internal-link"${safe ? ` href="${target}"${relAttr(options)}` : ''} data-href="${target}">${name}</a>`;
       links.push({ id: node.label, href: display, internal: true });

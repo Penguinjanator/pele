@@ -106,8 +106,8 @@ describe('inert state diagram output', () => {
     // The last two spell characters as Mermaid entity codes, which are resolved before the check.
     for (const url of ['javascript:alert(1)', ' JaVaScRiPt:alert(1)', 'data:text/html,x', 'vbscript:x', 'jav#9;ascript:alert(1)', '#106;avascript#colon;alert(1)']) {
       const { svg, links } = render(`stateDiagram-v2\n  a --> b\n  click a "${url}" "t"\n`, options);
-      expect(svg).toContain('<a href="about:blank"');
-      expect(links[0].href).toBe('about:blank');
+      expect(svg).not.toMatch(/<a\b/);
+      expect(links).toEqual([]);
     }
   });
 

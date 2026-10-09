@@ -8,7 +8,7 @@ import { RADIUS, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
-import { linkUrl, relAttr, sanitizeUrl } from '../../util/url.js';
+import { linked, sanitizeUrl } from '../../util/url.js';
 import type { C4Db } from './db.js';
 import { HEAD_LEFT, HEAD_TOP, layoutC4 } from './layout.js';
 import { HEAD, LANE, crosses, cylRy, queueRx, route, type Box } from './route.js';
@@ -33,10 +33,7 @@ function userStyle(fill: string | undefined, stroke: string | undefined, color: 
 function link(body: string, url: string | undefined, id: string, links: LinkInfo[], options: RenderOptions): string {
   if (!url) return body;
   // Entity encoding has hidden any `#name;` in the address. Put it back, so that the check sees what a browser would.
-  const href = linkUrl(sanitizeUrl(url.includes('\u00b6\u00df') ? url.replace(/\ufb02\u00b0\u00b0?/g, '#').replace(/\u00b6\u00df/g, ';') : url), options);
-  if (href === 'about:blank') return body;
-  links.push({ id, href, internal: false });
-  return `<a href="${esc(href)}"${relAttr(options)}>${body}</a>`;
+  return linked(body, sanitizeUrl(url.includes('\u00b6\u00df') ? url.replace(/\ufb02\u00b0\u00b0?/g, '#').replace(/\u00b6\u00df/g, ';') : url), id, links, options);
 }
 
 function leftLabel(label: Label, x: number, top: number, attrs: string): string {

@@ -150,9 +150,11 @@ describe('every diagram type', () => {
         if (name === 'er' && /[%\\]/.test(url)) continue;
         const { svg, links } = render(template.replace('URL', () => url), options);
         // Kanban and C4 do not read entity codes in an address, which leaves a relative one.
-        const left = name === 'kanban' || name === 'c4' ? /^(?:about:blank|file#58;.*)$/ : /^about:blank$/;
+        // Everywhere else a refused address leaves nothing: no link, no image, no entry in `links`.
+        const left = name === 'kanban' || name === 'c4' ? /^file#58;.*$/ : /^$/;
         for (const href of hrefs(svg)) expect(href, `${name}: ${url}`).toMatch(left);
         for (const link of links) if (!link.internal) expect(link.href, `${name}: ${url}`).toMatch(left);
+        expect(svg, `${name}: ${url}`).not.toContain('about:blank');
         assertInert(svg, `${name}: ${url}`);
       }
       const allowed = name.endsWith('note') || name === 'er' ? ['Note name', 'folder/Note#Heading'] : ['https://example.com/a', 'http://example.com/a', './a/b.html', '/a/b', 'a.html'];
@@ -177,7 +179,21 @@ describe('every diagram type', () => {
     }
     for (const scheme of ['javascript', 'data', 'vbscript']) {
       const { svg } = render(`flowchart LR\n  A --> B\n  click A "${scheme}:alert(1)"`, { ...options, linkSchemes: [scheme] });
-      expect(hrefs(svg), scheme).toEqual(['about:blank']);
+      expect(hrefs(svg), scheme).toEqual([]);
+    }
+  });
+
+  it('draws no link and no image for a host that wants none, whatever the address', () => {
+    for (const [name, template] of LINKS) {
+      for (const url of ['https://example.com/a', './a/b.html', 'a.png', 'Note name']) {
+        const src = template.replace('URL', url);
+        const drawn = render(src, options);
+        const { svg, links } = render(src, { ...options, links: false, images: false });
+        expect(svg, `${name}: ${url}`).not.toMatch(/<a\b|<image\b| href=/);
+        expect(links, `${name}: ${url}`).toEqual([]);
+        // What the link was around is still drawn, at the size it had.
+        expect([render(src, { ...options, links: false }).width, render(src, { ...options, links: false }).height], `${name}: ${url}`).toEqual([drawn.width, drawn.height]);
+      }
     }
   });
 

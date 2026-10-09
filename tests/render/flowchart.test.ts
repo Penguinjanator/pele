@@ -116,12 +116,11 @@ describe('flowchart rendering', () => {
     );
     expect(result.svg).toContain('<a href="https://example.com/" target="_blank" rel="noopener">');
     expect(result.svg).toContain('<title>A tooltip</title>');
-    expect(result.svg).toContain('href="about:blank"');
+    // A refused address makes no link at all: one to a blank page would still navigate.
+    expect(result.svg.match(/<a\b/g)).toHaveLength(1);
+    expect(result.svg).not.toContain('about:blank');
     expect(result.svg).not.toContain('doSomething');
-    expect(result.links).toEqual([
-      { id: 'A', href: 'https://example.com/', internal: false },
-      { id: 'B', href: 'about:blank', internal: false },
-    ]);
+    expect(result.links).toEqual([{ id: 'A', href: 'https://example.com/', internal: false }]);
   });
 
   it('turns internal-link nodes into Obsidian links', () => {

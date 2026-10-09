@@ -11,7 +11,7 @@ describe('the inertness check', () => {
     const drawn = render('flowchart LR\n  A[One] --> B[Two]\n  click A href "https://example.com/a?b=1#c"\n  style B fill:#eee,stroke-width:2px', { measurer: metricsMeasurer }).svg;
     expect(inertProblem(drawn)).toBeUndefined();
     expect(() => assertInert(drawn, 'flowchart')).not.toThrow();
-    for (const href of ['https://example.com', 'http://example.com/a', 'mailto:a@example.com', 'tel:+15550100', './a/b', '/a', 'a.html', '#top', '?q=1', 'about:blank']) {
+    for (const href of ['https://example.com', 'http://example.com/a', 'mailto:a@example.com', 'tel:+15550100', './a/b', '/a', 'a.html', '#top', '?q=1']) {
       expect(inertProblem(svg(`<a href="${href}"><text>x</text></a>`)), href).toBeUndefined();
     }
   });
@@ -37,6 +37,7 @@ describe('the inertness check', () => {
       ['network path', svg('<a href="//evil.example/x"></a>'), /scheme that is not allowed/],
       ['backslash network path', svg('<image href="\\\\evil.example\\x"/>'), /scheme that is not allowed/],
       ['app link', svg('<a href="obsidian://open"></a>'), /scheme that is not allowed/],
+      ['blank page', svg('<a href="about:blank"></a>'), /scheme that is not allowed/],
       ['target', svg('<a href="/a" target="evil"></a>'), /target="evil"/],
       ['style that loads something', svg('<rect style="fill:url(//evil.example/x)"/>'), /style=/],
       ['style property', svg('<rect style="position:fixed"/>'), /style property position/],

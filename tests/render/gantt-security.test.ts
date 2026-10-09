@@ -112,8 +112,8 @@ describe('inert gantt output', () => {
   it('never links to a script URL', () => {
     for (const url of ['javascript:alert(1)', 'JaVaScRiPt:alert(1)', ' javascript:alert(1)', 'data:text/html,x', 'vbscript:x']) {
       const { svg, links } = render(`${HEAD}${TASKS}  click a1 href "${url}"\n`, options);
-      expect(svg).toContain('<a href="about:blank"');
-      expect(links).toEqual([{ id: 'a1', href: 'about:blank', internal: false }]);
+      expect(svg).not.toMatch(/<a\b/);
+      expect(links).toEqual([]);
     }
   });
 

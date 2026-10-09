@@ -1,6 +1,6 @@
 import { esc } from '../svg/builder.js';
 import { decodeEntities } from '../text/entities.js';
-import type { RenderOptions } from '../types.js';
+import type { LinkInfo, RenderOptions } from '../types.js';
 
 const BLANK = 'about:blank';
 const RE_INVALID_PROTOCOL = /^([^\w]*)(javascript|data|vbscript)/im;
@@ -81,20 +81,30 @@ const RE_NETWORK_PATH = /^[\\/]{2}/;
 
 // Stricter than Mermaid, which lets any scheme but three through: a diagram in a shared note
 // could otherwise open a local file, a network share, or another application.
-function allow(url: string, schemes: readonly string[]): string {
-  if (RE_NETWORK_PATH.test(url)) return BLANK;
+function allow(url: string, schemes: readonly string[]): string | undefined {
+  if (RE_NETWORK_PATH.test(url)) return undefined;
   const scheme = RE_SCHEME_NAME.exec(url);
-  return !scheme || schemes.includes(scheme[1].toLowerCase()) ? url : BLANK;
+  return !scheme || schemes.includes(scheme[1].toLowerCase()) ? url : undefined;
 }
 
 // Both take a URL that sanitizeUrl has passed, and keep it only when it is relative or its
-// scheme is one the host allows.
-export function linkUrl(url: string, options: RenderOptions): string {
-  return allow(url, options.linkSchemes ?? LINK_SCHEMES);
+// scheme is one the host allows. One that is refused is left out of the drawing: written as
+// `about:blank`, a link would still take the page it is in somewhere when clicked.
+export function linkUrl(url: string, options: RenderOptions): string | undefined {
+  return options.links === false ? undefined : allow(url, options.linkSchemes ?? LINK_SCHEMES);
 }
 
-export function imageUrl(url: string, options: RenderOptions): string {
-  return allow(url, options.imageSchemes ?? IMAGE_SCHEMES);
+export function imageUrl(url: string, options: RenderOptions): string | undefined {
+  return options.images === false ? undefined : allow(url, options.imageSchemes ?? IMAGE_SCHEMES);
+}
+
+// Puts a link around part of a drawing and reports it. An address that is refused makes no
+// link: the part is drawn as it would be without one.
+export function linked(body: string, url: string, id: string, links: LinkInfo[], options: RenderOptions, attrs = ''): string {
+  const href = linkUrl(url, options);
+  if (href === undefined) return body;
+  links.push({ id, href, internal: false });
+  return `<a href="${esc(href)}"${attrs}${relAttr(options)}>${body}</a>`;
 }
 
 export function relAttr(options: RenderOptions): string {

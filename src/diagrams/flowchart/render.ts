@@ -10,7 +10,7 @@ import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
-import { imageUrl, linkUrl, relAttr, safeUrl, sanitizeUrl } from '../../util/url.js';
+import { imageUrl, linked, linkUrl, relAttr, safeUrl, sanitizeUrl } from '../../util/url.js';
 import type { IconResolver, LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { runsAcross, tighten, turnToFit } from '../common/fit-width.js';
 import type { FlowDb } from './db.js';
@@ -237,9 +237,13 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
       const aw = assetSize(node.assetWidth, 80);
       const ah = assetSize(node.assetHeight, 80);
       const top = view.label.height > 0 ? (node.pos === 't' ? h / 2 - ah : -h / 2) : -ah / 2;
-      inner = `<image href="${esc(imageUrl(safeUrl(node.img), options))}" x="${num(-aw / 2)}" y="${num(top)}" width="${num(
-        aw
-      )}" height="${num(ah)}" preserveAspectRatio="${node.constraint === 'on' ? 'xMidYMid meet' : 'none'}"/>`;
+      const src = imageUrl(safeUrl(node.img), options);
+      inner =
+        src === undefined
+          ? ''
+          : `<image href="${esc(src)}" x="${num(-aw / 2)}" y="${num(top)}" width="${num(aw)}" height="${num(ah)}" preserveAspectRatio="${
+              node.constraint === 'on' ? 'xMidYMid meet' : 'none'
+            }"/>`;
     } else if (node.icon) {
       const box = assetSize(node.assetHeight, 48);
       const top = view.label.height > 0 ? (node.pos === 't' ? h / 2 - box : -h / 2) : -box / 2;
@@ -265,22 +269,17 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
 
     let text = labelSvg(view.label, 0, view.dy, ` class="pele-label"${view.style.text}`, icons);
     const internal = / internal-link(?: |$)/.test(classes + ' ');
-    if (internal && node.label) {
+    if (internal && node.label && options.links !== false) {
       // The label is a note name, but it still ends up in an href, so it gets the same check as a URL.
       const name = decodeEntities(node.label);
-      const safe = linkUrl(sanitizeUrl(name), options) !== 'about:blank';
+      const safe = linkUrl(sanitizeUrl(name), options) !== undefined;
       const target = esc(name);
       text = `<a class="internal-link"${safe ? ` href="${target}"${relAttr(options)}` : ''} data-href="${target}">${text}</a>`;
       links.push({ id: node.id, href: name, internal: true });
     }
     let body = inner + text;
     if (node.tooltip) body = `<title>${escText(node.tooltip)}</title>` + body;
-    if (node.link) {
-      const target = node.linkTarget ? ` target="${esc(node.linkTarget)}"` : '';
-      const href = linkUrl(node.link, options);
-      body = `<a href="${esc(href)}"${target}${relAttr(options)}>${body}</a>`;
-      links.push({ id: node.id, href, internal: false });
-    }
+    if (node.link) body = linked(body, node.link, node.id, links, options, node.linkTarget ? ` target="${esc(node.linkTarget)}"` : '');
     nodesOut += `<g class="pele-node pele-shape-${view.shape}${classes}" data-id="${id}" transform="translate(${num(
       x
     )},${num(y)})">${body}</g>`;

@@ -22,7 +22,7 @@ Nodes can contain links, and flowchart nodes can display images. Pele allows rel
 | Links | `http`, `https`, `mailto`, `tel` |
 | Images | `http`, `https` |
 
-Any other address is replaced with `about:blank`. That includes `file:` addresses, network shares such as `//host/share`, and schemes that open another application. This is stricter than Mermaid, which blocks only `javascript:`, `data:`, and `vbscript:`.
+A link or image with any other address is omitted, and the node is rendered without it. That includes `file:` addresses, network shares such as `//host/share`, and schemes that open another application. This is stricter than Mermaid, which blocks only `javascript:`, `data:`, and `vbscript:`.
 
 Use the [`linkSchemes`](/api#renderoptions) and [`imageSchemes`](/api#renderoptions) options to change the lists. The schemes you pass replace the defaults:
 
@@ -33,6 +33,12 @@ render(source, { linkSchemes: ['http', 'https', 'mailto', 'obsidian'] });
 `javascript:`, `data:`, and `vbscript:` are always blocked.
 
 Images load when the diagram is displayed, exposing the request to the image server. Pass `imageSchemes: []` to allow only relative image URLs, or block image requests with a content security policy.
+
+To preview a file from an unknown source, turn links and images off. Relative addresses and `internal-link` nodes are omitted too:
+
+```ts
+render(source, { links: false, images: false });
+```
 
 Links have `rel="noopener"`. A `target` is written only when it is `_self`, `_blank`, `_parent`, or `_top`.
 

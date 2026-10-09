@@ -96,8 +96,8 @@ describe('class diagram output is inert', () => {
   it('never emits a script URL as a link, nor anything from a callback', () => {
     for (const url of ['javascript:alert(1)', 'JAVASCRIPT:alert(1)', ' javascript:alert(1)', 'java\tscript:alert(1)', 'data:text/html,x', 'vbscript:x', '&#106;avascript:alert(1)']) {
       const { svg, links } = render(`classDiagram\n  class A\n  link A "${url}"`, options);
-      expect(svg).toContain('href="about:blank"');
-      expect(links).toEqual([{ id: 'A', href: 'about:blank', internal: false }]);
+      expect(svg).not.toMatch(/<a\b/);
+      expect(links).toEqual([]);
     }
     const { svg, links } = render('classDiagram\n  class A\n  click A call stealCookies("now") "tip"\n  callback A "stealCookies"', options);
     expect(svg).not.toContain('stealCookies');

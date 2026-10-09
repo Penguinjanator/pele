@@ -221,8 +221,8 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
       const bottom = card.height - CARD_PAD;
       if (item.ticket) {
         const top = bottom - card.meta;
-        const href = baseUrl ? linkUrl(safeUrl(baseUrl.replace('#TICKET#', () => item.ticket!)), options) : 'about:blank';
-        if (href === 'about:blank') {
+        const href = baseUrl ? linkUrl(safeUrl(baseUrl.replace('#TICKET#', () => item.ticket!)), options) : undefined;
+        if (href === undefined) {
           inner += textBlock(card.ticket, CARD_PAD, top, ' class="pele-ticket" fill="var(--_m)"', icons);
         } else {
           inner +=
