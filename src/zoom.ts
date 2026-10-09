@@ -11,6 +11,9 @@ export interface ZoomOptions {
   controls?: boolean;
   // What the buttons are called, for a page that is not in English.
   labels?: { zoomIn?: string; zoomOut?: string; reset?: string };
+  // Whether the element's size is watched, so that an enlarged drawing goes back to the size
+  // that fits when it changes. It is by default. A host that passes `false` calls resized().
+  watch?: boolean;
 }
 
 export interface Zoom {
@@ -23,6 +26,8 @@ export interface Zoom {
   reset(): void;
   // Starts over with the drawing the element holds now.
   refresh(): void;
+  // Goes back to the size that fits if the element's size has changed. For `watch: false`.
+  resized(): void;
   destroy(): void;
 }
 
@@ -224,7 +229,28 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     if (scale !== 0) place(x - dx / scale, y - dy / scale);
   };
 
+  // The size that fits changes with the element's size. An enlarged drawing goes back to it.
+  const resized = (): void => {
+    const size = element.clientWidth + element.clientHeight;
+    if (size === watched) return;
+    watched = size;
+    settle();
+  };
+  // Watched from the window the element is in now, which changes if a host moves it to another.
+  let observer: ResizeObserver | undefined;
+  let observed: typeof globalThis | undefined;
+  const watch = (): void => {
+    if (options.watch === false) return;
+    const next = view();
+    if (next === observed) return;
+    observer?.disconnect();
+    observed = next;
+    observer = next.ResizeObserver ? new next.ResizeObserver(resized) : undefined;
+    observer?.observe(element);
+  };
+
   const refresh = (): void => {
+    watch();
     const first = element.firstElementChild;
     svg = first && first.localName === 'svg' ? (first as SVGSVGElement) : null;
     scale = 0;
@@ -363,19 +389,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
   ];
   for (const [type, listener, how] of listeners) element.addEventListener(type, listener, how);
 
-  // The size that fits changes with the element's size. An enlarged drawing goes back to it.
-  const Observer = view().ResizeObserver;
-  const observer = Observer
-    ? new Observer(() => {
-        const size = element.clientWidth + element.clientHeight;
-        if (size === watched) return;
-        watched = size;
-        settle();
-      })
-    : undefined;
   watched = element.clientWidth + element.clientHeight;
-  observer?.observe(element);
-
   refresh();
 
   return {
@@ -393,6 +407,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
     },
     reset: settle,
     refresh,
+    resized,
     destroy() {
       settle();
       if (svg) {

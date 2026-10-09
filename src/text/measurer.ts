@@ -121,6 +121,6 @@ export function defaultMeasurer(fontFamily = 'sans-serif', monoFamily = 'monospa
 }
 
 // Widths measured before a font finished loading are those of its fallback.
-export function forgetWidths(): void {
+export function forgetTextWidths(): void {
   shared.clear();
 }

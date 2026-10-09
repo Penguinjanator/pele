@@ -82,6 +82,8 @@ Parses Mermaid text, lays out the diagram, and returns it as an SVG string. Thro
 
 The same text, options, and font measurements always produce the same SVG.
 
+`render()` also accepts a model returned by [`parse()`](#parse). Use it to render the same diagram more than once, such as at another width, without parsing the text again.
+
 ### RenderOptions
 
 All options are optional.
@@ -172,9 +174,13 @@ const diagram = mount(container, source);
 - Re-renders when a width change affects the layout, and when a web font finishes loading.
 - Lets a diagram that was shrunk to fit be zoomed and panned. See [Zoom](#zoom).
 
-Call `update()` after a CSS change that affects fonts, such as a theme or font setting.
+Call `refresh()` after a CSS change that affects fonts, such as a theme or font setting.
 
 Use a container with a width independent of its content, such as a block element. `mount()` throws a [`PeleError`](#peleerror) as `render()` does.
+
+A container that is not in the document has no font or width to read. The diagram is rendered again when the container is added to the document.
+
+Mounting a diagram in a container that already has one replaces it. A container that is removed from the page can be garbage collected without calling `destroy()`.
 
 `MountOptions` extends [`RenderOptions`](#renderoptions) with:
 
@@ -182,13 +188,42 @@ Use a container with a width independent of its content, such as a block element
 | --- | --- | --- |
 | `onRender` | `(result: RenderResult) => void` | Called after each render. Use it to attach link handlers or other SVG interactions. |
 | `zoom` | `boolean \| 'auto' \| ZoomOptions` | Whether the diagram can be zoomed and panned. `'auto'`, the default, allows it for a diagram that was shrunk to fit. `true` allows it for every diagram. `false` turns it off. Pass [`ZoomOptions`](#zoom) to configure it. |
+| `watch` | `boolean` | Whether to observe the container width and font loading. Defaults to `true`. See [Updating diagrams yourself](#updating-diagrams-yourself). |
 
 | Member | Description |
 | --- | --- |
 | `result` | Current `RenderResult`. |
 | `zoom` | The diagram's [`Zoom`](#zoom), or `undefined` if the `zoom` option is `false`. |
-| `update(text, options?)` | Updates the source or options and returns the new result. Call it after moving the container to another window. |
+| `update(text, options?)` | Updates the source or options and returns the new result. If the text cannot be rendered, it throws and the diagram stays as it was. Call it after moving the container to another window. |
+| `fit()` | Adapts the layout to the current container width and returns the result. |
+| `refresh()` | Measures labels with the current fonts, re-renders if the layout changed, and returns the result. |
 | `destroy()` | Stops observing the container and font loading. Leaves the diagram in place. |
+
+### Updating diagrams yourself
+
+An app that already tracks resizes and font changes can pass `watch: false`. `mount()` then adds no observers or listeners outside the container, and the app calls `fit()` and `refresh()`:
+
+```ts
+import { forgetTextWidths, mount } from 'pele';
+
+const diagram = mount(container, source, { watch: false });
+
+const observer = new ResizeObserver(() => diagram.fit());
+observer.observe(container);
+
+document.fonts.addEventListener('loadingdone', () => {
+  forgetTextWidths();
+  diagram.refresh();
+});
+```
+
+| Call | When |
+| --- | --- |
+| `fit()` | The container width changed, or the container was added to the document. |
+| `refresh()` | A CSS change affected fonts. |
+| `forgetTextWidths()`, then `refresh()` | A web font finished loading. Widths measured before then were those of the fallback font. |
+
+One `ResizeObserver` and one font listener can serve every diagram on the page.
 
 With [`pele/lazy`](#imports), `mountAsync()` takes the same arguments, fetches the diagram type first, and returns a promise.
 
@@ -226,6 +261,7 @@ const zoom = enableZoom(container);
 | `maxScale` | `number` | Largest scale, where `1` is the diagram's natural size. Defaults to `3`. |
 | `controls` | `boolean` | Shows the zoom buttons. Defaults to `true`. |
 | `labels` | `{ zoomIn?, zoomOut?, reset? }` | Accessible names of the buttons. Defaults to English. |
+| `watch` | `boolean` | Whether to observe the container size. Defaults to `true`. With `false`, call `resized()` when the size changes. |
 
 | Member | Description |
 | --- | --- |
@@ -235,6 +271,7 @@ const zoom = enableZoom(container);
 | `zoomTo(scale)` | Sets the scale. |
 | `reset()` | Returns to the scale that fits. |
 | `refresh()` | Call after replacing the SVG in the container. |
+| `resized()` | Resets the zoom if the container size changed. Only needed with `watch: false`. |
 | `destroy()` | Removes the behavior and resets the diagram. |
 
 The buttons are in a `<div class="pele pele-zoom">` after the SVG, with the classes `pele-zoom-in`, `pele-zoom-out`, and `pele-zoom-reset`. They use the diagram's color variables. Move them with `--pele-zoom-top`, `--pele-zoom-right`, `--pele-zoom-bottom`, and `--pele-zoom-left`. The container is given `position: relative` if it is not positioned.

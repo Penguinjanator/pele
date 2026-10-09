@@ -14,6 +14,7 @@ export type { TextMeasurer } from './text/measurer.js';
 export type { IconResolver, LinkInfo, RenderOptions, RenderResult } from './types.js';
 export type { Diagram } from './types.js';
 export type { MountOptions, Mounted } from './mount.js';
+export { forgetTextWidths } from './text/measurer.js';
 export { enableZoom } from './zoom.js';
 export type { Zoom, ZoomOptions } from './zoom.js';
 
@@ -139,5 +140,5 @@ export function render(source: string | DiagramModel, options: RenderOptions = {
 // Renders into an element and draws again when the element's width calls for it. Throws as
 // render() does when the text cannot be drawn.
 export function mount(element: HTMLElement, text: string, options: MountOptions = {}): Mounted {
-  return mountWith(render, element, text, options);
+  return mountWith({ parse, render }, element, text, options);
 }
