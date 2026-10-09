@@ -22,13 +22,15 @@ export interface Mounted {
   // The diagram's zoom, unless the `zoom` option is false.
   readonly zoom: Zoom | undefined;
   // Draws other text, or the same text with other options, in the same element. Text that
-  // cannot be drawn throws, and leaves the diagram as it was.
+  // cannot be drawn throws, and leaves the diagram as it was. If `onRender` throws, the new
+  // drawing is already in place and stays.
   update(text: string, options?: MountOptions): RenderResult;
   // Draws for the width the element has now, where that changes the drawing. A host that
   // passed `watch: false` calls it when the element's size changes or it is put in a document.
   fit(): RenderResult;
   // Measures with the fonts the element has now, and draws again if anything moved. For after
-  // a change of theme or font, and with `watch: false` after a font has loaded.
+  // a change of theme or font, after the element is moved to another window, and with
+  // `watch: false` after a font has loaded.
   refresh(): RenderResult;
   // Stops watching the element and the page's fonts. What it shows stays.
   destroy(): void;
@@ -60,8 +62,13 @@ function fontsFor(style: CSSStyleDeclaration, drawing: HTMLElement | null): Font
 // ever mounted, and all it holds, for as long as the document lasts.
 const waiting = new WeakMap<FontFaceSet, Set<WeakRef<HTMLElement>>>();
 const remeasures = new WeakMap<HTMLElement, () => void>();
+// Takes the reference to a collected element out of its set. Without it a document whose fonts
+// have all loaded would keep one for every diagram it ever dropped.
+const collected = new FinalizationRegistry<{ elements: Set<WeakRef<HTMLElement>>; reference: WeakRef<HTMLElement> }>(
+  ({ elements, reference }) => elements.delete(reference)
+);
 
-function awaitFonts(fonts: FontFaceSet, element: WeakRef<HTMLElement>): void {
+function awaitFonts(fonts: FontFaceSet, target: HTMLElement, element: WeakRef<HTMLElement>): void {
   let elements = waiting.get(fonts);
   if (!elements) {
     const mounted = (elements = new Set());
@@ -77,6 +84,7 @@ function awaitFonts(fonts: FontFaceSet, element: WeakRef<HTMLElement>): void {
     });
   }
   elements.add(element);
+  collected.register(target, { elements, reference: element }, element);
 }
 
 const mounts = new WeakMap<HTMLElement, Mounted>();
@@ -136,11 +144,18 @@ export function mountWith(engine: Engine, element: HTMLElement, text: string, op
     if (fresh && !drawing && element.firstElementChild) {
       const seen = fontsFor(style, element.firstElementChild as HTMLElement);
       if (seen.family !== fonts.family || seen.mono !== fonts.mono) {
+        const first = { fonts, natural, adapts, drawnFor };
         fonts = seen;
-        next = fit(style, true);
-        element.innerHTML = next.svg;
+        try {
+          next = fit(style, true);
+          element.innerHTML = next.svg;
+        } catch {
+          // What was drawn for the element's own font is in the element, and stays.
+          ({ fonts, natural, adapts, drawnFor } = first);
+        }
       }
     }
+    // From here the drawing is the one shown. Nothing above throws once the element has changed.
     shown = next;
     zoomer?.refresh();
     settings.onRender?.(next);
@@ -200,6 +215,7 @@ export function mountWith(engine: Engine, element: HTMLElement, text: string, op
     observer?.disconnect();
     observer = undefined;
     if (loaded) waiting.get(loaded)?.delete(self);
+    collected.unregister(self);
     loaded = undefined;
     remeasures.delete(element);
     view = undefined;
@@ -219,7 +235,7 @@ export function mountWith(engine: Engine, element: HTMLElement, text: string, op
     loaded = element.ownerDocument?.fonts;
     if (loaded) {
       remeasures.set(element, remeasure);
-      awaitFonts(loaded, self);
+      awaitFonts(loaded, element, self);
     }
   };
   watch();
@@ -233,6 +249,7 @@ export function mountWith(engine: Engine, element: HTMLElement, text: string, op
     },
     update(next, nextOptions = settings) {
       const before = { source, settings, model, natural, fonts, adapts, drawnFor, guessed };
+      const was = shown;
       try {
         // The same text under the same limits is the same model.
         if (
@@ -247,7 +264,14 @@ export function mountWith(engine: Engine, element: HTMLElement, text: string, op
         settings = nextOptions;
         draw(true);
       } catch (error) {
-        ({ source, settings, model, natural, fonts, adapts, drawnFor, guessed } = before);
+        // Text that could not be drawn left the element alone. If the element has the new
+        // drawing, it was the host's onRender that threw, and the update stands.
+        if (shown === was) {
+          ({ source, settings, model, natural, fonts, adapts, drawnFor, guessed } = before);
+          throw error;
+        }
+        watch();
+        zoom();
         throw error;
       }
       watch();
@@ -261,7 +285,10 @@ export function mountWith(engine: Engine, element: HTMLElement, text: string, op
       return shown;
     },
     refresh() {
+      // The element may be in another window than it was, with other fonts and another observer.
+      watch();
       remeasure();
+      zoomer?.resized();
       return shown;
     },
     destroy() {

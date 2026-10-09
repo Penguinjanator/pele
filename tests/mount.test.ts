@@ -323,6 +323,15 @@ describe('mount', () => {
     delete globals.ResizeObserver;
     const doc = page();
     const dropped: WeakRef<HTMLElement>[] = [];
+    // Every reference the library makes to an element, itself held weakly here.
+    const references: WeakRef<object>[] = [];
+    const Weak = WeakRef;
+    globals.WeakRef = class<T extends object> extends Weak<T> {
+      constructor(target: T) {
+        super(target);
+        references.push(new Weak(this));
+      }
+    };
     const kept = doc.element(500);
     let draws = 0;
     mountWith(spying(() => draws++), kept, FLOW);
@@ -330,15 +339,19 @@ describe('mount', () => {
       for (let i = 0; i < 20; i++) {
         const el = doc.element(500);
         mount(el, FLOW, options);
-        dropped.push(new WeakRef(el));
+        dropped.push(new Weak(el));
       }
     })();
-    for (let i = 0; i < 5; i++) {
+    globals.WeakRef = Weak;
+    for (let i = 0; i < 12; i++) {
       await new Promise((resolve) => setTimeout(resolve, 0));
       collect();
     }
     expect(dropped.filter((ref) => ref.deref() !== undefined).length).toBe(0);
-    // The one the page still has is still drawn again when a font loads.
+    // Nor what it kept about them, with no font having loaded since: only the reference to the
+    // one the page still has is left.
+    expect(references.filter((ref) => ref.deref() !== undefined).length).toBe(1);
+    // That one is still drawn again when a font loads.
     draws = 0;
     doc.loaded();
     expect(draws).toBeGreaterThan(0);
@@ -382,6 +395,60 @@ describe('mount', () => {
     resize(el, 340);
     expect(handle.result.width).toBe(320);
     expect(el.innerHTML).toBe(render(SANKEY, { ...options, maxWidth: 320 }).svg);
+  });
+
+  it('lets the new drawing stand when it is the host\'s onRender that throws', () => {
+    const el = element(1000);
+    let fail = false;
+    const handle = mount(el, SANKEY, {
+      ...options,
+      onRender: () => {
+        if (fail) throw new Error('host');
+      },
+    });
+    fail = true;
+    expect(() => handle.update(FLOW)).toThrow('host');
+    fail = false;
+    // The element, the result and what a later draw starts from all agree.
+    expect(handle.result.type).toBe('flowchart');
+    expect(el.innerHTML).toBe(handle.result.svg);
+    expect(handle.refresh().type).toBe('flowchart');
+    resize(el, 340);
+    expect(handle.result.type).toBe('flowchart');
+    expect(el.innerHTML).toBe(handle.result.svg);
+  });
+
+  it('measures with the fonts of the window an element was moved to when refreshed, and watches from there', () => {
+    const makeWindow = (fontFamily: string) => {
+      const listeners = new Set<(event: unknown) => void>();
+      const view = {
+        getComputedStyle: () => ({ fontFamily, paddingLeft: '0px', paddingRight: '0px', getPropertyValue: () => '' }),
+        ResizeObserver: globals.ResizeObserver,
+      };
+      const ownerDocument = { defaultView: view, fonts: { addEventListener: (_: string, listener: (event: unknown) => void) => listeners.add(listener) } };
+      return { ownerDocument, loaded: () => [...listeners].forEach((listener) => listener({})) };
+    };
+    const first = makeWindow('Georgia');
+    const second = makeWindow('Inter');
+    const el = { clientWidth: 500, innerHTML: '', firstElementChild: null, isConnected: true, ownerDocument: first.ownerDocument, addEventListener() {}, removeEventListener() {} };
+    const seen: string[] = [];
+    for (const watch of [true, false]) {
+      el.ownerDocument = first.ownerDocument;
+      const handle = mountWith(spying((o) => seen.push(o.fontFamily ?? '')), el as unknown as HTMLElement, FLOW, { watch });
+      el.ownerDocument = second.ownerDocument;
+      // Fitting keeps the measurements it has. Only a refresh reads the fonts again.
+      seen.length = 0;
+      handle.fit();
+      expect([...new Set(seen)], String(watch)).toEqual([]);
+      handle.refresh();
+      expect([...new Set(seen)], String(watch)).toEqual(['Inter']);
+      seen.length = 0;
+      first.loaded();
+      expect(seen.length, String(watch)).toBe(0);
+      second.loaded();
+      expect(seen.length > 0, String(watch)).toBe(watch);
+      handle.destroy();
+    }
   });
 
   it('parses the text once, however often it is drawn', () => {

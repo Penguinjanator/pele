@@ -182,6 +182,8 @@ A container that is not in the document has no font or width to read. The diagra
 
 Mounting a diagram in a container that already has one replaces it. A container that is removed from the page can be garbage collected without calling `destroy()`.
 
+An error thrown by `onRender` propagates to the caller after the diagram has been rendered.
+
 `MountOptions` extends [`RenderOptions`](#renderoptions) with:
 
 | Option | Type | Description |
@@ -194,9 +196,9 @@ Mounting a diagram in a container that already has one replaces it. A container 
 | --- | --- |
 | `result` | Current `RenderResult`. |
 | `zoom` | The diagram's [`Zoom`](#zoom), or `undefined` if the `zoom` option is `false`. |
-| `update(text, options?)` | Updates the source or options and returns the new result. If the text cannot be rendered, it throws and the diagram stays as it was. Call it after moving the container to another window. |
+| `update(text, options?)` | Updates the source or options and returns the new result. If the text cannot be rendered, it throws and the diagram stays as it was. |
 | `fit()` | Adapts the layout to the current container width and returns the result. |
-| `refresh()` | Measures labels with the current fonts, re-renders if the layout changed, and returns the result. |
+| `refresh()` | Measures labels with the current fonts, re-renders if the layout changed, and returns the result. Call it after moving the container to another window. |
 | `destroy()` | Stops observing the container and font loading. Leaves the diagram in place. |
 
 ### Updating diagrams yourself
@@ -220,7 +222,7 @@ document.fonts.addEventListener('loadingdone', () => {
 | Call | When |
 | --- | --- |
 | `fit()` | The container width changed, or the container was added to the document. |
-| `refresh()` | A CSS change affected fonts. |
+| `refresh()` | A CSS change affected fonts, or the container moved to another window. |
 | `forgetTextWidths()`, then `refresh()` | A web font finished loading. Widths measured before then were those of the fallback font. |
 
 One `ResizeObserver` and one font listener can serve every diagram on the page.

@@ -231,6 +231,7 @@ export function enableZoom(element: HTMLElement, options: ZoomOptions = {}): Zoo
 
   // The size that fits changes with the element's size. An enlarged drawing goes back to it.
   const resized = (): void => {
+    watch();
     const size = element.clientWidth + element.clientHeight;
     if (size === watched) return;
     watched = size;
