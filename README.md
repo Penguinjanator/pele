@@ -12,7 +12,14 @@ Documentation, examples, and a playground are at [pele.run](https://pele.run).
 npm install pele
 ```
 
-Or load it from a CDN; see [Using a CDN](https://pele.run/api#using-a-cdn).
+Or load it [from a CDN](https://pele.run/api#using-a-cdn):
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/pele@1/dist/pele.global.js"></script>
+<script>
+  for (const el of document.querySelectorAll('pre.mermaid')) pele.mount(el, el.textContent);
+</script>
+```
 
 ## Use
 
