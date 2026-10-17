@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cnode, compoundLayout, type CEdge, type CNode, type Dir } from '../../src/layout/compound.js';
+import { cnode, compoundLayout, routeCrossings, type CEdge, type CNode, type Dir } from '../../src/layout/compound.js';
 import { random } from '../support/corpus.js';
 
 const OPTIONS = { nodeSep: 40, edgeSep: 16, rankSep: 48, portSep: 20 };
@@ -505,6 +505,85 @@ describe('compound layout', () => {
     const right = edges.filter((e) => nodes[e.dst].x > nodes[0].x).sort((a, b) => nodes[b.dst].x - nodes[a.dst].x);
     // The edge that reaches furthest turns first, so the nearer ones pass under it.
     for (const side of [left, right]) for (let i = 1; i < side.length; i++) expect(acrossY(side[i - 1])).toBeLessThan(acrossY(side[i]));
+  });
+
+  it('counts where routes cross, but not where edges that meet at one node fan out from it', () => {
+    const nodes = [cnode(40, 40), cnode(40, 40), cnode(40, 40), cnode(40, 40)];
+    nodes.forEach((node, i) => {
+      node.x = 100 * (i % 2);
+      node.y = 200 * Math.floor(i / 2);
+    });
+    const crossed = [edge(0, 3), edge(1, 2)];
+    crossed[0].route = [0, 20, 0, 100, 180, 0];
+    crossed[1].route = [100, 20, 0, 0, 180, 0];
+    expect(routeCrossings(nodes, crossed)).toBe(1);
+    const fan = [edge(0, 2), edge(0, 3)];
+    fan[0].route = [10, 20, 0, 0, 180, 0];
+    fan[1].route = [-10, 20, 0, 100, 180, 0];
+    expect(routeCrossings(nodes, fan)).toBe(0);
+  });
+
+  function group(seq: number): CNode {
+    const node = cnode(0, 0);
+    node.isGroup = true;
+    node.padX = 20;
+    node.padTop = 40;
+    node.padBottom = 20;
+    node.span = Infinity;
+    node.seq = seq;
+    return node;
+  }
+
+  it('orders the ports on the far side of a group by where their edges go, so that a fan into one node does not cross between groups', () => {
+    for (const dir of ['TB', 'LR'] as Dir[]) {
+      // Two groups of steps, each of which sends an edge to one store in a third group.
+      const nodes = [group(100), group(101), group(102), cnode(80, 40, 2)];
+      const edges: CEdge[] = [];
+      for (const g of [0, 1]) {
+        for (let i = 0; i < 5; i++) {
+          const v = nodes.length;
+          nodes.push(cnode(100, 40, g));
+          if (i > 0) edges.push(edge(v - 1, v));
+          edges.push(edge(v, 3));
+        }
+      }
+      nodes.forEach((node, i) => {
+        if (node.isGroup) return;
+        node.seq = i;
+        node.span = 72;
+      });
+      compoundLayout(nodes, edges, dir, OPTIONS);
+      const across = dir === 'TB' ? 0 : 1;
+      // Where each edge to the store leaves its own group, and where it enters the store's.
+      const at = (e: CEdge, g: number): number => {
+        for (let k = 0; k < e.route.length; k += 3) if (onBorder(nodes[g], e.route[k], e.route[k + 1])) return e.route[k + across];
+        return NaN;
+      };
+      const fan = edges.filter((e) => e.dst === 3);
+      const leave = fan.map((e) => at(e, nodes[e.src].parent));
+      const enter = fan.map((e) => at(e, 2));
+      for (let i = 0; i < fan.length; i++) {
+        expect(Number.isNaN(leave[i]) || Number.isNaN(enter[i]), `${dir} edge ${i}`).toBe(false);
+        for (let j = i + 1; j < fan.length; j++) expect(Math.sign(leave[i] - leave[j]), `${dir} edges ${i} and ${j}`).toBe(Math.sign(enter[i] - enter[j]));
+      }
+    }
+  });
+
+  it('orders the nodes of a row of groups as one drawing, so that the edges between them do not cross', () => {
+    // Three stages, each a group, with their nodes written in an order that would cross a lot.
+    const nodes = [group(100), group(101), group(102)];
+    const stage = (g: number): number[] =>
+      [0, 1, 2, 3, 4].map(() => {
+        nodes.push(cnode(80, 40, g));
+        nodes[nodes.length - 1].seq = nodes.length;
+        return nodes.length - 1;
+      });
+    const [a, b, c] = [stage(0), stage(1), stage(2)];
+    const edges: CEdge[] = [];
+    [4, 2, 0, 3, 1].forEach((j, i) => edges.push(edge(a[i], b[j])));
+    [1, 3, 0, 4, 2].forEach((j, i) => edges.push(edge(b[i], c[j])));
+    compoundLayout(nodes, edges, 'LR', OPTIONS);
+    expect(routeCrossings(nodes, edges)).toBe(0);
   });
 
   it('survives groups that contain each other', () => {
