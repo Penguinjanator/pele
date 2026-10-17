@@ -69,6 +69,27 @@ To load a type ahead of time, use `await load('flowchart')` from `pele/lazy`.
 
 Keep your API imports on the same entry point. With `core` and `lazy`, [`supports()`](#supports) checks the types you have registered or loaded.
 
+### Using a CDN
+
+npm CDNs such as jsDelivr serve the package. Load the browser script to define the global `pele`:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/pele@1/dist/pele.global.js"></script>
+<script>
+  for (const el of document.querySelectorAll('pre.mermaid')) pele.mount(el, el.textContent);
+</script>
+```
+
+Or import the module:
+
+```html
+<script type="module">
+  import { mount } from 'https://cdn.jsdelivr.net/npm/pele@1/dist/pele.js';
+</script>
+```
+
+`@1` loads the latest 1.x release. Use an exact version such as `@1.6.0` to keep a site on a specific release. Both files include every diagram type.
+
 ## render
 
 ```ts

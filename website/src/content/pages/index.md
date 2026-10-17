@@ -1,11 +1,11 @@
 ---
 title: Pele · Mermaid diagrams as themeable SVG
-description: Pele is a lightweight library that renders Mermaid diagrams to SVG, themed with CSS variables.
+description: Pele is a lightweight open source library that renders Mermaid diagrams to SVG, themed with CSS variables.
 ---
 
 # Pele
 
-Pele is a lightweight library that renders [Mermaid](https://mermaid.js.org) diagrams to SVG, [themed with CSS variables](/theming).
+Pele is a lightweight [open source](https://github.com/obsidianmd/pele) library that renders [Mermaid](https://mermaid.js.org) diagrams to SVG, [themed with CSS variables](/theming).
 
 ## How it works
 

@@ -12,6 +12,8 @@ Documentation, examples, and a playground are at [pele.run](https://pele.run).
 npm install pele
 ```
 
+Or load it from a CDN; see [Using a CDN](https://pele.run/api#using-a-cdn).
+
 ## Use
 
 ```ts
