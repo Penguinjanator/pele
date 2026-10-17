@@ -1706,6 +1706,49 @@ function reduceCrossings(g: Graph, nodes: LNode[]): void {
     for (let r = 0; r <= maxRank; r++) for (let i = layerStart[r]; i < layerStart[r + 1]; i++) pos[order[i]] = i - layerStart[r];
   };
 
+  // Swaps neighbours in a rank wherever that leaves fewer crossings with the ranks on either
+  // side, until no swap does. Sweeps move nodes by the average place of their neighbours, which
+  // can leave two side by side that would cross less the other way round.
+  const pinOf = (v: number): number => (v < real ? nodes[v].pin : 0);
+  // Where an edge meets the node at its other end, along that node's rank.
+  const at = (e: number, up: boolean): number => {
+    const u = up ? EF[e] : ET[e];
+    return offsets && W[u] > 0 ? pos[u] + (up ? EFD[e] : ETD[e]) / W[u] : pos[u];
+  };
+  // How often the edges of a cross those of b, with a left of b.
+  const between = (a: number, b: number): number => {
+    let c = 0;
+    for (let k = predStart[a]; k < predStart[a + 1]; k++) {
+      const x = at(predE[k], true);
+      for (let j = predStart[b]; j < predStart[b + 1]; j++) if (x > at(predE[j], true)) c++;
+    }
+    for (let k = succStart[a]; k < succStart[a + 1]; k++) {
+      const x = at(succE[k], false);
+      for (let j = succStart[b]; j < succStart[b + 1]; j++) if (x > at(succE[j], false)) c++;
+    }
+    return c;
+  };
+  const transpose = (): void => {
+    for (let pass = 0; pass < 8; pass++) {
+      let improved = false;
+      for (let r = 0; r <= maxRank; r++) {
+        const s = layerStart[r];
+        for (let i = s; i + 1 < layerStart[r + 1]; i++) {
+          const a = order[i];
+          const b = order[i + 1];
+          if (pinOf(a) !== pinOf(b)) continue;
+          if (between(b, a) >= between(a, b)) continue;
+          order[i] = b;
+          order[i + 1] = a;
+          pos[b] = i - s;
+          pos[a] = i + 1 - s;
+          improved = true;
+        }
+      }
+      if (!improved) break;
+    }
+  };
+
   // The sweeps are run twice from the same start, going down first and going up first. They
   // often end with as few crossings either way but a different order, and then the one that
   // keeps more of the nodes in the order they were given is the less surprising.
@@ -1733,6 +1776,15 @@ function reduceCrossings(g: Graph, nodes: LNode[]): void {
       }
     }
     order.set(foundOrder);
+    if (small && found > 0) {
+      settlePositions();
+      transpose();
+      const c = count();
+      if (c < found) {
+        found = c;
+        foundOrder.set(order);
+      }
+    }
     const out = small ? outOfOrder() : 0;
     if (attempt === 0 || found < best || (found === best && out < chosenOut)) {
       best = found;
