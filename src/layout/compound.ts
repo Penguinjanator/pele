@@ -139,6 +139,8 @@ function restore(s: Snapshot, nodes: CNode[], edges: CEdge[], levels: Level[]): 
 // How often the routes of edges cross, taking each as straight lines between its points. Where
 // two edges meet at one node, they are not counted as crossing near it, where they fan out.
 const FAN = 24;
+// How far out of line two points may be and still count as in line.
+const IN_LINE = 0.5;
 const CURVE_PIECES = 4;
 export function routeCrossings(nodes: CNode[], edges: CEdge[]): number {
   const ax: number[] = [];
@@ -739,15 +741,19 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       let count = 0;
       for (const port of level.ports) {
         if (port.side !== end) continue;
-        // The port's place in the route, and the point next to it outside the group.
+        // The port's place in the route, and the first point after it, outside the group, that
+        // is not in line with it: where the edge turns to, past a straight run out of the port.
         const route = edges[port.e].route;
         const bx = level.x + port.px;
         const by = level.y + port.py;
         let at = -1;
         for (let k = 0; k < route.length && (at < 0 || port.out); k += 3) if (Math.abs(route[k] - bx) < 0.01 && Math.abs(route[k + 1] - by) < 0.01) at = k;
-        const next = port.out ? at + 3 : at - 3;
-        if (at < 0 || next < 0 || next >= route.length) continue;
-        port.hint = vertical ? route[next] - (box.x - box.w / 2) : route[next + 1] - (box.y - box.h / 2);
+        if (at < 0) continue;
+        const a = vertical ? 0 : 1;
+        let next = port.out ? at + 3 : at - 3;
+        while (next >= 0 && next < route.length && Math.abs(route[next + a] - route[at + a]) < IN_LINE) next += port.out ? 3 : -3;
+        if (next < 0 || next >= route.length) continue;
+        port.hint = route[next + a] - (vertical ? box.x - box.w / 2 : box.y - box.h / 2);
         count++;
       }
       if (count > 1) again = true;
