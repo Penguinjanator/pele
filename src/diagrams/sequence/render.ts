@@ -699,7 +699,8 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean)
             icons
           )}</g>`;
         }
-        lineY = bottom;
+        // A label taller than the loop reaches below it, so the next row starts under the label.
+        lineY = Math.max(bottom, (top + bottom) / 2 + label.height / 2);
       } else {
         const dir = b.x > a.x ? 1 : -1;
         const creating = b.createAt === i;
