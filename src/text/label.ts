@@ -25,6 +25,18 @@ const RE_TAG = /<\/?([a-zA-Z][\w-]*)(?:\s[^<>]*)?\/?>/y;
 const RE_ICON = /(fa[bklrs]?):fa-([\w-]+)/g;
 const RE_MARKUP = /[<\\\n*_]|fa[bklrs]?:fa-/;
 
+// Chinese and Japanese text has no spaces between words, so a line may break between any two such characters.
+// Hangul is excluded because Korean separates words with spaces. Closing punctuation stays on the line it
+// follows and opening brackets stay with the character after them (a minimal line-breaking rule).
+const CJK = '\\u2e80-\\u9fff\\uf900-\\ufaff\\uff00-\\uff60';
+const CLOSE = '、。，．：；！？）］｝」』】〕〉》〙〗ー…‥・ゝゞぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ,.:;!?)\\]}';
+const OPEN = '（［｛「『【〔〈《〘〖([{';
+const RE_CJK = new RegExp(`[${CJK}]`);
+const RE_PIECE = new RegExp(
+  `\\s*(?:[${OPEN}]*[${CJK}][${CLOSE}]*|[^\\s${CJK}]+[${CLOSE}]*)\\s*|\\s+`,
+  'g'
+);
+
 const EMPTY: Label = { lines: [], widths: [], width: 0, height: 0, size: 0, lineHeight: 0 };
 
 function dedent(text: string): string {
@@ -159,7 +171,7 @@ function wrap(line: Span[], measurer: TextMeasurer, size: number, max: number, o
       width += w;
       continue;
     }
-    for (const piece of span.text.match(/\s*\S+\s*|\s+/g) ?? []) {
+    for (const piece of span.text.match(RE_PIECE) ?? []) {
       let part = piece;
       if (width > 0 && width + measurer.width(part.trimEnd(), size, span.style) > max) {
         commit();
@@ -195,7 +207,7 @@ export function layoutLabel(
   if (!RE_MARKUP.test(raw) && !raw.includes('&') && !raw.includes('ﬂ')) {
     const text = raw.trim();
     const width = measurer.width(text, size, base);
-    if (width <= maxWidth || !text.includes(' ')) {
+    if (width <= maxWidth || !(text.includes(' ') || RE_CJK.test(text))) {
       return {
         lines: [[{ text, style: base, width }]],
         widths: [width],
