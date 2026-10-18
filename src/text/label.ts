@@ -25,9 +25,7 @@ const RE_TAG = /<\/?([a-zA-Z][\w-]*)(?:\s[^<>]*)?\/?>/y;
 const RE_ICON = /(fa[bklrs]?):fa-([\w-]+)/g;
 const RE_MARKUP = /[<\\\n*_]|fa[bklrs]?:fa-/;
 
-// Chinese and Japanese text has no spaces between words, so a line may break between any two such characters.
-// Hangul is excluded because Korean separates words with spaces. Closing punctuation stays on the line it
-// follows and opening brackets stay with the character after them (a minimal line-breaking rule).
+// Break between any two Chinese or Japanese characters. Hangul is left out: Korean puts spaces between words.
 const CJK = '\\u2e80-\\u9fff\\uf900-\\ufaff\\uff00-\\uff60';
 const CLOSE = '、。，．：；！？）］｝」』】〕〉》〙〗ー…‥・ゝゞぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ,.:;!?)\\]}';
 const OPEN = '（［｛「『【〔〈《〘〖([{';
