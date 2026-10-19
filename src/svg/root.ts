@@ -7,11 +7,11 @@ import { RADIUS, ROOT_STYLE, fontStyle } from './theme.js';
 // first there, for a radius the diagram's author set to come after it and win.
 const ROUNDED = ` rx="${RADIUS}"`;
 const RE_ROUNDED = /<rect\b[^>]*>/g;
-function rounded(content: string): string {
-  if (!content.includes(ROUNDED)) return content;
+function rounded(content: string, used: Set<string>): string {
   return content.replace(RE_ROUNDED, (tag) => {
     const at = tag.indexOf(ROUNDED);
     if (at < 0) return tag;
+    used.add('r');
     const rest = tag.slice(0, at) + tag.slice(at + ROUNDED.length);
     const style = rest.indexOf(' style="');
     if (style >= 0) return `${rest.slice(0, style + 8)}rx:var(--_r);${rest.slice(style + 8)}`;
@@ -22,10 +22,12 @@ function rounded(content: string): string {
 
 // The weights of bold text, each set only in a diagram that has such text.
 const WEIGHTS = [
-  ['--_tw', 'title'],
-  ['--_hw', 'heading'],
-  ['--_w', 'bold'],
+  ['tw', 'title'],
+  ['hw', 'heading'],
+  ['w', 'bold'],
 ];
+
+const RE_USED = new RegExp(`${ROUNDED.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}|var\\(--_(r|tw|hw|w)\\)`, 'g');
 
 export interface Accessible {
   accTitle?: string;
@@ -53,10 +55,15 @@ export function svgDocument(
     aria += ` aria-describedby="${prefix}-desc"`;
   }
   const fit = options.responsive === false ? '' : 'max-width:100%;height:auto;';
-  content = rounded(content);
-  let weights = content.includes('var(--_r)') ? `;--_r:${RADIUS}` : '';
+  const used = new Set<string>();
+  for (const [, name] of content.matchAll(RE_USED)) {
+    used.add(name ?? 'rounded');
+    if (used.size === 5) break;
+  }
+  if (used.has('rounded')) content = rounded(content, used);
+  let weights = used.has('r') ? `;--_r:${RADIUS}` : '';
   for (const [alias, name] of WEIGHTS) {
-    if (content.includes(`var(${alias})`)) weights += `;${alias}:var(--pele-${name}-weight,bold)`;
+    if (used.has(alias)) weights += `;--_${alias}:var(--pele-${name}-weight,bold)`;
   }
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-${type}" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="${fit}${ROOT_STYLE}${weights}${esc(fontStyle(fontSize, options.fontFamily, options.fontFamilyMono))}" fill="var(--_fg)" role="graphics-document document" aria-roledescription="${type}"${aria}>` +
