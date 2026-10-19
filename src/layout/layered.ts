@@ -1205,6 +1205,21 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
   const meet = (a: number, b: number): boolean => overlap(a, b) || within(to[a], b) + within(from[b], a) + within(to[b], a) + within(from[a], b) > 0;
   // How often a and b cross with a on the higher track: a's way down through b, and b's way down to itself through a.
   const crossings = (a: number, b: number): number => within(to[a], b) + within(from[b], a);
+  // The pairs of pieces in `list` that come near enough across the flow to meet, as places in
+  // the list, the smaller first. Pieces further apart than this cannot meet or clash.
+  const nearPairs = (list: number[]): number[] => {
+    const byLo = list.map((_, i) => i).sort((a, b) => LO[list[a]] - LO[list[b]]);
+    const pairs: number[] = [];
+    for (let x = 0; x < byLo.length; x++) {
+      const i = byLo[x];
+      const reach = HI[list[i]] + 4 * IN_LINE;
+      for (let y = x + 1; y < byLo.length && LO[list[byLo[y]]] <= reach; y++) {
+        const j = byLo[y];
+        pairs.push(Math.min(i, j), Math.max(i, j));
+      }
+    }
+    return pairs;
+  };
 
   // Gives the pieces of one gap in `list` their tracks, and each the number of tracks that the
   // pieces it has to do with take between them, counting its own from the first of those.
@@ -1220,8 +1235,20 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
       while (group[i] !== i) i = group[i] = group[group[i]];
       return i;
     };
-    let sequence = list;
-    if (count <= MAX_WEIGHED) {
+    const weighed = count <= MAX_WEIGHED;
+    // Past MAX_WEIGHED, pairs are not kept: in a dense gap nearly every pair is near.
+    const pairs = weighed ? nearPairs(list) : [];
+    // The pieces that each may not share a track with.
+    const clashes: number[][] = weighed ? list.map(() => []) : [];
+    for (let p = 0; p < pairs.length; p += 2) {
+      const i = pairs[p];
+      const j = pairs[p + 1];
+      if (!clash(list[i], list[j])) continue;
+      clashes[i].push(j);
+      clashes[j].push(i);
+    }
+    let sequence = list.map((_, i) => i);
+    if (weighed) {
       // above[j] lists the pieces that should be above list[j]. The order follows as many of
       // these as it can: a piece is placed once all that should be above it are, and when
       // none is free, the one with the fewest still waiting.
@@ -1231,24 +1258,24 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
         above.push([]);
         after.push([]);
       }
-      for (let i = 0; i < count; i++) {
-        for (let j = i + 1; j < count; j++) {
-          const a = list[i];
-          const b = list[j];
-          if (!meet(a, b)) continue;
-          group[find(i)] = find(j);
-          const ab = crossings(a, b);
-          const ba = crossings(b, a);
-          if (ab === ba) continue;
-          const first = ab < ba ? i : j;
-          const second = ab < ba ? j : i;
-          above[second].push(first);
-          after[first].push(second);
-          waiting[second]++;
-        }
+      for (let p = 0; p < pairs.length; p += 2) {
+        const i = pairs[p];
+        const j = pairs[p + 1];
+        const a = list[i];
+        const b = list[j];
+        if (!meet(a, b)) continue;
+        group[find(i)] = find(j);
+        const ab = crossings(a, b);
+        const ba = crossings(b, a);
+        if (ab === ba) continue;
+        const first = ab < ba ? i : j;
+        const second = ab < ba ? j : i;
+        above[second].push(first);
+        after[first].push(second);
+        waiting[second]++;
       }
       const placed = new Uint8Array(count);
-      const result: number[] = [];
+      sequence = [];
       for (let done = 0; done < count; done++) {
         let pick = -1;
         for (let i = 0; i < count; i++) {
@@ -1257,42 +1284,43 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
           if (waiting[i] === 0) break;
         }
         placed[pick] = 1;
-        result.push(pick);
+        sequence.push(pick);
         for (const j of after[pick]) waiting[j]--;
       }
-      sequence = result.map((i) => list[i]);
     }
-    // Each piece takes the first track below those it should be under that has room for it.
-    const place = new Map<number, number>();
-    list.forEach((k, i) => place.set(k, i));
-    const rows: number[][] = [];
-    for (const k of sequence) {
+    // Each piece takes the first track below those it should be under that no piece it clashes
+    // with is on. Unweighed, the pieces already on each track are looked through instead.
+    const taken = new Set<number>();
+    const onTrack: number[][] = [];
+    let rows = 0;
+    for (const at of sequence) {
+      const k = list[at];
       let t = 0;
-      for (const i of above[place.get(k)!] ?? []) if (track[list[i]] >= t) t = track[list[i]] + 1;
-      for (; ; t++) {
-        const row = (rows[t] ??= []);
-        let free = true;
-        for (const other of row) if (clash(k, other)) free = false;
-        if (free) {
-          row.push(k);
-          break;
-        }
+      for (const i of above[at] ?? []) if (track[list[i]] >= t) t = track[list[i]] + 1;
+      if (weighed) {
+        taken.clear();
+        for (const i of clashes[at]) taken.add(track[list[i]]);
+        while (taken.has(t)) t++;
+      } else {
+        while (onTrack[t]?.some((other) => clash(k, other))) t++;
+        (onTrack[t] ??= []).push(k);
       }
       track[k] = t;
+      if (t >= rows) rows = t + 1;
     }
-    const first = new Map<number, number>();
-    const lastOf = new Map<number, number>();
-    list.forEach((k, i) => {
+    const first = new Int32Array(count).fill(rows);
+    const last = new Int32Array(count).fill(-1);
+    for (let i = 0; i < count; i++) {
       const root = find(i);
-      first.set(root, Math.min(first.get(root) ?? Infinity, track[k]));
-      lastOf.set(root, Math.max(lastOf.get(root) ?? -Infinity, track[k]));
-    });
-    list.forEach((k, i) => {
+      first[root] = Math.min(first[root], track[list[i]]);
+      last[root] = Math.max(last[root], track[list[i]]);
+    }
+    for (let i = 0; i < count; i++) {
       const root = find(i);
-      levels[k] = lastOf.get(root)! - first.get(root)! + 1;
-      if (curved) track[k] -= first.get(root)!;
-    });
-    return rows.length;
+      levels[list[i]] = last[root] - first[root] + 1;
+      if (curved) track[list[i]] -= first[root];
+    }
+    return rows;
   };
 
   // The least distance between a and b as plain curves across a gap that leaves them `height`
@@ -1343,13 +1371,12 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
     const far = all.filter((k) => wide[k] === 1);
     lay(far);
     const level = new Set(far.filter((k) => levels[k] > 1));
-    for (let i = 0; i < all.length; i++) {
-      for (let j = i + 1; j < all.length; j++) {
-        const a = all[i];
-        const b = all[j];
-        if ((level.has(a) && level.has(b)) || !clash(a, b) || from[a] < to[a] !== from[b] < to[b]) continue;
-        if (nearest(a, b, room[r]) < (wide[a] === 1 || wide[b] === 1 ? LEVEL_CLEAR : LEVEL_TOUCH)) level.add(a).add(b);
-      }
+    const pairs = nearPairs(all);
+    for (let p = 0; p < pairs.length; p += 2) {
+      const a = all[pairs[p]];
+      const b = all[pairs[p + 1]];
+      if ((level.has(a) && level.has(b)) || !clash(a, b) || from[a] < to[a] !== from[b] < to[b]) continue;
+      if (nearest(a, b, room[r]) < (wide[a] === 1 || wide[b] === 1 ? LEVEL_CLEAR : LEVEL_TOUCH)) level.add(a).add(b);
     }
     for (const k of far) {
       track[k] = -1;
@@ -1358,15 +1385,16 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
     if (level.size === 0) continue;
     let crossing = 0;
     let alongside = 0;
-    const turning = [...level];
-    for (let i = 0; i < turning.length; i++) {
-      for (let j = i + 1; j < turning.length; j++) {
-        const a = turning[i];
-        const b = turning[j];
+    // The pieces that could cross one of those that turn.
+    const beside = new Set<number>();
+    for (let p = 0; p < pairs.length; p += 2) {
+      const a = all[pairs[p]];
+      const b = all[pairs[p + 1]];
+      if (level.has(a) && level.has(b)) {
         if (!overlap(a, b)) continue;
         if (from[a] < to[a] !== from[b] < to[b]) crossing++;
         else if (!mates(a, b)) alongside++;
-      }
+      } else if ((level.has(a) || level.has(b)) && meet(a, b)) beside.add(a).add(b);
     }
     if (crossing > alongside) {
       for (const k of all) if ((HI[k] - LO[k]) * CROSSED_SLOPE > tall[r]) tall[r] = (HI[k] - LO[k]) * CROSSED_SLOPE;
@@ -1374,11 +1402,7 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
     }
     // With them go the short pieces that could cross one of them, so that each has its place
     // among the levels and crosses none.
-    const beside = (k: number): boolean => {
-      for (const j of level) if (meet(k, j)) return true;
-      return false;
-    };
-    const members = all.filter((k) => level.has(k) || (wide[k] !== 1 && beside(k)));
+    const members = all.filter((k) => level.has(k) || (wide[k] !== 1 && beside.has(k)));
     lay(members);
     let most = 0;
     for (const k of members) if (levels[k] > most) most = levels[k];
