@@ -63,6 +63,7 @@
     "prepublishOnly": "npm run typecheck && npm test && npm run build",
     "test:watch": "vitest --exclude \"tests/website/**\"",
     "bench": "node scripts/bench.mjs",
+    "bench:mermaid": "node scripts/bench-mermaid.mjs",
     "website": "cd website && pnpm dev"
   },
   "engines": {
