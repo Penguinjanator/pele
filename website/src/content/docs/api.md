@@ -136,6 +136,7 @@ All options are optional.
 | `width` | `number` | Natural width of the diagram in pixels. |
 | `height` | `number` | Height of the diagram in pixels. |
 | `type` | `DiagramType` | The detected diagram type, such as `'flowchart'`. |
+| `mermaidType` | `MermaidType` | The diagram type as Mermaid reports it, such as `'flowchart-v2'`. |
 | `links` | `LinkInfo[]` | Diagram links for attaching navigation handlers. |
 
 Each `LinkInfo` has an `id`, `href`, and `internal` flag. Internal links contain note names in `href`. See [Security](/security#app-responsibilities) before adding link handlers.
@@ -259,10 +260,10 @@ The buttons use the diagram's color variables. Position them with `--pele-zoom-t
 ## parse
 
 ```ts
-function parse(text: string, options?: { limit?: number; maxEdges?: number; config?: object }): DiagramModel
+function parse(text: string, options?: { limit?: number; maxEdges?: number; config?: object }): ParsedDiagramModel
 ```
 
-Returns a model of the diagram. See [`PeleError`](#peleerror) for error handling.
+Returns a model of the diagram, with its `mermaidType`. See [`PeleError`](#peleerror) for error handling.
 
 Parse once to render the diagram at different widths:
 
@@ -281,6 +282,21 @@ function detectType(text: string): DiagramType | null
 ```
 
 Identifies the diagram type. Returns `null` if no type is recognized. The type does not need to be registered.
+
+Pele names a few types differently from Mermaid. `render()`, `parse()` and `PeleError` also give `mermaidType`, the name Mermaid uses:
+
+| Text starts with | `type` | `mermaidType` |
+| --- | --- | --- |
+| `graph`, `flowchart` | `'flowchart'` | `'flowchart-v2'` |
+| `flowchart-elk` | `'flowchart'` | `'flowchart-elk'` |
+| `classDiagram` | `'class'` | `'classDiagram'` |
+| `stateDiagram` | `'state'` | `'stateDiagram'` |
+| `railroad-beta` | `'railroad'` | `'railroad'` |
+| `railroad-ebnf-beta` | `'railroad'` | `'railroadEbnf'` |
+| `railroad-abnf-beta` | `'railroad'` | `'railroadAbnf'` |
+| `railroad-peg-beta` | `'railroad'` | `'railroadPeg'` |
+
+Other types have the same name in both.
 
 ```ts
 detectType('graph TD\n  A --> B');           // 'flowchart'
@@ -311,6 +327,7 @@ Catch `PeleError` to handle parsing and rendering failures. It extends `Error`.
 | `message` | `string` | Description of the problem. Display as text. |
 | `code` | `string` | One of the error codes below. |
 | `type` | `string \| null` | The detected diagram type, when known. |
+| `mermaidType` | `string \| null` | The diagram type as Mermaid reports it, when known. |
 | `line` | `number` | Line of the problem, starting at 1. `0` when the error has no position. |
 | `column` | `number` | Column of the problem, starting at 1. `0` when the error has no position. |
 | `snippet` | `string` | The source line followed by a line that marks the column. Empty when the error has no position. |
