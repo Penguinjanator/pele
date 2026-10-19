@@ -1021,11 +1021,6 @@ function alignLabels(g: Graph, nodes: LNode[], xs: Float64Array, free: [Int32Arr
 // ends keep clear of the points where other edges pass through its border.
 function settle(g: Graph, nodes: LNode[], xs: Float64Array, EFK: Uint8Array, ETK: Uint8Array, free: [Int32Array, Int32Array], empty: Uint8Array | undefined): void {
   const { real, W, EF, ET, EFD, ETD, succStart, succE, predStart, predE, pos } = g;
-  const ids: number[] = [];
-  const room: number[] = [];
-  const all: number[] = [];
-  const sum: number[] = [];
-  const count: number[] = [];
   // Where the end of segment `e` on node `v` should be, from the middle of its side. The edge is
   // followed up from the segment (side 0) or down, past the bends in ranks that hold nothing
   // else, to where it next comes to a point that is held in place or to another node's side.
@@ -1054,71 +1049,79 @@ function settle(g: Graph, nodes: LNode[], xs: Float64Array, EFK: Uint8Array, ETK
     const place = (xs[v] * width + middle * span) / (width + span);
     return Math.max(lo, Math.min(hi, place)) - xs[v];
   };
+  // The ends that may move on each side in order, the room between them, and every end on the
+  // side in order, the held ones among them, which divide the rest into runs. None of these
+  // change from pass to pass.
+  const sides: { v: number; side: number; span: number; ids: number[]; room: number[]; all: number[] }[] = [];
+  for (let v = 0; v < real; v++) {
+    const span = Math.min(nodes[v].span, W[v]);
+    if (span <= 0 || nodes[v].kind !== Kind.Node) continue;
+    for (let side = 0; side < 2; side++) {
+      const other = side === 0 ? EF : ET;
+      const start = side === 0 ? predStart : succStart;
+      const list = side === 0 ? predE : succE;
+      const ids: number[] = [];
+      const room: number[] = [];
+      sideEnds(g, v, side, span, side === 0 ? ETK : EFK, ids, room);
+      if (ids.length === 0) continue;
+      if (ids.length === 1) room[0] = 0;
+      const all: number[] = [];
+      for (let k = start[v]; k < start[v + 1]; k++) all.push(list[k]);
+      all.sort((a, b) => pos[other[a]] - pos[other[b]] || a - b);
+      sides.push({ v, side, span, ids, room, all });
+    }
+  }
   // The ends of an edge follow each other, so the nodes are gone over until none moves: a few
   // times at most, in practice.
   for (let pass = 0, moved = true; moved && pass < 6; pass++) {
     moved = false;
-    for (let v = 0; v < real; v++) {
-      const span = Math.min(nodes[v].span, W[v]);
-      if (span <= 0 || nodes[v].kind !== Kind.Node) continue;
-      for (let side = 0; side < 2; side++) {
-        const kinds = side === 0 ? ETK : EFK;
-        const dx = side === 0 ? ETD : EFD;
-        const other = side === 0 ? EF : ET;
-        const start = side === 0 ? predStart : succStart;
-        const list = side === 0 ? predE : succE;
-        sideEnds(g, v, side, span, kinds, ids, room);
-        if (ids.length === 0) continue;
-        if (ids.length === 1) room[0] = 0;
-        // Every end on the side in order, the held ones among them, which divide the rest into runs.
-        all.length = 0;
-        for (let k = start[v]; k < start[v + 1]; k++) all.push(list[k]);
-        all.sort((a, b) => pos[other[a]] - pos[other[b]] || a - b);
-        let k = 0;
-        let lo = -span / 2;
-        for (let i = 0; i <= all.length; i++) {
-          const held = i < all.length && kinds[all[i]] === End.Held;
-          if (i < all.length && !held) continue;
-          // The run of free ends before this point is ids[k..], as many as were passed since the last held end.
-          let size = 0;
-          for (let j = i - 1; j >= 0 && kinds[all[j]] !== End.Held; j--) size++;
-          const hi = held ? dx[all[i]] - PORT_PITCH : span / 2;
-          if (size > 0) {
-            // The places nearest the wanted ones that keep the order and the room between
-            // neighbours: an isotonic fit, by pooling neighbours that would otherwise be too close.
-            sum.length = 0;
-            count.length = 0;
-            let before = 0;
-            for (let j = 0; j < size; j++) {
-              if (j > 0) before += room[k + j];
-              sum.push(wanted(ids[k + j], side, v, span, pass > 0) - before);
-              count.push(1);
-              // Ends that share a place for want of room stay together.
-              let together = j > 0 && room[k + j] === 0;
-              while (sum.length > 1 && (together || sum[sum.length - 2] / count[count.length - 2] > sum[sum.length - 1] / count[count.length - 1])) {
-                together = false;
-                const top = sum.pop()!;
-                const pooled = count.pop()!;
-                sum[sum.length - 1] += top;
-                count[count.length - 1] += pooled;
-              }
+    for (const { v, side, span, ids, room, all } of sides) {
+      const kinds = side === 0 ? ETK : EFK;
+      const dx = side === 0 ? ETD : EFD;
+      let k = 0;
+      let lo = -span / 2;
+      for (let i = 0; i <= all.length; i++) {
+        const held = i < all.length && kinds[all[i]] === End.Held;
+        if (i < all.length && !held) continue;
+        // The run of free ends before this point is ids[k..], as many as were passed since the last held end.
+        let size = 0;
+        for (let j = i - 1; j >= 0 && kinds[all[j]] !== End.Held; j--) size++;
+        const hi = held ? dx[all[i]] - PORT_PITCH : span / 2;
+        if (size > 0) {
+          // The places nearest the wanted ones that keep the order and the room between
+          // neighbours: an isotonic fit, by pooling neighbours that would otherwise be too close.
+          const sum: number[] = [];
+          const count: number[] = [];
+          let before = 0;
+          for (let j = 0; j < size; j++) {
+            if (j > 0) before += room[k + j];
+            sum.push(wanted(ids[k + j], side, v, span, pass > 0) - before);
+            count.push(1);
+            // Ends that share a place for want of room stay together.
+            let together = j > 0 && room[k + j] === 0;
+            while (sum.length > 1 && (together || sum[sum.length - 2] / count[count.length - 2] > sum[sum.length - 1] / count[count.length - 1])) {
+              together = false;
+              const top = sum.pop()!;
+              const pooled = count.pop()!;
+              sum[sum.length - 1] += top;
+              count[count.length - 1] += pooled;
             }
-            const total = before;
-            let j = 0;
-            before = 0;
-            for (let b = 0; b < sum.length; b++) {
-              // With too little room between two held ends, the run sits in the middle of what there is.
-              const level = hi - total < lo ? (lo + hi - total) / 2 : Math.max(lo, Math.min(hi - total, sum[b] / count[b]));
-              for (let c = 0; c < count[b]; c++, j++) {
-                if (j > 0) before += room[k + j];
-                if (Math.abs(dx[ids[k + j]] - level - before) > 0.01) moved = true;
-                dx[ids[k + j]] = level + before;
-              }
-            }
-            k += size;
           }
-          if (held) lo = dx[all[i]] + PORT_PITCH;
+          const total = before;
+          let j = 0;
+          before = 0;
+          for (let b = 0; b < sum.length; b++) {
+            // With too little room between two held ends, the run sits in the middle of what there is.
+            const level = hi - total < lo ? (lo + hi - total) / 2 : Math.max(lo, Math.min(hi - total, sum[b] / count[b]));
+            for (let c = 0; c < count[b]; c++, j++) {
+              if (j > 0) before += room[k + j];
+              if (Math.abs(dx[ids[k + j]] - level - before) > 0.01) moved = true;
+              dx[ids[k + j]] = level + before;
+            }
+          }
+          k += size;
         }
+        if (held) lo = dx[all[i]] + PORT_PITCH;
       }
     }
   }
