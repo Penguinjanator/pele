@@ -387,7 +387,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     const byRank = new Int32Array(n);
     const fill = layerStart.slice(0, maxRank + 1);
     for (let i = 0; i < n; i++) byRank[fill[RANK[i]]++] = i;
-    fill.set(layerStart.subarray(0, maxRank + 1));
+    for (let r = 0; r <= maxRank; r++) fill[r] = layerStart[r];
     const visited = new Uint8Array(n);
     const stack: number[] = [];
     for (let k = 0; k < n; k++) {
@@ -1817,6 +1817,7 @@ function position(g: Graph, opt: LayeredOptions): Float64Array {
   const outE = new Int32Array(n);
   const fill = new Int32Array(n);
   const topo = new Int32Array(n);
+  const x = new Float64Array(n);
 
   for (let variant = 0; variant < 4; variant++) {
     const up = variant < 2;
@@ -1830,6 +1831,9 @@ function position(g: Graph, opt: LayeredOptions): Float64Array {
       root[i] = i;
       align[i] = i;
       shift[i] = 0;
+      indeg[i] = 0;
+      outStart[i + 1] = 0;
+      x[i] = 0;
     }
 
     for (let step = 0; step <= maxRank; step++) {
@@ -1862,8 +1866,6 @@ function position(g: Graph, opt: LayeredOptions): Float64Array {
     }
 
     let blockEdges = 0;
-    indeg.fill(0);
-    outStart.fill(0);
     for (let r = 0; r <= maxRank; r++) {
       const s = layerStart[r];
       const end = layerStart[r + 1];
@@ -1880,10 +1882,9 @@ function position(g: Graph, opt: LayeredOptions): Float64Array {
       }
     }
     for (let i = 0; i < n; i++) outStart[i + 1] += outStart[i];
-    fill.set(outStart.subarray(0, n));
+    for (let i = 0; i < n; i++) fill[i] = outStart[i];
     for (let e = 0; e < blockEdges; e++) outE[fill[eFrom[e]]++] = e;
 
-    const x = new Float64Array(n);
     let count = 0;
     for (let i = 0; i < n; i++) if (root[i] === i && indeg[i] === 0) topo[count++] = i;
     for (let q = 0; q < count; q++) {
