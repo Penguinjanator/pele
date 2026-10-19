@@ -184,6 +184,43 @@ function sortRange(list: Int32Array, from: number, to: number, key: Int32Array |
   }
 }
 
+// Sorts the first `count` nodes of `list` by barycenter, and those with the same one by position,
+// the leftmost first or, with `right`, the rightmost. A merge sort that compares in place, as a
+// sort that calls a compare function for each comparison is slow. `spare` is room to merge into.
+function sortByBary(list: Int32Array, count: number, bary: Float64Array, pos: Int32Array, right: boolean, spare: Int32Array): void {
+  const before = (a: number, b: number): boolean => bary[a] < bary[b] || (bary[a] === bary[b] && (right ? pos[a] > pos[b] : pos[a] < pos[b]));
+  const RUN = 8;
+  for (let s = 0; s < count; s += RUN) {
+    for (let i = s + 1, end = Math.min(count, s + RUN); i < end; i++) {
+      const item = list[i];
+      let j = i - 1;
+      while (j >= s && before(item, list[j])) {
+        list[j + 1] = list[j];
+        j--;
+      }
+      list[j + 1] = item;
+    }
+  }
+  let from = list;
+  let to = spare;
+  for (let width = RUN; width < count; width *= 2) {
+    for (let s = 0; s < count; s += 2 * width) {
+      const mid = Math.min(count, s + width);
+      const end = Math.min(count, s + 2 * width);
+      let i = s;
+      let j = mid;
+      let k = s;
+      while (i < mid && j < end) to[k++] = before(from[j], from[i]) ? from[j++] : from[i++];
+      while (i < mid) to[k++] = from[i++];
+      while (j < end) to[k++] = from[j++];
+    }
+    const t = from;
+    from = to;
+    to = t;
+  }
+  if (from !== list) for (let i = 0; i < count; i++) list[i] = from[i];
+}
+
 export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): LayeredResult {
   const real = nodes.length;
   if (real === 0) return { width: 0, height: 0 };
@@ -1610,8 +1647,7 @@ function reduceCrossings(g: Graph, nodes: LNode[]): void {
   const bestOrder = order.slice();
   const bary = new Float64Array(n);
   const moving = new Int32Array(widest);
-  const leftBias = (a: number, b: number): number => bary[a] - bary[b] || pos[a] - pos[b];
-  const rightBias = (a: number, b: number): number => bary[a] - bary[b] || pos[b] - pos[a];
+  const spare = new Int32Array(widest);
 
   const sweep = (down: boolean, biasRight: boolean): void => {
     const start = down ? predStart : succStart;
@@ -1647,7 +1683,7 @@ function reduceCrossings(g: Graph, nodes: LNode[]): void {
         moving[movable++] = v;
       }
       if (movable < 2) continue;
-      moving.subarray(0, movable).sort(biasRight ? rightBias : leftBias);
+      sortByBary(moving, movable, bary, pos, biasRight, spare);
       let k = 0;
       for (let i = s; i < e; i++) if (bary[order[i]] !== -1) order[i] = moving[k++];
       for (let i = s; i < e; i++) pos[order[i]] = i - s;
