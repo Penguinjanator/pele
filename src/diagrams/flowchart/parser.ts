@@ -343,7 +343,8 @@ export function parseFlowchart(source: string, db: FlowDb): void {
     return fail("'LINK', 'START_LINK'");
   };
 
-  const vertexStatement = (): string[] => {
+  // The nodes of a statement are only gathered for the subgraph it is in.
+  const vertexStatement = (collect: boolean): string[] => {
     let stmt = node();
     if (pendingData !== undefined) {
       db.addVertex(stmt[stmt.length - 1], undefined, undefined, undefined, undefined, undefined, undefined, pendingData);
@@ -358,7 +359,7 @@ export function parseFlowchart(source: string, db: FlowDb): void {
         db.addVertex(next[next.length - 1], undefined, undefined, undefined, undefined, undefined, undefined, pendingData);
       }
       db.addLink(stmt, next, info);
-      nodes = next.concat(nodes);
+      if (collect) nodes = next.concat(nodes);
       stmt = next;
     }
   };
@@ -489,7 +490,7 @@ export function parseFlowchart(source: string, db: FlowDb): void {
     return { id, title, list: [], collect: false };
   };
 
-  const statement = (): DocItem => {
+  const statement = (collect: boolean): DocItem => {
     const t = types[i];
     switch (t) {
       case T.STYLE: {
@@ -553,7 +554,7 @@ export function parseFlowchart(source: string, db: FlowDb): void {
       }
       default: {
         if (ID[t] === 0) fail(STATEMENT_START);
-        const nodes = vertexStatement();
+        const nodes = vertexStatement(collect);
         separator();
         return nodes;
       }
@@ -587,7 +588,7 @@ export function parseFlowchart(source: string, db: FlowDb): void {
         list = [];
         collect = true;
       } else {
-        const item = statement();
+        const item = statement(collect);
         if (collect && (!Array.isArray(item) || item.length > 0)) list.push(item);
       }
     }
