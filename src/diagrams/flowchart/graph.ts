@@ -233,7 +233,6 @@ export function buildFlowGraph(model: FlowchartModel & Pick<FlowDb, 'subgraph'>,
       shape: isGroup ? 'rect' : shapeOf(vertex),
     };
     nodes.push(node);
-    byId.set(vertex.id, node);
   }
 
   model.edges.forEach((raw, index) => {
