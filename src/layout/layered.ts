@@ -160,6 +160,11 @@ const LEAN_CLEAR = 40;
 // Past this many edges across one gap, tracks are given out in a plain order: weighing every
 // pair of edges against each other would take too long.
 const MAX_WEIGHED = 400;
+// How many short lines a curve is taken as when measuring how near two pass, and room for the
+// points of two such curves, which every layout shares.
+const SAMPLES = 16;
+const LINE_A = new Float64Array(2 * SAMPLES + 2);
+const LINE_B = new Float64Array(2 * SAMPLES + 2);
 
 const enum End {
   Held,
@@ -1234,6 +1239,7 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
     if (list) list.push(k);
     else byRank.set(rank[k], [k]);
   }
+  if (byRank.size === 0) return;
   // The pieces are compared pair by pair, so where each begins and ends across the flow is worked out once.
   const LO = new Float64Array(total);
   const HI = new Float64Array(total);
@@ -1370,7 +1376,6 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
 
   // The least distance between a and b as plain curves across a gap that leaves them `height`
   // to turn in: between points along each and the other drawn as a run of short lines.
-  const SAMPLES = 16;
   const sample = (k: number, h: number, out: Float64Array): void => {
     const c = ease(to[k] - from[k], h);
     for (let i = 0; i <= SAMPLES; i++) {
@@ -1380,8 +1385,6 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
       out[2 * i + 1] = h * (3 * c * t * u * u + 3 * (1 - c) * t * t * u + t * t * t);
     }
   };
-  const lineA = new Float64Array(2 * SAMPLES + 2);
-  const lineB = new Float64Array(2 * SAMPLES + 2);
   const reach = (points: Float64Array, line: Float64Array): number => {
     let least = Infinity;
     for (let i = 0; i <= SAMPLES; i++) {
@@ -1399,9 +1402,9 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
   };
   const nearest = (a: number, b: number, height: number): number => {
     const h = Math.max(height / 2, height - 2 * LEVEL_LEAD);
-    sample(a, h, lineA);
-    sample(b, h, lineB);
-    return Math.min(reach(lineA, lineB), reach(lineB, lineA));
+    sample(a, h, LINE_A);
+    sample(b, h, LINE_B);
+    return Math.min(reach(LINE_A, LINE_B), reach(LINE_B, LINE_A));
   };
 
   for (const [r, all] of byRank) {
@@ -1571,6 +1574,7 @@ function reduceCrossings(g: Graph, nodes: LNode[]): void {
   const { n, real, maxRank, W, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos, offsets } = g;
   let widest = 0;
   for (let r = 0; r <= maxRank; r++) widest = Math.max(widest, layerStart[r + 1] - layerStart[r]);
+  if (widest < 2) return;
   // With offsets, edges that reach one node at different offsets take separate places along it.
   const place = offsets ? new Int32Array(EF.length) : undefined;
   let size = 1;
