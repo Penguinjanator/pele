@@ -1,7 +1,7 @@
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num, textStyle, type IconResolver } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
-import { CRITICAL, RADIUS, classNames } from '../../svg/theme.js';
+import { CRITICAL, ROUNDED, classNames } from '../../svg/theme.js';
 import { layoutLabel, type Label, type Span } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import { linkUrl, relAttr, safeUrl } from '../../util/url.js';
@@ -196,7 +196,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
     const section = sections[index];
     const row = Math.floor(index / perRow);
     let body =
-      `<rect width="${columnWidth}" height="${num(rowHeights[row])}" rx="${RADIUS}" fill="var(--_s)"/>` +
+      `<rect width="${columnWidth}" height="${num(rowHeights[row])}" fill="var(--_s)"${ROUNDED}/>` +
       textBlock(titles[index], COLUMN_PAD + 4, COLUMN_PAD, ' class="pele-cluster-label" font-weight="var(--_hw)"', icons) +
       `<text class="pele-count" x="${edge}" y="${num(
         COLUMN_PAD + line / 2 + small * 0.35
@@ -210,7 +210,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
       const item = card.item;
       const priority = (item.priority ?? '').trim().toLowerCase();
       const color = PRIORITY.get(priority);
-      let inner = `<rect width="${cardWidth}" height="${num(card.height)}" rx="${RADIUS}" fill="var(--_bg)" stroke="var(--_b)"/>`;
+      let inner = `<rect width="${cardWidth}" height="${num(card.height)}" fill="var(--_bg)" stroke="var(--_b)"${ROUNDED}/>`;
       if (color !== undefined) {
         inner += `<path class="pele-priority" d="M2.5,5V${num(card.height - 5)}" fill="none" ${color} stroke-width="3" stroke-linecap="round"/>`;
       }

@@ -2,7 +2,7 @@ import type { Config } from '../../preprocess.js';
 import { escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, marker } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
-import { RADIUS, seriesColor } from '../../svg/theme.js';
+import { rounded, seriesColor } from '../../svg/theme.js';
 import type { Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
@@ -30,7 +30,7 @@ interface Group {
 }
 
 function box(x: number, y: number, w: number, h: number, attrs: string): string {
-  return `<rect x="${num(x)}" y="${num(y)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}"${attrs}/>`;
+  return `<rect x="${num(x)}" y="${num(y)}" width="${num(w)}" height="${num(h)}"${rounded(attrs)}/>`;
 }
 
 export function renderTimeline(model: TimelineModel, config: Config, options: RenderOptions): Rendered {

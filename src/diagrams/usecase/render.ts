@@ -4,7 +4,7 @@ import { esc, escText, labelSvg, num, type IconResolver } from '../../svg/builde
 import { markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
-import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
+import { classNames, resolveStyle, rounded, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
@@ -181,7 +181,7 @@ function figure(view: View, icons: IconResolver | undefined): string {
     head = -14;
     radius = 12;
     out =
-      `<rect x="-22" y="-26" width="44" height="44" rx="${RADIUS}"${SHAPE_ATTRS}${shape}/>` +
+      `<rect x="-22" y="-26" width="44" height="44"${rounded(SHAPE_ATTRS + shape)}/>` +
       `<svg class="pele-icon" data-icon="${escText(node.icon ?? '')}" x="-14" y="-18" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${
         icons?.(node.icon ?? '') ?? ''
       }</svg>`;
@@ -365,7 +365,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
           labelSvg(view.label, x + tabW / 2, y + tabH / 2, titleAttrs, icons);
       } else {
         body =
-          `<rect x="${num(x)}" y="${num(y)}" width="${num(c.w)}" height="${num(c.h)}" rx="${RADIUS}"${box}/>` +
+          `<rect x="${num(x)}" y="${num(y)}" width="${num(c.w)}" height="${num(c.h)}"${rounded(box)}/>` +
           labelSvg(view.label, titleX(c, view.label.width, crossings), y + 8 + view.label.height / 2, titleAttrs, icons);
       }
       clusters += `<g class="pele-cluster pele-boundary${classes}" data-id="${id}">${body}</g>`;
@@ -397,7 +397,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
         y += rowH;
       }
       body =
-        `<rect x="${num(x0)}" y="${num(-h / 2)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}"${SHAPE_ATTRS}${shape}/>` +
+        `<rect x="${num(x0)}" y="${num(-h / 2)}" width="${num(w)}" height="${num(h)}"${rounded(SHAPE_ATTRS + shape)}/>` +
         `<path class="pele-json-lines" d="${lines}" fill="none" stroke="var(--_b)"${view.style.line}/>` +
         labelSvg(view.label, 0, -h / 2 + view.headH / 2, ` class="pele-label" font-weight="var(--_hw)"${textAttrs}`, icons) +
         `<g font-size="${small}">${cells}</g>`;
@@ -423,7 +423,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
           `<path d="M${num(r - FOLD)},${num(-b)}V${num(FOLD - b)}H${num(r)}" fill="none" stroke="var(--_b)" stroke-linejoin="round"${view.style.line}/>`;
       } else {
         kind = 'pele-usecase';
-        outline = `<rect x="${num(-w / 2)}" y="${num(-h / 2)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}"${SHAPE_ATTRS}${shape}/>`;
+        outline = `<rect x="${num(-w / 2)}" y="${num(-h / 2)}" width="${num(w)}" height="${num(h)}"${rounded(SHAPE_ATTRS + shape)}/>`;
       }
       body =
         outline +

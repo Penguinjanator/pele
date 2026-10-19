@@ -6,7 +6,7 @@ import { edgeLabelSvg, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { endSide } from '../../svg/shapes.js';
 import { withTitle } from '../../svg/title.js';
-import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
+import { ROUNDED, classNames, resolveStyle, rounded, type ResolvedStyle } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
@@ -475,7 +475,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
       if (struck) struckTitles += struckTitle(view.label, titleX + ox, titleY, titleAttrs, id, graph.nodes, i);
       clusters +=
         `<g class="pele-cluster pele-namespace" data-id="${id}">` +
-        `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"/>` +
+        `<rect x="${num(x - w / 2)}" y="${num(y - h / 2)}" width="${num(w)}" height="${num(h)}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${ROUNDED}/>` +
         (struck ? '' : labelSvg(view.label, titleX + ox, titleY, titleAttrs)) +
         '</g>';
       continue;
@@ -506,7 +506,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
     const top = -h / 2;
     const memberSize = Math.round(view.fontSize * 0.875);
     const lineHeight = Math.round(memberSize * 1.5);
-    let body = `<rect x="${num(left)}" y="${num(top)}" width="${num(w)}" height="${num(h)}" rx="${RADIUS}" fill="var(--_s)" stroke="var(--_b)"${style.shape}/>`;
+    let body = `<rect x="${num(left)}" y="${num(top)}" width="${num(w)}" height="${num(h)}" fill="var(--_s)" stroke="var(--_b)"${rounded(style.shape)}/>`;
     const first = top + view.titleH;
     const second = first + view.attributesH;
     if (h > view.titleH) {

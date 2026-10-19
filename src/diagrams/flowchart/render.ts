@@ -6,7 +6,7 @@ import { clusterTitleX, markCrossings, struckTitle, titleCrossed, type Crossings
 import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, sideReach, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape, endSide, insetRoute, shapeHasLabel, shapeSize, shapeSpan } from '../../svg/shapes.js';
-import { RADIUS, classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
+import { classNames, resolveStyle, rounded, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
@@ -224,9 +224,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
       if (struck) struckTitles += struckTitle(view.label, titleX, titleY, titleAttrs, id, cnodes, i, icons);
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${id}">` +
-        `<rect x="${num(x - c.w / 2)}" y="${num(y - c.h / 2)}" width="${num(c.w)}" height="${num(c.h)}" rx="${RADIUS}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${
-          view.style.shape
-        }/>` +
+        `<rect x="${num(x - c.w / 2)}" y="${num(y - c.h / 2)}" width="${num(c.w)}" height="${num(c.h)}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${rounded(view.style.shape)}/>` +
         (struck ? '' : labelSvg(view.label, titleX, titleY, titleAttrs, icons)) +
         '</g>';
       continue;
