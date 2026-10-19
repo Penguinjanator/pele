@@ -858,8 +858,9 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
 }
 
 // The ends of edges that may move along one side of a node (0 the side its edges arrive at, 1 the
-// other), in the order of the nodes at their other ends, so that no two cross. `room` receives
-// the least distance between each end and the one before it, and the result is their sum.
+// other), in the order of the nodes at their other ends, so that no two cross: `ids`, which comes
+// empty, receives them. `room`, empty too, receives the least distance between each end and the
+// one before it, and the result is their sum.
 // When there is too little room for a full pitch between each pair, the edges that leave side by
 // side move closer together, since they have no arrowheads to keep apart. With less room still,
 // neighbours that run the same way share a place, which keeps an arrowhead apart from an edge
@@ -869,13 +870,11 @@ function sideEnds(g: Graph, v: number, side: number, span: number, kinds: Uint8A
   const list = side === 0 ? g.predE : g.succE;
   const other = side === 0 ? g.EF : g.ET;
   const pos = g.pos;
-  ids.length = 0;
   for (let k = start[v]; k < start[v + 1]; k++) if (kinds[list[k]] !== End.Held) ids.push(list[k]);
   if (ids.length < 2) return 0;
   ids.sort((a, b) => pos[other[a]] - pos[other[b]] || a - b);
   const fill = (share: (leaves: boolean, same: boolean) => number): number => {
     let total = 0;
-    room.length = ids.length;
     room[0] = 0;
     for (let k = 1; k < ids.length; k++) {
       const same = kinds[ids[k]] === kinds[ids[k - 1]];
@@ -896,12 +895,12 @@ function sideEnds(g: Graph, v: number, side: number, span: number, kinds: Uint8A
 // Gives the edges that meet one side of a node places of their own along it, around its middle.
 function spread(g: Graph, nodes: LNode[], EFK: Uint8Array, ETK: Uint8Array): void {
   const { real, W, EFD, ETD } = g;
-  const ids: number[] = [];
-  const room: number[] = [];
   for (let v = 0; v < real; v++) {
     const span = Math.min(nodes[v].span, W[v]);
     if (span <= 0 || nodes[v].kind !== Kind.Node) continue;
     for (let side = 0; side < 2; side++) {
+      const ids: number[] = [];
+      const room: number[] = [];
       const total = sideEnds(g, v, side, span, side === 0 ? ETK : EFK, ids, room);
       if (total === 0) continue;
       const dx = side === 0 ? ETD : EFD;
