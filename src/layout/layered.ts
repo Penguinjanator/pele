@@ -225,6 +225,14 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   const real = nodes.length;
   if (real === 0) return { width: 0, height: 0 };
   const m = edges.length;
+  // A node on its own, such as the one in a group that holds only that, has nothing to order or route.
+  if (real === 1 && m === 0 && nodes[0].kind === Kind.Node) {
+    const node = nodes[0];
+    node.rank = 0;
+    node.x = node.w / 2;
+    node.y = node.h / 2;
+    return { width: node.w, height: node.h };
+  }
 
   // Every edge gets a middle rank of its own when labels or parallel edges need the room.
   let step = 1;
