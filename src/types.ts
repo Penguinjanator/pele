@@ -1,4 +1,4 @@
-import type { DiagramType } from './detect.js';
+import type { DiagramType, MermaidType } from './detect.js';
 import type { Config } from './preprocess.js';
 import type { TextMeasurer } from './text/measurer.js';
 
@@ -53,6 +53,7 @@ export interface Rendered {
 
 export interface RenderResult extends Rendered {
   type: DiagramType;
+  mermaidType: MermaidType;
 }
 
 // What a diagram type provides. `source` has been through preprocessing and entity encoding
