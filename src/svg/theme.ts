@@ -11,12 +11,10 @@ export const ROOT_STYLE =
 export const FONT_MONO = 'var(--_fm)';
 export const RADIUS = 'var(--pele-radius,4px)';
 
-// A rectangle's corner radius comes from a variable. Browsers only lately take a variable in the
-// `rx` attribute, and all of them take one in a style, so that is where it is written. It goes
-// first there, for a radius the diagram's author set to come after it and win.
+// Use CSS for rx variables to support older browsers. Put the default first so
+// diagram styles can override it.
 export const ROUNDED = ' style="rx:var(--_r)"';
 
-// The attributes of a rounded rectangle that may have a style of its own.
 export function rounded(attrs: string): string {
   const at = attrs.indexOf(' style="');
   return at < 0 ? attrs + ROUNDED : `${attrs.slice(0, at + 8)}rx:var(--_r);${attrs.slice(at + 8)}`;
