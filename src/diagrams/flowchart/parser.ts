@@ -343,7 +343,6 @@ export function parseFlowchart(source: string, db: FlowDb): void {
     return fail("'LINK', 'START_LINK'");
   };
 
-  // The nodes of a statement are only gathered for the subgraph it is in.
   const vertexStatement = (collect: boolean): string[] => {
     let stmt = node();
     if (pendingData !== undefined) {
