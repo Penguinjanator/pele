@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cnode, compoundLayout, routeCrossings, type CEdge, type CNode, type Dir } from '../../src/layout/compound.js';
+import { Style, cnode, compoundLayout, routeCrossings, type CEdge, type CNode, type Dir } from '../../src/layout/compound.js';
 import { random } from '../support/corpus.js';
 
 const OPTIONS = { nodeSep: 40, edgeSep: 16, rankSep: 48, portSep: 20 };
@@ -562,6 +562,27 @@ describe('compound layout', () => {
     const { nodes: fan, edges: into } = fanIn();
     compoundLayout(fan, into, 'TB', { ...OPTIONS, tracks: true });
     expect(routeCrossings(fan, into)).toBe(0);
+  });
+
+  it('counts crossings where the drawing has them, round its corners or at its steps', () => {
+    const nodes = [cnode(40, 40), cnode(40, 40), cnode(40, 40), cnode(40, 40)];
+    nodes[0].y = -20;
+    nodes[1].x = 120;
+    nodes[1].y = 100;
+    nodes[2].x = 5;
+    nodes[2].y = 170;
+    nodes[3].x = 5;
+    nodes[3].y = 40;
+    // A corner that a curved drawing rounds well clear of the other edge.
+    const corner = [edge(0, 1), edge(2, 3)];
+    corner[0].route = [0, 0, 0, 0, 100, 0, 100, 100, 1];
+    corner[1].route = [5, 150, 0, 5, 60, 0];
+    expect(routeCrossings(nodes, corner, Style.Curved)).toBe(0);
+    expect(routeCrossings(nodes, corner, Style.Stepped)).toBe(1);
+    expect(routeCrossings(nodes, corner, Style.Linear)).toBe(1);
+    const { nodes: fan, edges: into } = fanIn();
+    compoundLayout(fan, into, 'TB', OPTIONS);
+    expect(routeCrossings(fan, into, Style.Curved)).toBeLessThanOrEqual(4);
   });
 
   it('orders the ports on the far side of a group by where their edges go, so that a fan into one node does not cross between groups', () => {

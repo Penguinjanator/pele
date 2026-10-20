@@ -136,18 +136,30 @@ function restore(s: Snapshot, nodes: CNode[], edges: CEdge[], levels: Level[]): 
   return s.total;
 }
 
-// How often the routes of edges cross, taking each as straight lines between its points. Where
-// two edges meet at one node, they are not counted as crossing near it, where they fan out, or
-// where they join one straight run to it.
+// How often the routes of edges cross, joining their points as the drawing will. Where two edges
+// meet at one node, they are not counted as crossing near it, where they fan out, or where they
+// join one straight run to it.
 const FAN = 24;
 // How far out of line two points may be and still count as in line.
 const IN_LINE = 0.5;
 const CURVE_PIECES = 4;
+// How far the handles of a rounded corner reach along its two legs, as the drawing has them.
+const HANDLE = 0.62;
 // The most pieces in a band that are put in order one at a time.
 const MAX_INSERT = 128;
-export function routeCrossings(nodes: CNode[], edges: CEdge[]): number {
+// How the drawing joins the points of a route: with curves that round its corners, with steps
+// at right angles, or with straight lines.
+export const enum Style {
+  Curved,
+  Stepped,
+  Linear,
+}
+export function styleOf(opt: LayeredOptions): Style {
+  return opt.tracks ? Style.Stepped : opt.straight ? Style.Linear : Style.Curved;
+}
+export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Curved): number {
   let size = 0;
-  for (const e of edges) if (e.src !== e.dst && e.route.length > 3) size += (e.route.length / 3 - 1) * CURVE_PIECES;
+  for (const e of edges) if (e.src !== e.dst && e.route.length > 3) size += (e.route.length / 3 - 1) * (CURVE_PIECES + 1);
   const ax = new Float64Array(size);
   const ay = new Float64Array(size);
   const bx = new Float64Array(size);
@@ -176,14 +188,71 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[]): number {
     const e = edges[ei];
     if (e.src === e.dst) continue;
     const r = e.route;
+    const aligned = (k: number): boolean => Math.abs(r[k] - r[k - 3]) < 0.01 || Math.abs(r[k + 1] - r[k - 2]) < 0.01;
+    const length = (k: number): number => Math.abs(r[k] - r[k - 3]) + Math.abs(r[k + 1] - r[k - 2]);
+    // Whether the route turns a corner at point k, which a smooth drawing rounds.
+    const turns = (k: number): boolean =>
+      style === Style.Curved &&
+      k > 0 &&
+      k < r.length - 3 &&
+      aligned(k) &&
+      aligned(k + 3) &&
+      length(k) >= 0.01 &&
+      length(k + 3) >= 0.01 &&
+      Math.abs(r[k] - r[k - 3]) < 0.01 !== Math.abs(r[k + 3] - r[k]) < 0.01;
+    let atX = r[0];
+    let atY = r[1];
     for (let k = 3; k < r.length; k += 3) {
       const part = (k === 3 ? 1 : 0) | (k === r.length - 3 ? 2 : 0);
-      const x0 = r[k - 3];
-      const y0 = r[k - 2];
+      const x0 = atX;
+      const y0 = atY;
       const x1 = r[k];
       const y1 = r[k + 1];
-      if (Math.abs(x1 - x0) < 0.01 || Math.abs(y1 - y0) < 0.01) {
-        add(ei, part, x0, y0, x1, y1);
+      atX = x1;
+      atY = y1;
+      if (aligned(k) || style === Style.Linear) {
+        if (!turns(k)) {
+          add(ei, part, x0, y0, x1, y1);
+          continue;
+        }
+        // The turn takes all of a leg that ends at a node and half of one it shares with the next turn.
+        const before = turns(k - 3) ? length(k) / 2 : length(k);
+        const after = turns(k + 3) ? length(k + 3) / 2 : length(k + 3);
+        const ux = (x1 - r[k - 3]) / length(k);
+        const uy = (y1 - r[k - 2]) / length(k);
+        const vx = (r[k + 3] - x1) / length(k + 3);
+        const vy = (r[k + 4] - y1) / length(k + 3);
+        const sx = x1 - ux * before;
+        const sy = y1 - uy * before;
+        add(ei, part, x0, y0, sx, sy);
+        const c1x = x1 - ux * before * (1 - HANDLE);
+        const c1y = y1 - uy * before * (1 - HANDLE);
+        const c2x = x1 + vx * after * (1 - HANDLE);
+        const c2y = y1 + vy * after * (1 - HANDLE);
+        atX = x1 + vx * after;
+        atY = y1 + vy * after;
+        const turn = part | (k + 3 === r.length - 3 ? 2 : 0);
+        let px = sx;
+        let py = sy;
+        for (let i = 1; i <= CURVE_PIECES; i++) {
+          const t = i / CURVE_PIECES;
+          const u = 1 - t;
+          const x = u * u * u * sx + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * atX;
+          const y = u * u * u * sy + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * atY;
+          add(ei, turn, px, py, x, y);
+          px = x;
+          py = y;
+        }
+        continue;
+      }
+      if (style === Style.Stepped) {
+        // A step at right angles, halfway along the flow.
+        const down = r[k + 2] === 0;
+        const mx = down ? x0 : (x0 + x1) / 2;
+        const my = down ? (y0 + y1) / 2 : y0;
+        add(ei, part, x0, y0, mx, my);
+        add(ei, part, mx, my, down ? x1 : mx, down ? my : y1);
+        add(ei, part, down ? x1 : mx, down ? my : y1, x1, y1);
         continue;
       }
       // An S along the flow, as the drawing has it, in a few straight pieces.
@@ -793,16 +862,17 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
   // the flat layout did, they are laid out again in their own order too, and whichever crosses
   // less is kept: the flat layout does not see the groups as the boxes they are drawn as, and
   // now and then its order does not suit them.
+  const style = styleOf(opt);
   keyed = flat;
   place();
   let crossings = -1;
   if (flat) {
-    crossings = routeCrossings(nodes, edges);
+    crossings = routeCrossings(nodes, edges, style);
     if (crossings > flatCrossings * FLAT_SLACK + FLAT_SPARE) {
       const first = snapshot(nodes, edges, order, total);
       keyed = false;
       place();
-      const own = routeCrossings(nodes, edges);
+      const own = routeCrossings(nodes, edges, style);
       if (own >= crossings) {
         keyed = true;
         total = restore(first, nodes, edges, order);
@@ -845,11 +915,11 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       for (let i = 1; i < seen.length; i++) if (seen[i - 1][1] > seen[i][1]) again = true;
     }
     if (again) {
-      const before = crossings >= 0 ? crossings : routeCrossings(nodes, edges);
+      const before = crossings >= 0 ? crossings : routeCrossings(nodes, edges, style);
       const first = before > 0 ? snapshot(nodes, edges, order, total) : undefined;
       if (first) {
         place();
-        if (routeCrossings(nodes, edges) >= before) total = restore(first, nodes, edges, order);
+        if (routeCrossings(nodes, edges, style) >= before) total = restore(first, nodes, edges, order);
       }
     }
   }
