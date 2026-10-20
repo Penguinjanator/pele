@@ -72,6 +72,12 @@ describe('flowchart rendering', () => {
     expect(svg.match(/<tspan/g)?.length).toBe(2);
   });
 
+  it('decodes HTML5 aliases such as lcub and verbar in labels', () => {
+    const { svg } = render('flowchart LR\n  A["GET /plans/&lcub;id&rcub;"] --> B["items#lsqb;0#rsqb; #verbar; none"]', options);
+    expect(svg).toContain('GET /plans/{id}');
+    expect(svg).toContain('items[0] | none');
+  });
+
   it('wraps long labels', () => {
     const short = render('flowchart TD\n  A[one two]', options);
     const long = render('flowchart TD\n  A[one two three four five six seven eight nine ten eleven twelve]', options);
