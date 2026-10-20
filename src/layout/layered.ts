@@ -1659,6 +1659,34 @@ function reduceCrossings(g: Graph, nodes: LNode[]): number {
   if (widest < 2) return 0;
   // With offsets, edges that reach one node at different offsets take separate places along it.
   const place = offsets ? new Int32Array(EF.length) : undefined;
+  // Neither changes with the order: which of its node's places each edge reaches, counted from
+  // the first, and how many places each node has.
+  const placeIn = new Int32Array(place ? EF.length : 0);
+  const places = new Int32Array(place ? n : 0);
+  // Each node's edges down, in the order of their offsets where those differ, which `mixed` marks.
+  const leaving = place ? succE.slice() : succE;
+  const mixed = new Uint8Array(place ? n : 0);
+  if (place) {
+    const arriving = predE.slice();
+    const byOffset = (list: Int32Array, from: number, to: number, dx: Float64Array): boolean => {
+      for (let k = from + 1; k < to; k++) {
+        if (dx[list[k]] === dx[list[from]]) continue;
+        list.subarray(from, to).sort((a, b) => dx[a] - dx[b]);
+        return true;
+      }
+      return false;
+    };
+    for (let v = 0; v < n; v++) {
+      places[v] = 1;
+      if (byOffset(arriving, predStart[v], predStart[v + 1], ETD)) {
+        for (let k = predStart[v] + 1; k < predStart[v + 1]; k++) {
+          if (ETD[arriving[k]] !== ETD[arriving[k - 1]]) places[v]++;
+          placeIn[arriving[k]] = places[v] - 1;
+        }
+      }
+      if (byOffset(leaving, succStart[v], succStart[v + 1], EFD)) mixed[v] = 1;
+    }
+  }
   let size = 1;
   while (size < (place ? widest + EF.length : widest)) size <<= 1;
   const tree = new Int32Array(2 * size);
@@ -1669,25 +1697,13 @@ function reduceCrossings(g: Graph, nodes: LNode[]): number {
     for (let r = 0; r < maxRank; r++) {
       let southLen = layerStart[r + 2] - layerStart[r + 1];
       if (place) {
-        let places = 0;
+        let next = 0;
         for (let i = layerStart[r + 1]; i < layerStart[r + 2]; i++) {
-          const from = predStart[order[i]];
-          const to = predStart[order[i] + 1];
-          let mixed = false;
-          for (let k = from + 1; k < to; k++) if (ETD[predE[k]] !== ETD[predE[from]]) mixed = true;
-          if (mixed) {
-            const ids = Array.from(predE.subarray(from, to));
-            ids.sort((a, b) => ETD[a] - ETD[b]);
-            for (let k = 0; k < ids.length; k++) {
-              if (k > 0 && ETD[ids[k]] !== ETD[ids[k - 1]]) places++;
-              place[ids[k]] = places;
-            }
-          } else {
-            for (let k = from; k < to; k++) place[predE[k]] = places;
-          }
-          places++;
+          const v = order[i];
+          for (let k = predStart[v]; k < predStart[v + 1]; k++) place[predE[k]] = next + placeIn[predE[k]];
+          next += places[v];
         }
-        southLen = places;
+        southLen = next;
       }
       if (southLen < 2) continue;
       let t = 0;
@@ -1696,15 +1712,21 @@ function reduceCrossings(g: Graph, nodes: LNode[]): number {
         const from = succStart[v];
         const to = succStart[v + 1];
         const t0 = t;
-        for (let k = from; k < to; k++) targets[t++] = place ? place[succE[k]] : pos[ET[succE[k]]];
+        for (let k = from; k < to; k++) targets[t++] = place ? place[leaving[k]] : pos[ET[succE[k]]];
         const d = t - t0;
         if (d < 2) continue;
-        let mixed = false;
-        if (place) for (let k = from + 1; k < to; k++) if (EFD[succE[k]] !== EFD[succE[from]]) mixed = true;
-        if (place && mixed) {
-          const ids = Array.from(succE.subarray(from, to));
-          ids.sort((a, b) => EFD[a] - EFD[b] || place[a] - place[b]);
-          for (let k = 0; k < d; k++) targets[t0 + k] = place[ids[k]];
+        if (place && mixed[v]) {
+          // Edges that leave at one offset go in the order of their places.
+          for (let a = t0 + 1; a < t; a++) {
+            const item = targets[a];
+            const dx = EFD[leaving[from + a - t0]];
+            let b = a - 1;
+            while (b >= t0 && EFD[leaving[from + b - t0]] === dx && targets[b] > item) {
+              targets[b + 1] = targets[b];
+              b--;
+            }
+            targets[b + 1] = item;
+          }
         } else if (d <= 12) {
           for (let a = t0 + 1; a < t; a++) {
             const item = targets[a];
