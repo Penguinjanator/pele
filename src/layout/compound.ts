@@ -784,8 +784,9 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
   // The groups were laid out from the inside out, so the ports on a group's border are in an order
   // that only guesses where their edges go once they leave it. Where the ports on the far side of
   // a group are not in the order of where their edges went, the drawing is laid out again with
-  // them in that order, and kept if that crosses less.
-  if (ordered) {
+  // them in that order, and kept if that crosses less. Not where the groups kept their own order
+  // instead, where it gains little for the time it takes.
+  if (keyed === flat && ordered) {
     let again = false;
     for (const level of order) {
       if (level.id < 0) continue;
