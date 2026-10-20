@@ -1,11 +1,14 @@
 import { decodeEntities } from './entities.js';
 import { Style, type TextMeasurer } from './measurer.js';
 import { iconMarkup } from './icons.js';
+import { mathActive, typeset } from './math.js';
+import type { MathMarkup } from '../types.js';
 
 export interface Span {
   text: string;
   style: number;
   icon?: string;
+  math?: MathMarkup;
   width: number;
 }
 
@@ -16,6 +19,8 @@ export interface Label {
   height: number;
   size: number;
   lineHeight: number;
+  // Present only when math needs extra line height.
+  heights?: number[];
 }
 
 export const LINE_HEIGHT = 1.5;
@@ -35,6 +40,20 @@ const RE_PIECE = new RegExp(
   'g'
 );
 
+// Unique placeholders protect TeX from markup parsing and keep expressions aligned when tags are removed.
+const MARK = 0xe000;
+const MAX_MARKS = 0x1900;
+const RE_MATH = /\$\$(.+?)\$\$/g;
+const RE_MARK = /[\ue000-\uf8ff]/;
+const RE_MARKS = /([\ue000-\uf8ff])/;
+
+interface Marks {
+  tex: string[];
+  math: (MathMarkup | undefined)[];
+}
+
+let marks: Marks | undefined;
+
 const EMPTY: Label = { lines: [], widths: [], width: 0, height: 0, size: 0, lineHeight: 0 };
 
 function dedent(text: string): string {
@@ -49,11 +68,34 @@ function dedent(text: string): string {
   return lines.map((line) => line.slice(Math.min(min, line.length - line.trimStart().length))).join('\n');
 }
 
+function plain(span: Span | undefined): span is Span {
+  return span !== undefined && span.icon === undefined && span.math === undefined;
+}
+
 function pushText(line: Span[], text: string, style: number): void {
   if (text === '') return;
+  if (marks !== undefined && RE_MARK.test(text)) {
+    const found = marks;
+    const parts = text.split(RE_MARKS);
+    for (let i = 0; i < parts.length; i++) {
+      if (i % 2 === 0) {
+        if (parts[i] !== '') pushPlain(line, parts[i], style);
+        continue;
+      }
+      const at = parts[i].charCodeAt(0) - MARK;
+      const math = found.math[at];
+      if (math) line.push({ text: '', style, math, width: math.width });
+      else pushPlain(line, `$$${found.tex[at]}$$`, style);
+    }
+    return;
+  }
+  pushPlain(line, text, style);
+}
+
+function pushPlain(line: Span[], text: string, style: number): void {
   const decoded = decodeEntities(text);
   const last = line[line.length - 1];
-  if (last && last.style === style && last.icon === undefined) last.text += decoded;
+  if (plain(last) && last.style === style) last.text += decoded;
   else line.push({ text: decoded, style, width: 0 });
 }
 
@@ -76,7 +118,7 @@ function pushIcons(line: Span[], text: string, style: number): void {
       last++;
     } else if (last === text.length) {
       const before = line[line.length - 1];
-      if (before && before.icon === undefined) before.text = before.text.trimEnd();
+      if (plain(before)) before.text = before.text.trimEnd();
     }
   }
   pushText(line, text.slice(last), style);
@@ -136,7 +178,7 @@ function inline(line: Span[], source: string, markdown: boolean, base: number): 
 function measureSpans(line: Span[], measurer: TextMeasurer, size: number): number {
   let total = 0;
   for (const span of line) {
-    span.width = span.icon !== undefined ? size * 1.25 : measurer.width(span.text, size, span.style);
+    span.width = span.icon !== undefined ? size * 1.25 : span.math ? span.math.width : measurer.width(span.text, size, span.style);
     total += span.width;
   }
   return total;
@@ -147,7 +189,7 @@ function wrap(line: Span[], measurer: TextMeasurer, size: number, max: number, o
   let width = 0;
   const commit = (): void => {
     const last = current[current.length - 1];
-    if (last && last.icon === undefined) {
+    if (plain(last)) {
       const trimmed = last.text.trimEnd();
       if (trimmed !== last.text) {
         last.text = trimmed;
@@ -162,8 +204,8 @@ function wrap(line: Span[], measurer: TextMeasurer, size: number, max: number, o
     width = 0;
   };
   for (const span of line) {
-    if (span.icon !== undefined) {
-      const w = size * 1.25;
+    if (span.icon !== undefined || span.math) {
+      const w = span.math ? span.math.width : size * 1.25;
       if (width > 0 && width + w > max) commit();
       current.push({ ...span, width: w });
       width += w;
@@ -176,7 +218,7 @@ function wrap(line: Span[], measurer: TextMeasurer, size: number, max: number, o
         part = part.trimStart();
       }
       const last = current[current.length - 1];
-      if (last && last.style === span.style && last.icon === undefined) {
+      if (plain(last) && last.style === span.style) {
         last.text += part;
         last.width = measurer.width(last.text, size, last.style);
         width = 0;
@@ -202,6 +244,19 @@ export function layoutLabel(
   if (raw === undefined || raw === '') return EMPTY;
   const lineHeight = Math.round(size * LINE_HEIGHT);
 
+  if (mathActive() && raw.includes('$$') && !RE_MARK.test(raw)) {
+    const found: Marks = { tex: [], math: [] };
+    const marked = raw.replace(RE_MATH, (match: string, tex: string) => {
+      if (found.tex.length === MAX_MARKS) return match;
+      found.tex.push(tex);
+      return String.fromCharCode(MARK + found.tex.length - 1);
+    });
+    if (found.tex.length > 0) {
+      for (const tex of found.tex) found.math.push(typeset(decodeEntities(tex), size));
+      return layoutMarkup(marked, markdown, measurer, size, maxWidth, base, lineHeight, found);
+    }
+  }
+
   if (!RE_MARKUP.test(raw) && !raw.includes('&') && !raw.includes('ﬂ')) {
     const text = raw.trim();
     const width = measurer.width(text, size, base);
@@ -222,7 +277,38 @@ export function layoutLabel(
     for (const w of widths) if (w > widest) widest = w;
     return { lines, widths, width: widest, height: lines.length * lineHeight, size, lineHeight };
   }
+  return layoutMarkup(raw, markdown, measurer, size, maxWidth, base, lineHeight);
+}
 
+function layoutMarkup(
+  raw: string,
+  markdown: boolean,
+  measurer: TextMeasurer,
+  size: number,
+  maxWidth: number,
+  base: number,
+  lineHeight: number,
+  found?: Marks
+): Label {
+  const outer = marks;
+  marks = found;
+  try {
+    const label = layoutLines(raw, markdown, measurer, size, maxWidth, base, lineHeight);
+    return found ? withHeights(label) : label;
+  } finally {
+    marks = outer;
+  }
+}
+
+function layoutLines(
+  raw: string,
+  markdown: boolean,
+  measurer: TextMeasurer,
+  size: number,
+  maxWidth: number,
+  base: number,
+  lineHeight: number
+): Label {
   const source = markdown ? dedent(raw.replace(/\r\n?/g, '\n')).trim() : raw.trim();
   const lines: Span[][] = [];
   const widths: number[] = [];
@@ -240,4 +326,20 @@ export function layoutLabel(
   }
   for (const w of widths) if (w > width) width = w;
   return { lines, widths, width, height: lines.length * lineHeight, size, lineHeight };
+}
+
+export function withHeights(label: Label): Label {
+  let heights: number[] | undefined;
+  for (let i = 0; i < label.lines.length; i++) {
+    let h = label.lineHeight;
+    for (const span of label.lines[i]) if (span.math) h = Math.max(h, Math.ceil(span.math.height + label.size / 4));
+    if (h !== label.lineHeight && heights === undefined) heights = label.lines.map(() => label.lineHeight);
+    if (heights) heights[i] = h;
+  }
+  if (heights === undefined) {
+    return label.heights === undefined ? label : { ...label, heights: undefined, height: label.lines.length * label.lineHeight };
+  }
+  let height = 0;
+  for (const h of heights) height += h;
+  return { ...label, heights, height };
 }
