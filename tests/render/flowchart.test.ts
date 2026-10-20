@@ -78,6 +78,11 @@ describe('flowchart rendering', () => {
     expect(svg).toContain('items[0] | none');
   });
 
+  it('decodes each entity code once', () => {
+    const { svg } = render('flowchart LR\n  A["x #amp;lt; y #38;gt; z"]', options);
+    expect(svg).toContain('x &amp;lt; y &amp;gt; z');
+  });
+
   it('wraps long labels', () => {
     const short = render('flowchart TD\n  A[one two]', options);
     const long = render('flowchart TD\n  A[one two three four five six seven eight nine ten eleven twelve]', options);
