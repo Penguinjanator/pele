@@ -172,7 +172,23 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
   let count = 0;
   let top = Infinity;
   let bottom = -Infinity;
+  // The ends of the last piece, to run it on where its route goes on straight the same way.
+  let fromX = NaN;
+  let fromY = NaN;
+  let toX = NaN;
+  let toY = NaN;
   const add = (ei: number, part: number, x0: number, y0: number, x1: number, y1: number): void => {
+    const p = count - 1;
+    const on = x0 === toX && y0 === toY && ((y1 === y0 && fromY === y0) || (x1 === x0 && fromX === x0));
+    if (on && owner[p] === ei && ends[p] === part && (x0 - fromX) * (x1 - x0) + (y0 - fromY) * (y1 - y0) > 0) {
+      count--;
+      x0 = fromX;
+      y0 = fromY;
+    }
+    fromX = x0;
+    fromY = y0;
+    toX = x1;
+    toY = y1;
     ends[count] = part;
     ax[count] = Math.min(x0, x1);
     bx[count] = Math.max(x0, x1);
