@@ -1454,8 +1454,8 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
     return rows;
   };
 
-  // The least distance between a and b as plain curves across a gap that leaves them `height`
-  // to turn in: between points along each and the other drawn as a run of short lines.
+  // Whether a and b come nearer than `limit` as plain curves across a gap that leaves them
+  // `height` to turn in: between points along each and the other drawn as a run of short lines.
   const sample = (k: number, h: number, out: Float64Array): void => {
     const c = ease(to[k] - from[k], h);
     for (let i = 0; i <= SAMPLES; i++) {
@@ -1465,8 +1465,9 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
       out[2 * i + 1] = h * (3 * c * t * u * u + 3 * (1 - c) * t * t * u + t * t * t);
     }
   };
-  const reach = (points: Float64Array, line: Float64Array): number => {
-    let least = Infinity;
+  const reaches = (points: Float64Array, line: Float64Array, limit: number): boolean => {
+    // A square of a distance that is this far past the square of the limit is past it, rounding and all.
+    const bound = limit * limit * (1 + 1e-9);
     for (let i = 0; i <= SAMPLES; i++) {
       const px = points[2 * i];
       const py = points[2 * i + 1];
@@ -1474,17 +1475,18 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
         const dx = line[2 * j + 2] - line[2 * j];
         const dy = line[2 * j + 3] - line[2 * j + 1];
         const t = Math.max(0, Math.min(1, ((px - line[2 * j]) * dx + (py - line[2 * j + 1]) * dy) / (dx * dx + dy * dy || 1)));
-        const d = Math.hypot(px - line[2 * j] - t * dx, py - line[2 * j + 1] - t * dy);
-        if (d < least) least = d;
+        const ex = px - line[2 * j] - t * dx;
+        const ey = py - line[2 * j + 1] - t * dy;
+        if (ex * ex + ey * ey < bound && Math.hypot(ex, ey) < limit) return true;
       }
     }
-    return least;
+    return false;
   };
-  const nearest = (a: number, b: number, height: number): number => {
+  const near = (a: number, b: number, height: number, limit: number): boolean => {
     const h = Math.max(height / 2, height - 2 * LEVEL_LEAD);
     sample(a, h, LINE_A);
     sample(b, h, LINE_B);
-    return Math.min(reach(LINE_A, LINE_B), reach(LINE_B, LINE_A));
+    return reaches(LINE_A, LINE_B, limit) || reaches(LINE_B, LINE_A, limit);
   };
 
   for (const [r, all] of byRank) {
@@ -1504,7 +1506,7 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
       const a = all[pairs[p]];
       const b = all[pairs[p + 1]];
       if ((level.has(a) && level.has(b)) || !clash(a, b) || from[a] < to[a] !== from[b] < to[b]) continue;
-      if (nearest(a, b, room[r]) < (wide[a] === 1 || wide[b] === 1 ? LEVEL_CLEAR : LEVEL_TOUCH)) level.add(a).add(b);
+      if (near(a, b, room[r], wide[a] === 1 || wide[b] === 1 ? LEVEL_CLEAR : LEVEL_TOUCH)) level.add(a).add(b);
     }
     for (const k of far) {
       track[k] = -1;
