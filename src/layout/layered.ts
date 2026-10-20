@@ -160,8 +160,7 @@ const LEAN_CLEAR = 40;
 // Past this many edges across one gap, tracks are given out in a plain order: weighing every
 // pair of edges against each other would take too long.
 const MAX_WEIGHED = 400;
-// How many short lines a curve is taken as when measuring how near two pass, and room for the
-// points of two such curves, which every layout shares.
+// Reuse curve-sampling buffers across layouts.
 const SAMPLES = 16;
 const LINE_A = new Float64Array(2 * SAMPLES + 2);
 const LINE_B = new Float64Array(2 * SAMPLES + 2);
@@ -189,9 +188,7 @@ function sortRange(list: Int32Array, from: number, to: number, key: Int32Array |
   }
 }
 
-// Sorts the first `count` nodes of `list` by barycenter, and those with the same one by position,
-// the leftmost first or, with `right`, the rightmost. A merge sort that compares in place, as a
-// sort that calls a compare function for each comparison is slow. `spare` is room to merge into.
+// Avoid the comparator overhead of built-in sort.
 function sortByBary(list: Int32Array, count: number, bary: Float64Array, pos: Int32Array, right: boolean, spare: Int32Array): void {
   const before = (a: number, b: number): boolean => bary[a] < bary[b] || (bary[a] === bary[b] && (right ? pos[a] > pos[b] : pos[a] < pos[b]));
   const RUN = 8;
@@ -230,7 +227,6 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   const real = nodes.length;
   if (real === 0) return { width: 0, height: 0 };
   const m = edges.length;
-  // A node on its own, such as the one in a group that holds only that, has nothing to order or route.
   if (real === 1 && m === 0 && nodes[0].kind === Kind.Node) {
     const node = nodes[0];
     node.rank = 0;
@@ -858,9 +854,8 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
 }
 
 // The ends of edges that may move along one side of a node (0 the side its edges arrive at, 1 the
-// other), in the order of the nodes at their other ends, so that no two cross: `ids`, which comes
-// empty, receives them. `room`, empty too, receives the least distance between each end and the
-// one before it, and the result is their sum.
+// other), ordered by their opposite nodes to avoid crossings. `ids` and `room` must start empty.
+// `ids` receives the ends; `room` receives their minimum gaps. Returns the sum of the gaps.
 // When there is too little room for a full pitch between each pair, the edges that leave side by
 // side move closer together, since they have no arrowheads to keep apart. With less room still,
 // neighbours that run the same way share a place, which keeps an arrowhead apart from an edge
@@ -1048,9 +1043,7 @@ function settle(g: Graph, nodes: LNode[], xs: Float64Array, EFK: Uint8Array, ETK
     const place = (xs[v] * width + middle * span) / (width + span);
     return Math.max(lo, Math.min(hi, place)) - xs[v];
   };
-  // The ends that may move on each side in order, the room between them, and every end on the
-  // side in order, the held ones among them, which divide the rest into runs. None of these
-  // change from pass to pass.
+  // End order and spacing stay fixed across passes; held ends divide free ends into runs.
   const sides: { v: number; side: number; span: number; ids: number[]; room: number[]; all: number[] }[] = [];
   for (let v = 0; v < real; v++) {
     const span = Math.min(nodes[v].span, W[v]);
@@ -1082,13 +1075,12 @@ function settle(g: Graph, nodes: LNode[], xs: Float64Array, EFK: Uint8Array, ETK
       for (let i = 0; i <= all.length; i++) {
         const held = i < all.length && kinds[all[i]] === End.Held;
         if (i < all.length && !held) continue;
-        // The run of free ends before this point is ids[k..], as many as were passed since the last held end.
+        // Free ends since the last held end occupy ids[k..k + size).
         let size = 0;
         for (let j = i - 1; j >= 0 && kinds[all[j]] !== End.Held; j--) size++;
         const hi = held ? dx[all[i]] - PORT_PITCH : span / 2;
         if (size > 0) {
-          // The places nearest the wanted ones that keep the order and the room between
-          // neighbours: an isotonic fit, by pooling neighbours that would otherwise be too close.
+          // Isotonic fitting preserves order and spacing by pooling neighbours that are too close.
           const sum: number[] = [];
           const count: number[] = [];
           let before = 0;
@@ -1096,7 +1088,7 @@ function settle(g: Graph, nodes: LNode[], xs: Float64Array, EFK: Uint8Array, ETK
             if (j > 0) before += room[k + j];
             sum.push(wanted(ids[k + j], side, v, span, pass > 0) - before);
             count.push(1);
-            // Ends that share a place for want of room stay together.
+            // Keep ends together when spacing forced them to share a place.
             let together = j > 0 && room[k + j] === 0;
             while (sum.length > 1 && (together || sum[sum.length - 2] / count[count.length - 2] > sum[sum.length - 1] / count[count.length - 1])) {
               together = false;
@@ -1110,7 +1102,7 @@ function settle(g: Graph, nodes: LNode[], xs: Float64Array, EFK: Uint8Array, ETK
           let j = 0;
           before = 0;
           for (let b = 0; b < sum.length; b++) {
-            // With too little room between two held ends, the run sits in the middle of what there is.
+            // Center the run if it cannot fit between held ends.
             const level = hi - total < lo ? (lo + hi - total) / 2 : Math.max(lo, Math.min(hi - total, sum[b] / count[b]));
             for (let c = 0; c < count[b]; c++, j++) {
               if (j > 0) before += room[k + j];
@@ -1258,8 +1250,7 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
   const meet = (a: number, b: number): boolean => overlap(a, b) || within(to[a], b) + within(from[b], a) + within(to[b], a) + within(from[a], b) > 0;
   // How often a and b cross with a on the higher track: a's way down through b, and b's way down to itself through a.
   const crossings = (a: number, b: number): number => within(to[a], b) + within(from[b], a);
-  // The pairs of pieces in `list` that come near enough across the flow to meet, as places in
-  // the list, the smaller first. Pieces further apart than this cannot meet or clash.
+  // Returns pairs of list indices, smaller first. Omitted pairs cannot meet or clash.
   const nearPairs = (list: number[]): number[] => {
     const byLo = list.map((_, i) => i).sort((a, b) => LO[list[a]] - LO[list[b]]);
     const pairs: number[] = [];
@@ -1289,9 +1280,8 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
       return i;
     };
     const weighed = count <= MAX_WEIGHED;
-    // Past MAX_WEIGHED, pairs are not kept: in a dense gap nearly every pair is near.
+    // Avoid storing quadratically many pairs in dense gaps.
     const pairs = weighed ? nearPairs(list) : [];
-    // The pieces that each may not share a track with.
     const clashes: number[][] = weighed ? list.map(() => []) : [];
     for (let p = 0; p < pairs.length; p += 2) {
       const i = pairs[p];
@@ -1341,8 +1331,6 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
         for (const j of after[pick]) waiting[j]--;
       }
     }
-    // Each piece takes the first track below those it should be under that no piece it clashes
-    // with is on. Unweighed, the pieces already on each track are looked through instead.
     const taken = new Set<number>();
     const onTrack: number[][] = [];
     let rows = 0;
@@ -1435,7 +1423,6 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
     if (level.size === 0) continue;
     let crossing = 0;
     let alongside = 0;
-    // The pieces that could cross one of those that turn.
     const beside = new Set<number>();
     for (let p = 0; p < pairs.length; p += 2) {
       const a = all[pairs[p]];
