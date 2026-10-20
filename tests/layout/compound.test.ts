@@ -534,7 +534,7 @@ describe('compound layout', () => {
     return node;
   }
 
-  // The example from issue 3: two groups of steps, each of which all lead to one store in a third.
+  // Issue #3: two chains in separate groups feed a store in a third group.
   function fanIn(): { nodes: CNode[]; edges: CEdge[] } {
     const nodes = [group(100), group(101), group(102), cnode(80, 60, 2)];
     const edges: CEdge[] = [];
@@ -573,7 +573,7 @@ describe('compound layout', () => {
     nodes[2].y = 170;
     nodes[3].x = 5;
     nodes[3].y = 40;
-    // A corner that a curved drawing rounds well clear of the other edge.
+    // Rounding the corner clears the other edge.
     const corner = [edge(0, 1), edge(2, 3)];
     corner[0].route = [0, 0, 0, 0, 100, 0, 100, 100, 1];
     corner[1].route = [5, 150, 0, 5, 60, 0];
@@ -587,7 +587,6 @@ describe('compound layout', () => {
 
   it('orders the ports on the far side of a group by where their edges go, so that a fan into one node does not cross between groups', () => {
     for (const dir of ['TB', 'LR'] as Dir[]) {
-      // Two groups of steps, each of which sends an edge to one store in a third group.
       const nodes = [group(100), group(101), group(102), cnode(80, 40, 2)];
       const edges: CEdge[] = [];
       for (const g of [0, 1]) {
@@ -605,7 +604,6 @@ describe('compound layout', () => {
       });
       compoundLayout(nodes, edges, dir, OPTIONS);
       const across = dir === 'TB' ? 0 : 1;
-      // Where each edge to the store leaves its own group, and where it enters the store's.
       const at = (e: CEdge, g: number): number => {
         for (let k = 0; k < e.route.length; k += 3) if (onBorder(nodes[g], e.route[k], e.route[k + 1])) return e.route[k + across];
         return NaN;
@@ -621,7 +619,6 @@ describe('compound layout', () => {
   });
 
   it('orders the nodes of a row of groups as one drawing, so that the edges between them do not cross', () => {
-    // Three stages, each a group, with their nodes written in an order that would cross a lot.
     const nodes = [group(100), group(101), group(102)];
     const stage = (g: number): number[] =>
       [0, 1, 2, 3, 4].map(() => {

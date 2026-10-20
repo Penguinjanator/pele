@@ -14,7 +14,7 @@ describe('layered', () => {
       groups: { of: Int32Array.from(of), parent: Int32Array.from([-1, -1]) },
       orderOnly: true,
     });
-    // Each edge's points are pairs of a rank and the place across the flow where it passes it.
+    // Points are (rank, cross-flow position) pairs.
     const pieces: number[][] = [];
     for (const e of edges) for (let k = 2; k < e.points.length; k += 2) pieces.push([e.points[k - 2], e.points[k - 1], e.points[k + 1]]);
     let crossed = 0;

@@ -39,11 +39,9 @@ export interface LNode {
   h: number;
   kind: Kind;
   pin: number;
-  // For a port on a group's border: where its edge goes across the flow, from a layout of the
-  // whole drawing. A rank of ports that all have one keeps them in that order. NaN for none.
+  // Port's cross-flow destination; NaN if unknown. Fully hinted port ranks keep this order.
   hint: number;
-  // Where the node sits across the flow in a layout of the whole drawing, which the order of a
-  // rank whose nodes all have one starts from. NaN for none.
+  // Initial cross-flow position; NaN if unknown. Used only when every node in a rank has one.
   key: number;
   // How much of the side that edges meet may be shared out between them; 0 keeps them all at its middle.
   span: number;
@@ -85,19 +83,17 @@ export interface LayeredOptions {
   // head the same way sits half of this nearer their tails, so that each label is midway along
   // the line that shows, and the curves either side of it have the same room to turn in.
   headRoom?: number;
-  // Groups that the nodes belong to, which keep their nodes side by side in every rank while the
-  // crossings are reduced: `of` gives each node's group or -1, and `parent` each group's parent
-  // or -1. Used to order a whole drawing of groups as one flat graph.
+  // Keep each group contiguous within ranks. `of` maps nodes to groups; `parent` maps groups
+  // to parents. Both use -1 for none.
   groups?: { of: Int32Array; parent: Int32Array };
-  // Stop once the nodes have their places across the flow, in `x`.
+  // Compute cross-flow positions in `x` without full routing.
   orderOnly?: boolean;
 }
 
 export interface LayeredResult {
   width: number;
   height: number;
-  // With `orderOnly`, how often edges cross between ranks once the nodes are in order, and how
-  // often they did in the order the nodes came in, before any groups were put together.
+  // With `orderOnly`: final crossings and crossings before grouping or reordering.
   crossings?: number;
   declared?: number;
 }
@@ -322,8 +318,6 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   const ETK = spans ? new Uint8Array(segments) : undefined;
   const firstSeg = new Int32Array(m).fill(-1);
   const lastSeg = new Int32Array(m).fill(-1);
-  // Where each node starts across the flow, where a layout of the whole drawing says: a bend
-  // part of the way along the line between the ends of its edge.
   const KEY = new Float64Array(n).fill(NaN);
   for (let i = 0; i < real; i++) KEY[i] = nodes[i].key;
   let offsets = false;
@@ -385,7 +379,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     }
   }
 
-  // The group of every node and bend: a bend belongs to the innermost group that holds both ends of its edge.
+  // Bends belong to the innermost group containing both edge endpoints.
   let GRP: Int32Array | undefined;
   if (opt.groups) {
     const { of, parent } = opt.groups;
@@ -466,7 +460,6 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     }
   }
 
-  // Puts rank r in the order of `key`, where every node in it has one, and says whether it did.
   const sortRank = (r: number, key: (v: number) => number): boolean => {
     const s = layerStart[r];
     const e = layerStart[r + 1];
@@ -493,8 +486,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
       order.set(layer, layerStart[r]);
     }
   }
-  // A rank of ports that know where their edges go outside the group keeps them in that order,
-  // so that the edges do not cross on their way there.
+  // Preserve port order to avoid crossings outside the group.
   const fixed = new Uint8Array(maxRank + 1);
   const hint = (v: number): number => (v < real && (nodes[v].kind === Kind.StartPort || nodes[v].kind === Kind.EndPort) ? nodes[v].hint : NaN);
   for (const r of [0, maxRank]) if (sortRank(r, hint)) fixed[r] = 1;
@@ -515,7 +507,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
     setPositions();
   }
   if (opt.orderOnly) {
-    // Each edge's points are pairs of a rank and the place across the flow where the edge passes it.
+    // Points are (rank, cross-flow position) pairs.
     const at = position(g, opt);
     for (let i = 0; i < real; i++) nodes[i].x = at[i];
     for (let ei = 0; ei < m; ei++) {
@@ -797,9 +789,8 @@ interface Graph {
   order: Int32Array;
   pos: Int32Array;
   offsets: boolean;
-  // Ranks whose order is set before the crossings are reduced, and stays.
+  // Ranks whose order must remain fixed.
   fixed: Uint8Array;
-  // The group of each node, and of each group its parent, where groups keep their nodes together.
   GRP?: Int32Array;
   groupParent?: Int32Array;
 }
@@ -1457,8 +1448,6 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
     return rows;
   };
 
-  // Whether a and b come nearer than `limit` as plain curves across a gap that leaves them
-  // `height` to turn in: between points along each and the other drawn as a run of short lines.
   const sample = (k: number, h: number, out: Float64Array): void => {
     const c = ease(to[k] - from[k], h);
     for (let i = 0; i <= SAMPLES; i++) {
@@ -1469,7 +1458,7 @@ function assignTracks(pieces: Pieces, trackCount: Int32Array, curved: boolean, r
     }
   };
   const reaches = (points: Float64Array, line: Float64Array, limit: number): boolean => {
-    // A square of a distance that is this far past the square of the limit is past it, rounding and all.
+    // Allow rounding error in the cheap distance check before calling Math.hypot.
     const bound = limit * limit * (1 + 1e-9);
     for (let i = 0; i <= SAMPLES; i++) {
       const px = points[2 * i];
@@ -1654,8 +1643,7 @@ function pastLabels(g: Graph, xs: Float64Array, firstDummy: Int32Array, span: In
   }
 }
 
-// Orders the nodes of each rank to cross as little as it can. Returns how often edges cross in
-// that order, and how often they did in the order the nodes came in.
+// Returns [final crossings, crossings before grouping or reordering].
 function reduceCrossings(g: Graph, nodes: LNode[]): [number, number] {
   const { n, real, maxRank, W, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos, offsets, fixed, GRP, groupParent } = g;
   let widest = 0;
@@ -1663,11 +1651,9 @@ function reduceCrossings(g: Graph, nodes: LNode[]): [number, number] {
   if (widest < 2) return [0, 0];
   // With offsets, edges that reach one node at different offsets take separate places along it.
   const place = offsets ? new Int32Array(EF.length) : undefined;
-  // Neither changes with the order: which of its node's places each edge reaches, counted from
-  // the first, and how many places each node has.
+  // Local offset indices and counts do not depend on node order.
   const placeIn = new Int32Array(place ? EF.length : 0);
   const places = new Int32Array(place ? n : 0);
-  // Each node's edges down, in the order of their offsets where those differ, which `mixed` marks.
   const leaving = place ? succE.slice() : succE;
   const mixed = new Uint8Array(place ? n : 0);
   if (place) {
@@ -1720,7 +1706,7 @@ function reduceCrossings(g: Graph, nodes: LNode[]): [number, number] {
         const d = t - t0;
         if (d < 2) continue;
         if (place && mixed[v]) {
-          // Edges that leave at one offset go in the order of their places.
+          // Sort equal-offset edges by destination to avoid counting shared endpoints as crossings.
           for (let a = t0 + 1; a < t; a++) {
             const item = targets[a];
             const dx = EFD[leaving[from + a - t0]];
@@ -1762,14 +1748,12 @@ function reduceCrossings(g: Graph, nodes: LNode[]): [number, number] {
     return total;
   };
 
-  // How often edges cross in the order the nodes came in, before any groups are put together.
   const declared = count();
   const bary = new Float64Array(n);
   const moving = new Int32Array(widest);
   const spare = new Int32Array(widest);
 
-  // Puts the nodes of rank r in the order of `key`, keeping the nodes of each group together: a
-  // group goes where the average of its nodes' keys puts it among the nodes and groups beside it.
+  // Keep groups contiguous, ordering each by its mean key.
   const groups = groupParent ? groupParent.length : 0;
   const depth = new Int32Array(groups);
   for (let gr = 0; gr < groups; gr++) for (let p = gr; p >= 0; p = groupParent![p]) depth[gr]++;
@@ -1793,10 +1777,8 @@ function reduceCrossings(g: Graph, nodes: LNode[]): [number, number] {
         groupCount[gr]++;
       }
     }
-    // Nodes are items numbered as they are, and groups after them. Two nodes compare as the two
-    // items they are in, side by side in the group that holds both.
+    // Compare siblings in their nearest common group; group items use n + group ID.
     const value = (item: number): number => (item >= n ? groupSum[item - n] / groupCount[item - n] : key[item]);
-    // Items that tie keep the order they had.
     const first = (item: number): number => (item >= n ? groupFirst[item - n] : s + pos[item]);
     const compare = (a: number, b: number): number => {
       let ia = a;
@@ -1835,8 +1817,7 @@ function reduceCrossings(g: Graph, nodes: LNode[]): [number, number] {
   let best = GRP ? count() : declared;
   if (best === 0) return [0, declared];
   const bestOrder = order.slice();
-  // The order the nodes came in, with groups put together, is kept unless the sweeps find one
-  // that crosses less than it and less than the nodes did before that.
+  // Require improvements over both the grouped and ungrouped starting orders.
   const start = Math.min(best, declared);
 
   const sweep = (down: boolean, biasRight: boolean): void => {
@@ -1862,7 +1843,7 @@ function reduceCrossings(g: Graph, nodes: LNode[]): [number, number] {
         const to = start[v + 1];
         if (from === to) {
           if (GRP) {
-            // Where groups keep their nodes together, one with no neighbours stays about where it is.
+            // Preserve relative position when there are no neighbours in the adjacent rank.
             const across = down ? layerStart[r] - layerStart[r - 1] : layerStart[r + 2] - layerStart[r + 1];
             bary[v] = ((i - s) * across) / (e - s);
             continue;
@@ -1906,16 +1887,13 @@ function reduceCrossings(g: Graph, nodes: LNode[]): [number, number] {
     for (let r = 0; r <= maxRank; r++) for (let i = layerStart[r]; i < layerStart[r + 1]; i++) pos[order[i]] = i - layerStart[r];
   };
 
-  // Swaps neighbours in a rank wherever that leaves fewer crossings with the ranks on either
-  // side, until no swap does. Sweeps move nodes by the average place of their neighbours, which
-  // can leave two side by side that would cross less the other way round.
+  // Adjacent swaps can remove crossings missed by barycenter sweeps.
   const pinOf = (v: number): number => (v < real ? nodes[v].pin : 0);
-  // Where an edge meets the node at its other end, along that node's rank.
   const at = (e: number, up: boolean): number => {
     const u = up ? EF[e] : ET[e];
     return offsets && W[u] > 0 ? pos[u] + (up ? EFD[e] : ETD[e]) / W[u] : pos[u];
   };
-  // How often the edges of a cross those of b, with a left of b.
+  // Crossings between a and b, assuming a is left of b.
   const between = (a: number, b: number): number => {
     let c = 0;
     for (let k = predStart[a]; k < predStart[a + 1]; k++) {
@@ -1995,7 +1973,7 @@ function reduceCrossings(g: Graph, nodes: LNode[]): [number, number] {
   order.set(chosen);
   settlePositions();
   bestOrder.set(chosen);
-  // With groups, the order kept can cross more than the count it was kept by.
+  // The retained grouped order may exceed the ungrouped threshold; recount it.
   if (GRP) best = count();
 
   // A drawing and its mirror image cross as often too. Of those two, likewise.

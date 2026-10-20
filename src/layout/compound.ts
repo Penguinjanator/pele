@@ -54,7 +54,7 @@ interface PortEdge {
   inner: number;
   out: boolean;
   side: Side;
-  // Where, across the flow, the edge goes on outside the group, from an earlier layout. NaN for unknown.
+  // Cross-flow position outside the group from a previous layout; NaN if unknown.
   hint: number;
   px: number;
   py: number;
@@ -81,16 +81,13 @@ interface Level {
 
 const MAX_PORTS = 40000;
 
-// The largest drawings whose groups are given an order from a layout of the whole drawing, and
-// are laid out again to bring the ports on their borders into a better order.
+// Limit repeated layouts to small graphs.
 const MAX_ORDERED_PORTS = 400;
 const MAX_ORDERED_EDGES = 500;
-// How much more the groups may cross, laid out in the order of the flat layout, than the flat
-// layout did, before their own order is tried as well.
+// Crossing tolerance before trying independent group ordering.
 const FLAT_SLACK = 1.5;
 const FLAT_SPARE = 4;
 
-// What a layout leaves behind, to go back to when another try turns out worse.
 interface Snapshot {
   nodes: number[];
   routes: number[][];
@@ -136,24 +133,17 @@ function restore(s: Snapshot, nodes: CNode[], edges: CEdge[], levels: Level[]): 
   return s.total;
 }
 
-// How often the routes of edges cross, joining their points as the drawing will. Where two edges
-// meet at one node, they are not counted as crossing near it, where they fan out, or where they
-// join one straight run to it.
+// Ignore crossings within this distance of a shared node.
 const FAN = 24;
-// How far out of line two points may be and still count as in line.
+// Tolerance for collinear points.
 const IN_LINE = 0.5;
-// The straight pieces a curve is taken as: an S, and a rounded corner, which turns half as far.
 const CURVE_PIECES = 3;
 const CORNER_PIECES = 2;
-// The most pieces one step of a route can make: a step at right angles, an S, or a straight run
-// into a rounded corner.
+// Allow for a step, an S-curve, or a straight segment plus a rounded corner.
 const STEP_PIECES = Math.max(3, CURVE_PIECES, CORNER_PIECES + 1);
-// How far the handles of a rounded corner reach along its two legs, as the drawing has them.
+// Match the renderer's corner handles.
 const HANDLE = 0.62;
-// The most pieces in a band that are put in order one at a time.
 const MAX_INSERT = 128;
-// How the drawing joins the points of a route: with curves that round its corners, with steps
-// at right angles, or with straight lines.
 export const enum Style {
   Curved,
   Stepped,
@@ -172,12 +162,11 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
   const low = new Float64Array(size);
   const high = new Float64Array(size);
   const owner = new Int32Array(size);
-  // 1 for a piece of the first part of a route, 2 for one of the last.
+  // Endpoint flags: 1 for the first segment, 2 for the last.
   const ends = new Uint8Array(size);
   let count = 0;
   let top = Infinity;
   let bottom = -Infinity;
-  // The ends of the last piece, to run it on where its route goes on straight the same way.
   let fromX = NaN;
   let fromY = NaN;
   let toX = NaN;
@@ -211,7 +200,6 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
     const r = e.route;
     const aligned = (k: number): boolean => Math.abs(r[k] - r[k - 3]) < 0.01 || Math.abs(r[k + 1] - r[k - 2]) < 0.01;
     const length = (k: number): number => Math.abs(r[k] - r[k - 3]) + Math.abs(r[k + 1] - r[k - 2]);
-    // Whether the route turns a corner at point k, which a smooth drawing rounds.
     const turns = (k: number): boolean =>
       style === Style.Curved &&
       k > 0 &&
@@ -236,7 +224,7 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
           add(ei, part, x0, y0, x1, y1);
           continue;
         }
-        // The turn takes all of a leg that ends at a node and half of one it shares with the next turn.
+        // Adjacent corners share a leg, so each gets half.
         const before = turns(k - 3) ? length(k) / 2 : length(k);
         const after = turns(k + 3) ? length(k + 3) / 2 : length(k + 3);
         const ux = (x1 - r[k - 3]) / length(k);
@@ -267,7 +255,6 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
         continue;
       }
       if (style === Style.Stepped) {
-        // A step at right angles, halfway along the flow.
         const down = r[k + 2] === 0;
         const mx = down ? x0 : (x0 + x1) / 2;
         const my = down ? (y0 + y1) / 2 : y0;
@@ -276,7 +263,7 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
         add(ei, part, down ? x1 : mx, down ? my : y1, x1, y1);
         continue;
       }
-      // An S along the flow, as the drawing has it, in a few straight pieces.
+      // Approximate the rendered S-curve with straight segments.
       const down = r[k + 2] === 0;
       const c = down ? ease(x1 - x0, y1 - y0) : ease(y1 - y0, x1 - x0);
       let px = x0;
@@ -294,8 +281,7 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
       }
     }
   }
-  // Bands across the drawing, each swept from left to right on its own. A pair of pieces is
-  // looked at in the band that the lower of their tops falls in.
+  // Count each pair only in the first band shared by both segments.
   const bands = bottom > top ? Math.round(Math.sqrt(count)) : 1;
   const scale = bottom > top ? bands / (bottom - top) : 0;
   const bandOf = (y: number): number => Math.min(bands - 1, Math.floor((y - top) * scale));
@@ -309,8 +295,7 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
   const fill = bandStart.slice(0, bands);
   const inBand = new Int32Array(bandStart[bands]);
   for (let p = 0; p < count; p++) for (let b = first[p], last = bandOf(high[p]); b <= last; b++) inBand[fill[b]++] = p;
-  // The straight run each route leaves its first node by and the one it reaches its last node by.
-  // Edges that meet at a node and join into one run to it merge there rather than cross.
+  // Edges merging into a shared endpoint run do not count as crossings.
   const runs = new Float64Array(edges.length * 8);
   const inLine = (r: number[], a: number, b: number, c: number): boolean =>
     (Math.abs(r[a] - r[b]) < IN_LINE && Math.abs(r[a] - r[c]) < IN_LINE) || (Math.abs(r[a + 1] - r[b + 1]) < IN_LINE && Math.abs(r[a + 1] - r[c + 1]) < IN_LINE);
@@ -324,7 +309,6 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
     while (j >= 3 && inLine(r, last, j, j - 3)) j -= 3;
     runs.set([r[0], r[1], r[k], r[k + 1], r[j], r[j + 1], r[last], r[last + 1]], ei * 8);
   }
-  // Whether a point lies on the first (1) or last (2) run of an edge's route.
   const onRun = (ei: number, end: number, x: number, y: number): boolean => {
     const o = ei * 8 + (end === 1 ? 0 : 4);
     const x0 = runs[o];
@@ -338,7 +322,6 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
   let total = 0;
   for (let band = 0; band < bands; band++) {
     const bandEnd = bandStart[band + 1];
-    // In order of the pieces' left ends, and of where they were added among those level.
     if (bandEnd - bandStart[band] > MAX_INSERT) inBand.subarray(bandStart[band], bandEnd).sort((p, q) => ax[p] - ax[q] || p - q);
     else {
       for (let i = bandStart[band] + 1; i < bandEnd; i++) {
@@ -359,8 +342,7 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
         if (high[q] < low[p] || low[q] > high[p] || owner[p] === owner[q] || (!here && first[q] !== band)) continue;
         const d1 = dx * (ay[q] - ay[p]) - dy * (ax[q] - ax[p]);
         const d2 = dx * (by[q] - ay[p]) - dy * (bx[q] - ax[p]);
-        // A point that lies on the other line counts as on one side of it, so that a crossing at
-        // the end of one piece is counted once, in one of the two pieces it joins.
+        // Treat points on the line as one side to count segment-boundary crossings once.
         if (d1 > 0 === (d2 > 0)) continue;
         const ex = bx[q] - ax[q];
         const ey = by[q] - ay[q];
@@ -372,7 +354,7 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
         const at = d3 / (d3 - d4);
         const x = ax[p] + at * dx;
         const y = ay[p] + at * dy;
-        // Where two edges meet at a node, the parts of them that lead to it fan in.
+        // Exclude fan-in and fan-out at shared nodes.
         const fan = (v: number, pe: number, qe: number): boolean =>
           ((ends[p] & pe) !== 0 && (ends[q] & qe) !== 0) ||
           (Math.abs(x - nodes[v].x) < nodes[v].w / 2 + FAN && Math.abs(y - nodes[v].y) < nodes[v].h / 2 + FAN) ||
@@ -612,14 +594,9 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
     return { lnodes, ledges, dummies };
   };
 
-  // Whether the drawing is small enough to be laid out more than once.
   const ordered = ports > 1 && ports <= MAX_ORDERED_PORTS && edges.length <= MAX_ORDERED_EDGES;
 
-  // Where each node sits across the flow in a layout of the whole drawing as one flat graph, in
-  // which the nodes of each group stay side by side. The groups are laid out one at a time, each
-  // on its own, so this is what gives them an order for their nodes, and for the ports on the far
-  // sides of their borders, that agrees with the rest of the drawing. A group's place is the
-  // average of its nodes'. Only where every group runs the way the whole drawing does.
+  // Use a flat layout to coordinate node and port order across groups.
   const key = new Float64Array(n).fill(NaN);
   let keyed = false;
   let flatCrossings = 0;
@@ -655,12 +632,10 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       ledges.push(ledge(leaf[e.src], leaf[e.dst], e.minlen, vertical ? e.labelW : e.labelH, vertical ? e.labelH : e.labelW));
     });
     const flatLayout = layered(lnodes, ledges, { ...opt, groups: { of: Int32Array.from(of), parent: Int32Array.from(parent) }, orderOnly: true });
-    // The fewest crossings the drawing has been seen to need as one flat graph: in the order of
-    // the flat layout, or in the order it was written, where groups are not kept together.
     flatCrossings = Math.min(flatLayout.crossings ?? 0, flatLayout.declared ?? 0);
     const sum = new Float64Array(n);
     const count = new Int32Array(n);
-    // The last rank each group reaches.
+    // Last rank occupied by each group.
     const last = new Int32Array(n).fill(-1);
     for (let i = 0; i < n; i++) {
       if (leaf[i] < 0) continue;
@@ -672,10 +647,7 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       }
     }
     for (let i = 0; i < n; i++) if (count[i] > 0) key[i] = sum[i] / count[i];
-    // The ports that edges leave a group by, on its far side, go in the order of where their
-    // edges pass the group's last rank in the flat layout, and those that pass it at one place,
-    // in the order of where they pass the rank after it. The ports on the near side, and those of
-    // edges that come back in, are left to the group to order.
+    // Order outgoing ports at the group's last rank; break ties using the next rank.
     farHint = (level: Level, port: PortEdge): number => {
       const le = ledgeOf[port.e];
       if (le < 0 || level.id < 0 || !port.out || port.side !== opposite(startSide(level.dir))) return NaN;
@@ -690,9 +662,7 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
     };
   }
 
-  // What each level's layout was given and gave back, every time it was laid out, where the
-  // drawing may be laid out again. A level given the same again, as it is where neither its ports
-  // nor its groups changed, comes out the same.
+  // Reuse unchanged levels across layout attempts.
   const laid = new Map<number, { given: number[]; lnodes: LNode[]; ledges: LEdge[]; size: LayeredResult }[]>();
   const layOut = (level: Level, lnodes: LNode[], ledges: LEdge[]): { lnodes: LNode[]; ledges: LEdge[]; size: LayeredResult } => {
     if (!ordered) return { lnodes, ledges, size: layered(lnodes, ledges, opt) };
@@ -713,7 +683,7 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
 
   let total: CompoundResult = { width: 0, height: 0 };
   const place = (): void => {
-    // Top-down: rank each level to learn which side of a group every crossing edge leaves from.
+    // Rank parents first to determine which group sides edges cross.
     for (const level of order) {
       for (const port of level.ports) {
         if (nodes[port.inner].isGroup && endpointBelow(port.inner, edges[port.e], port.out)) {
@@ -743,7 +713,7 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       });
     }
 
-    // Bottom-up: lay out each level now that the sizes of its groups are known.
+    // Lay out children first so their sizes are known.
     for (let q = order.length - 1; q >= 0; q--) {
       const level = order[q];
       const group = level.id >= 0 ? nodes[level.id] : undefined;
@@ -831,7 +801,6 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       }
     }
 
-    // Top-down again: turn positions inside each box into diagram coordinates.
     for (const level of order) {
       const ox = level.x;
       const oy = level.y;
@@ -882,10 +851,7 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       }
     }
   };
-  // The groups are laid out in the order of the flat layout. Where that crosses much more than
-  // the flat layout did, they are laid out again in their own order too, and whichever crosses
-  // less is kept: the flat layout does not see the groups as the boxes they are drawn as, and
-  // now and then its order does not suit them.
+  // The flat layout ignores group boxes, so independent ordering may yield fewer crossings.
   const style = styleOf(opt);
   keyed = flat;
   place();
@@ -904,11 +870,8 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
     }
   }
 
-  // The groups were laid out from the inside out, so the ports on a group's border are in an order
-  // that only guesses where their edges go once they leave it. Where the ports on the far side of
-  // a group are not in the order of where their edges went, the drawing is laid out again with
-  // them in that order, and kept if that crosses less. Not where the groups kept their own order
-  // instead, where it gains little for the time it takes.
+  // Refine port order using routes outside each group. Skip this if independent ordering won;
+  // it rarely helps enough to justify another layout.
   if (keyed === flat && ordered) {
     let again = false;
     for (const level of order) {
@@ -916,12 +879,10 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       const box = nodes[level.id];
       const vertical = level.dir === 'TB' || level.dir === 'BT';
       const end = opposite(startSide(level.dir));
-      // Where each port is across the flow, and where its edge goes.
       const seen: number[][] = [];
       for (const port of level.ports) {
         if (port.side !== end) continue;
-        // The port's place in the route, and the first point after it, outside the group, that
-        // is not in line with it: where the edge turns to, past a straight run out of the port.
+        // Skip the straight run out of the port to find where the edge turns.
         const route = edges[port.e].route;
         const bx = level.x + port.px;
         const by = level.y + port.py;
