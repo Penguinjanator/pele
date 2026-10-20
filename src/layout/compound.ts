@@ -143,33 +143,44 @@ const FAN = 24;
 const IN_LINE = 0.5;
 const CURVE_PIECES = 4;
 export function routeCrossings(nodes: CNode[], edges: CEdge[]): number {
-  const ax: number[] = [];
-  const ay: number[] = [];
-  const bx: number[] = [];
-  const by: number[] = [];
-  const owner: number[] = [];
+  let size = 0;
+  for (const e of edges) if (e.src !== e.dst && e.route.length > 3) size += (e.route.length / 3 - 1) * CURVE_PIECES;
+  const ax = new Float64Array(size);
+  const ay = new Float64Array(size);
+  const bx = new Float64Array(size);
+  const by = new Float64Array(size);
+  const low = new Float64Array(size);
+  const high = new Float64Array(size);
+  const owner = new Int32Array(size);
   // 1 for a piece of the first part of a route, 2 for one of the last.
-  const ends: number[] = [];
-  edges.forEach((e, ei) => {
-    if (e.src === e.dst) return;
+  const ends = new Uint8Array(size);
+  let count = 0;
+  let top = Infinity;
+  let bottom = -Infinity;
+  const add = (ei: number, part: number, x0: number, y0: number, x1: number, y1: number): void => {
+    ends[count] = part;
+    ax[count] = Math.min(x0, x1);
+    bx[count] = Math.max(x0, x1);
+    ay[count] = x0 <= x1 ? y0 : y1;
+    by[count] = x0 <= x1 ? y1 : y0;
+    low[count] = Math.min(y0, y1);
+    high[count] = Math.max(y0, y1);
+    if (low[count] < top) top = low[count];
+    if (high[count] > bottom) bottom = high[count];
+    owner[count++] = ei;
+  };
+  for (let ei = 0; ei < edges.length; ei++) {
+    const e = edges[ei];
+    if (e.src === e.dst) continue;
     const r = e.route;
-    let part = 0;
-    const add = (x0: number, y0: number, x1: number, y1: number): void => {
-      ends.push(part);
-      ax.push(Math.min(x0, x1));
-      bx.push(Math.max(x0, x1));
-      ay.push(x0 <= x1 ? y0 : y1);
-      by.push(x0 <= x1 ? y1 : y0);
-      owner.push(ei);
-    };
     for (let k = 3; k < r.length; k += 3) {
-      part = (k === 3 ? 1 : 0) | (k === r.length - 3 ? 2 : 0);
+      const part = (k === 3 ? 1 : 0) | (k === r.length - 3 ? 2 : 0);
       const x0 = r[k - 3];
       const y0 = r[k - 2];
       const x1 = r[k];
       const y1 = r[k + 1];
       if (Math.abs(x1 - x0) < 0.01 || Math.abs(y1 - y0) < 0.01) {
-        add(x0, y0, x1, y1);
+        add(ei, part, x0, y0, x1, y1);
         continue;
       }
       // An S along the flow, as the drawing has it, in a few straight pieces.
@@ -184,57 +195,77 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[]): number {
         const along = 3 * c * t * u * u + 3 * (1 - c) * t * t * u + t * t * t;
         const x = x0 + (x1 - x0) * (down ? across : along);
         const y = y0 + (y1 - y0) * (down ? along : across);
-        add(px, py, x, y);
+        add(ei, part, px, py, x, y);
         px = x;
         py = y;
       }
     }
-  });
-  const near = (v: number, x: number, y: number): boolean => Math.abs(x - nodes[v].x) < nodes[v].w / 2 + FAN && Math.abs(y - nodes[v].y) < nodes[v].h / 2 + FAN;
-  const ids = Int32Array.from(ax, (_, i) => i).sort((p, q) => ax[p] - ax[q] || p - q);
-  const count = ids.length;
-  const left = new Float64Array(count);
-  const right = new Float64Array(count);
-  const low = new Float64Array(count);
-  const high = new Float64Array(count);
-  for (let i = 0; i < count; i++) {
-    const p = ids[i];
-    left[i] = ax[p];
-    right[i] = bx[p];
-    low[i] = Math.min(ay[p], by[p]);
-    high[i] = Math.max(ay[p], by[p]);
   }
+  // The pieces in order of their left ends, and of where they were added among those level.
+  const sorted = ax.slice(0, count).sort();
+  const ids = new Int32Array(count);
+  const taken = new Int32Array(count);
+  for (let p = 0; p < count; p++) {
+    let lo = 0;
+    let hi = count;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (sorted[mid] < ax[p]) lo = mid + 1;
+      else hi = mid;
+    }
+    ids[lo + taken[lo]++] = p;
+  }
+  // Bands across the drawing, each swept from left to right on its own. A pair of pieces is
+  // looked at in the band that the lower of their tops falls in.
+  const bands = bottom > top ? Math.round(Math.sqrt(count)) : 1;
+  const scale = bottom > top ? bands / (bottom - top) : 0;
+  const bandOf = (y: number): number => Math.min(bands - 1, Math.floor((y - top) * scale));
+  const first = new Int32Array(count);
+  const bandStart = new Int32Array(bands + 1);
+  for (let p = 0; p < count; p++) {
+    first[p] = bandOf(low[p]);
+    for (let b = first[p], last = bandOf(high[p]); b <= last; b++) bandStart[b + 1]++;
+  }
+  for (let b = 0; b < bands; b++) bandStart[b + 1] += bandStart[b];
+  const fill = bandStart.slice(0, bands);
+  const inBand = new Int32Array(bandStart[bands]);
+  for (const p of ids) for (let b = first[p], last = bandOf(high[p]); b <= last; b++) inBand[fill[b]++] = p;
   let total = 0;
-  for (let i = 0; i < count; i++) {
-    const p = ids[i];
-    const dx = bx[p] - ax[p];
-    const dy = by[p] - ay[p];
-    for (let j = i + 1; j < count && left[j] <= right[i]; j++) {
-      if (high[j] < low[i] || low[j] > high[i]) continue;
-      const q = ids[j];
-      if (owner[p] === owner[q]) continue;
-      const d1 = dx * (ay[q] - ay[p]) - dy * (ax[q] - ax[p]);
-      const d2 = dx * (by[q] - ay[p]) - dy * (bx[q] - ax[p]);
-      // A point that lies on the other line counts as on one side of it, so that a crossing at
-      // the end of one piece is counted once, in one of the two pieces it joins.
-      if (d1 > 0 === (d2 > 0)) continue;
-      const ex = bx[q] - ax[q];
-      const ey = by[q] - ay[q];
-      const d3 = ex * (ay[p] - ay[q]) - ey * (ax[p] - ax[q]);
-      const d4 = ex * (by[p] - ay[q]) - ey * (bx[p] - ax[q]);
-      if (d3 > 0 === (d4 > 0)) continue;
-      const ep = edges[owner[p]];
-      const eq = edges[owner[q]];
-      const t = d3 / (d3 - d4);
-      const x = ax[p] + t * dx;
-      const y = ay[p] + t * dy;
-      // Where two edges meet at a node, the parts of them that lead to it fan in.
-      const fan = (v: number, pe: number, qe: number): boolean => near(v, x, y) || ((ends[p] & pe) !== 0 && (ends[q] & qe) !== 0);
-      if (ep.src === eq.src && fan(ep.src, 1, 1)) continue;
-      if (ep.src === eq.dst && fan(ep.src, 1, 2)) continue;
-      if (ep.dst === eq.src && fan(ep.dst, 2, 1)) continue;
-      if (ep.dst === eq.dst && fan(ep.dst, 2, 2)) continue;
-      total++;
+  for (let band = 0; band < bands; band++) {
+    const bandEnd = bandStart[band + 1];
+    for (let s = bandStart[band]; s < bandEnd; s++) {
+      const p = inBand[s];
+      const dx = bx[p] - ax[p];
+      const dy = by[p] - ay[p];
+      const here = first[p] === band;
+      for (let t = s + 1; t < bandEnd; t++) {
+        const q = inBand[t];
+        if (ax[q] > bx[p]) break;
+        if (high[q] < low[p] || low[q] > high[p] || owner[p] === owner[q] || (!here && first[q] !== band)) continue;
+        const d1 = dx * (ay[q] - ay[p]) - dy * (ax[q] - ax[p]);
+        const d2 = dx * (by[q] - ay[p]) - dy * (bx[q] - ax[p]);
+        // A point that lies on the other line counts as on one side of it, so that a crossing at
+        // the end of one piece is counted once, in one of the two pieces it joins.
+        if (d1 > 0 === (d2 > 0)) continue;
+        const ex = bx[q] - ax[q];
+        const ey = by[q] - ay[q];
+        const d3 = ex * (ay[p] - ay[q]) - ey * (ax[p] - ax[q]);
+        const d4 = ex * (by[p] - ay[q]) - ey * (bx[p] - ax[q]);
+        if (d3 > 0 === (d4 > 0)) continue;
+        const ep = edges[owner[p]];
+        const eq = edges[owner[q]];
+        const at = d3 / (d3 - d4);
+        const x = ax[p] + at * dx;
+        const y = ay[p] + at * dy;
+        // Where two edges meet at a node, the parts of them that lead to it fan in.
+        const fan = (v: number, pe: number, qe: number): boolean =>
+          ((ends[p] & pe) !== 0 && (ends[q] & qe) !== 0) || (Math.abs(x - nodes[v].x) < nodes[v].w / 2 + FAN && Math.abs(y - nodes[v].y) < nodes[v].h / 2 + FAN);
+        if (ep.src === eq.src && fan(ep.src, 1, 1)) continue;
+        if (ep.src === eq.dst && fan(ep.src, 1, 2)) continue;
+        if (ep.dst === eq.src && fan(ep.dst, 2, 1)) continue;
+        if (ep.dst === eq.dst && fan(ep.dst, 2, 2)) continue;
+        total++;
+      }
     }
   }
   return total;
