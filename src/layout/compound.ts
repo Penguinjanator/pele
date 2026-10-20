@@ -1,4 +1,4 @@
-import { Kind, ease, layered, ledge, lnode, orient, rank, type LEdge, type LNode, type LayeredOptions } from './layered.js';
+import { Kind, ease, layered, ledge, lnode, orient, rank, type LEdge, type LNode, type LayeredOptions, type LayeredResult } from './layered.js';
 
 export type Dir = 'TB' | 'BT' | 'LR' | 'RL';
 
@@ -493,6 +493,9 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
     return { lnodes, ledges, dummies };
   };
 
+  // Whether the drawing is small enough to be laid out more than once.
+  const ordered = ports > 1 && ports <= MAX_ORDERED_PORTS && edges.length <= MAX_ORDERED_EDGES;
+
   // Where each node sits across the flow in a layout of the whole drawing as one flat graph, in
   // which the nodes of each group stay side by side. The groups are laid out one at a time, each
   // on its own, so this is what gives them an order for their nodes, and for the ports on the far
@@ -502,7 +505,7 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
   let keyed = false;
   let flatCrossings = 0;
   let farHint: ((level: Level, port: PortEdge) => number) | undefined;
-  let flat = order.length > 1 && ports > 1 && edges.length <= MAX_ORDERED_EDGES && ports <= MAX_ORDERED_PORTS;
+  let flat = order.length > 1 && ordered;
   for (const level of order) if (level.dir !== rootDir) flat = false;
   if (flat) {
     const vertical = rootDir === 'TB' || rootDir === 'BT';
@@ -565,6 +568,27 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
     };
   }
 
+  // What each level's layout was given and gave back, every time it was laid out, where the
+  // drawing may be laid out again. A level given the same again, as it is where neither its ports
+  // nor its groups changed, comes out the same.
+  const laid = new Map<number, { given: number[]; lnodes: LNode[]; ledges: LEdge[]; size: LayeredResult }[]>();
+  const layOut = (level: Level, lnodes: LNode[], ledges: LEdge[]): { lnodes: LNode[]; ledges: LEdge[]; size: LayeredResult } => {
+    if (!ordered) return { lnodes, ledges, size: layered(lnodes, ledges, opt) };
+    const given: number[] = [];
+    for (const ln of lnodes) given.push(ln.w, ln.h, ln.kind, ln.pin, ln.hint, ln.key, ln.span);
+    for (const le of ledges) given.push(le.tail, le.head, le.minlen, le.labelW, le.labelH, le.tailDx, le.headDx, +le.tailFixed, +le.headFixed);
+    let past = laid.get(level.id);
+    if (!past) laid.set(level.id, (past = []));
+    for (const p of past) {
+      let same = p.given.length === given.length;
+      for (let i = 0; same && i < given.length; i++) same = Object.is(p.given[i], given[i]);
+      if (same) return p;
+    }
+    const done = { given, lnodes, ledges, size: layered(lnodes, ledges, opt) };
+    past.push(done);
+    return done;
+  };
+
   let total: CompoundResult = { width: 0, height: 0 };
   const place = (): void => {
     // Top-down: rank each level to learn which side of a group every crossing edge leaves from.
@@ -603,8 +627,9 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       const group = level.id >= 0 ? nodes[level.id] : undefined;
       const vertical = level.dir === 'TB' || level.dir === 'BT';
       const flip = level.dir === 'BT' || level.dir === 'RL';
-      const { lnodes, ledges, dummies } = build(level, true);
-      const size = layered(lnodes, ledges, opt);
+      const built = build(level, true);
+      const { lnodes, ledges, size } = layOut(level, built.lnodes, built.ledges);
+      const dummies = built.dummies;
       const contentW = vertical ? size.width : size.height;
       const contentH = vertical ? size.height : size.width;
       const padX = group ? group.padX : 0;
@@ -760,7 +785,7 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
   // that only guesses where their edges go once they leave it. Where more than one edge passes the
   // far side of a group, the drawing is laid out again with those ports in the order of where
   // their edges went the first time, and kept if that crosses less.
-  if (ports > 1 && ports <= MAX_ORDERED_PORTS && edges.length <= MAX_ORDERED_EDGES) {
+  if (ordered) {
     let again = false;
     for (const level of order) {
       if (level.id < 0) continue;
