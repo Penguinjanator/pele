@@ -83,8 +83,8 @@ function pushIcons(line: Span[], text: string, style: number): void {
 }
 
 // Splits inline HTML and, for markdown labels, emphasis markers into styled spans.
-function inline(line: Span[], source: string, markdown: boolean, base: number): void {
-  let style = base;
+function inline(line: Span[], source: string, markdown: boolean, base: number, htmlStyle: number): number {
+  let style = htmlStyle;
   let marked = 0;
   let text = '';
   let i = 0;
@@ -104,6 +104,7 @@ function inline(line: Span[], source: string, markdown: boolean, base: number): 
         const bit = tag === 'b' || tag === 'strong' ? Style.Bold : tag === 'i' || tag === 'em' ? Style.Italic : 0;
         if (bit) {
           flush();
+          htmlStyle = closing ? (htmlStyle & ~bit) | (base & bit) : htmlStyle | bit;
           style = closing ? (style & ~bit) | (base & bit) : style | bit;
         }
         i += m[0].length;
@@ -131,6 +132,7 @@ function inline(line: Span[], source: string, markdown: boolean, base: number): 
     i++;
   }
   flush();
+  return htmlStyle;
 }
 
 function measureSpans(line: Span[], measurer: TextMeasurer, size: number): number {
@@ -227,9 +229,11 @@ export function layoutLabel(
   const lines: Span[][] = [];
   const widths: number[] = [];
   let width = 0;
+  // HTML tags can span explicit breaks; Markdown emphasis stays local to each line.
+  let htmlStyle = base;
   for (const part of source.split(RE_BREAK)) {
     const line: Span[] = [];
-    inline(line, part.trim(), markdown, base);
+    htmlStyle = inline(line, part.trim(), markdown, base, htmlStyle);
     const w = measureSpans(line, measurer, size);
     if (w > maxWidth) {
       wrap(line, measurer, size, maxWidth, lines, widths);
