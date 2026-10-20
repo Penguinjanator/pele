@@ -142,6 +142,8 @@ const FAN = 24;
 // How far out of line two points may be and still count as in line.
 const IN_LINE = 0.5;
 const CURVE_PIECES = 4;
+// The most pieces in a band that are put in order one at a time.
+const MAX_INSERT = 128;
 export function routeCrossings(nodes: CNode[], edges: CEdge[]): number {
   let size = 0;
   for (const e of edges) if (e.src !== e.dst && e.route.length > 3) size += (e.route.length / 3 - 1) * CURVE_PIECES;
@@ -201,20 +203,6 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[]): number {
       }
     }
   }
-  // The pieces in order of their left ends, and of where they were added among those level.
-  const sorted = ax.slice(0, count).sort();
-  const ids = new Int32Array(count);
-  const taken = new Int32Array(count);
-  for (let p = 0; p < count; p++) {
-    let lo = 0;
-    let hi = count;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (sorted[mid] < ax[p]) lo = mid + 1;
-      else hi = mid;
-    }
-    ids[lo + taken[lo]++] = p;
-  }
   // Bands across the drawing, each swept from left to right on its own. A pair of pieces is
   // looked at in the band that the lower of their tops falls in.
   const bands = bottom > top ? Math.round(Math.sqrt(count)) : 1;
@@ -229,10 +217,20 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[]): number {
   for (let b = 0; b < bands; b++) bandStart[b + 1] += bandStart[b];
   const fill = bandStart.slice(0, bands);
   const inBand = new Int32Array(bandStart[bands]);
-  for (const p of ids) for (let b = first[p], last = bandOf(high[p]); b <= last; b++) inBand[fill[b]++] = p;
+  for (let p = 0; p < count; p++) for (let b = first[p], last = bandOf(high[p]); b <= last; b++) inBand[fill[b]++] = p;
   let total = 0;
   for (let band = 0; band < bands; band++) {
     const bandEnd = bandStart[band + 1];
+    // In order of the pieces' left ends, and of where they were added among those level.
+    if (bandEnd - bandStart[band] > MAX_INSERT) inBand.subarray(bandStart[band], bandEnd).sort((p, q) => ax[p] - ax[q] || p - q);
+    else {
+      for (let i = bandStart[band] + 1; i < bandEnd; i++) {
+        const p = inBand[i];
+        let j = i;
+        for (; j > bandStart[band] && ax[inBand[j - 1]] > ax[p]; j--) inBand[j] = inBand[j - 1];
+        inBand[j] = p;
+      }
+    }
     for (let s = bandStart[band]; s < bandEnd; s++) {
       const p = inBand[s];
       const dx = bx[p] - ax[p];
