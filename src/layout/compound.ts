@@ -782,9 +782,9 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
   }
 
   // The groups were laid out from the inside out, so the ports on a group's border are in an order
-  // that only guesses where their edges go once they leave it. Where more than one edge passes the
-  // far side of a group, the drawing is laid out again with those ports in the order of where
-  // their edges went the first time, and kept if that crosses less.
+  // that only guesses where their edges go once they leave it. Where the ports on the far side of
+  // a group are not in the order of where their edges went, the drawing is laid out again with
+  // them in that order, and kept if that crosses less.
   if (ordered) {
     let again = false;
     for (const level of order) {
@@ -792,7 +792,8 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       const box = nodes[level.id];
       const vertical = level.dir === 'TB' || level.dir === 'BT';
       const end = opposite(startSide(level.dir));
-      let count = 0;
+      // Where each port is across the flow, and where its edge goes.
+      const seen: number[][] = [];
       for (const port of level.ports) {
         if (port.side !== end) continue;
         // The port's place in the route, and the first point after it, outside the group, that
@@ -808,9 +809,10 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
         while (next >= 0 && next < route.length && Math.abs(route[next + a] - route[at + a]) < IN_LINE) next += port.out ? 3 : -3;
         if (next < 0 || next >= route.length) continue;
         port.hint = route[next + a] - (vertical ? box.x - box.w / 2 : box.y - box.h / 2);
-        count++;
+        seen.push([vertical ? port.px : port.py, port.hint]);
       }
-      if (count > 1) again = true;
+      seen.sort((p, q) => p[0] - q[0]);
+      for (let i = 1; i < seen.length; i++) if (seen[i - 1][1] > seen[i][1]) again = true;
     }
     if (again) {
       const before = crossings >= 0 ? crossings : routeCrossings(nodes, edges);
