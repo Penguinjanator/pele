@@ -633,7 +633,10 @@ export function compoundLayout(nodes: CNode[], edges: CEdge[], rootDir: Dir, opt
       ledgeOf[ei] = ledges.length;
       ledges.push(ledge(leaf[e.src], leaf[e.dst], e.minlen, vertical ? e.labelW : e.labelH, vertical ? e.labelH : e.labelW));
     });
-    flatCrossings = layered(lnodes, ledges, { ...opt, groups: { of: Int32Array.from(of), parent: Int32Array.from(parent) }, orderOnly: true }).crossings ?? 0;
+    const flatLayout = layered(lnodes, ledges, { ...opt, groups: { of: Int32Array.from(of), parent: Int32Array.from(parent) }, orderOnly: true });
+    // The fewest crossings the drawing has been seen to need as one flat graph: in the order of
+    // the flat layout, or in the order it was written, where groups are not kept together.
+    flatCrossings = Math.min(flatLayout.crossings ?? 0, flatLayout.declared ?? 0);
     const sum = new Float64Array(n);
     const count = new Int32Array(n);
     // The last rank each group reaches.

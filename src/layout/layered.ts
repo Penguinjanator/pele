@@ -96,8 +96,10 @@ export interface LayeredOptions {
 export interface LayeredResult {
   width: number;
   height: number;
-  // With `orderOnly`, how often edges cross between ranks once the nodes are in order.
+  // With `orderOnly`, how often edges cross between ranks once the nodes are in order, and how
+  // often they did in the order the nodes came in, before any groups were put together.
   crossings?: number;
+  declared?: number;
 }
 
 export function lnode(w: number, h: number, kind: Kind = Kind.Node): LNode {
@@ -507,8 +509,9 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
   const g: Graph = { n, real, maxRank, W, KIND, RANK, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos, offsets, fixed, GRP, groupParent: opt.groups?.parent };
 
   let crossings = 0;
+  let declared = 0;
   if (segments > 0 && maxRank > 0) {
-    crossings = reduceCrossings(g, nodes);
+    [crossings, declared] = reduceCrossings(g, nodes);
     setPositions();
   }
   if (opt.orderOnly) {
@@ -524,7 +527,7 @@ export function layered(nodes: LNode[], edges: LEdge[], opt: LayeredOptions): La
       pts.push(RANK[b], at[b]);
       e.points = pts;
     }
-    return { width: 0, height: 0, crossings };
+    return { width: 0, height: 0, crossings, declared };
   }
 
   if (EFK && ETK) spread(g, nodes, EFK, ETK);
@@ -1651,12 +1654,13 @@ function pastLabels(g: Graph, xs: Float64Array, firstDummy: Int32Array, span: In
   }
 }
 
-// Orders the nodes of each rank to cross as little as it can, and returns how often edges cross.
-function reduceCrossings(g: Graph, nodes: LNode[]): number {
+// Orders the nodes of each rank to cross as little as it can. Returns how often edges cross in
+// that order, and how often they did in the order the nodes came in.
+function reduceCrossings(g: Graph, nodes: LNode[]): [number, number] {
   const { n, real, maxRank, W, EF, ET, EFD, ETD, succStart, succE, predStart, predE, layerStart, order, pos, offsets, fixed, GRP, groupParent } = g;
   let widest = 0;
   for (let r = 0; r <= maxRank; r++) widest = Math.max(widest, layerStart[r + 1] - layerStart[r]);
-  if (widest < 2) return 0;
+  if (widest < 2) return [0, 0];
   // With offsets, edges that reach one node at different offsets take separate places along it.
   const place = offsets ? new Int32Array(EF.length) : undefined;
   // Neither changes with the order: which of its node's places each edge reaches, counted from
@@ -1758,9 +1762,8 @@ function reduceCrossings(g: Graph, nodes: LNode[]): number {
     return total;
   };
 
-  let best = count();
-  if (best === 0) return 0;
-  const bestOrder = order.slice();
+  // How often edges cross in the order the nodes came in, before any groups are put together.
+  const declared = count();
   const bary = new Float64Array(n);
   const moving = new Int32Array(widest);
   const spare = new Int32Array(widest);
@@ -1829,6 +1832,12 @@ function reduceCrossings(g: Graph, nodes: LNode[]): number {
       arrange(r, at);
     }
   }
+  let best = GRP ? count() : declared;
+  if (best === 0) return [0, declared];
+  const bestOrder = order.slice();
+  // The order the nodes came in, with groups put together, is kept unless the sweeps find one
+  // that crosses less than it and less than the nodes did before that.
+  const start = Math.min(best, declared);
 
   const sweep = (down: boolean, biasRight: boolean): void => {
     const start = down ? predStart : succStart;
@@ -1946,7 +1955,6 @@ function reduceCrossings(g: Graph, nodes: LNode[]): number {
   // keeps more of the nodes in the order they were given is the less surprising.
   // Only for graphs small enough to be read node by node: a second run costs as much as the first.
   const initial = order.slice();
-  const start = best;
   const small = n <= 600;
   let chosen = bestOrder;
   let chosenOut = Infinity;
@@ -1987,15 +1995,17 @@ function reduceCrossings(g: Graph, nodes: LNode[]): number {
   order.set(chosen);
   settlePositions();
   bestOrder.set(chosen);
+  // With groups, the order kept can cross more than the count it was kept by.
+  if (GRP) best = count();
 
   // A drawing and its mirror image cross as often too. Of those two, likewise.
-  if (!small) return best;
-  for (let i = 0; i < real; i++) if (nodes[i].pin !== 0) return best;
-  if (chosenOut === 0 || fixed[0] || fixed[maxRank]) return best;
+  if (!small) return [best, declared];
+  for (let i = 0; i < real; i++) if (nodes[i].pin !== 0) return [best, declared];
+  if (chosenOut === 0 || fixed[0] || fixed[maxRank]) return [best, declared];
   for (let r = 0; r <= maxRank; r++) order.subarray(layerStart[r], layerStart[r + 1]).reverse();
   settlePositions();
   if (count() > best || outOfOrder() >= chosenOut) order.set(bestOrder);
-  return best;
+  return [best, declared];
 }
 
 // Half the room a node, bend or port takes across the flow, with its share of the gap beside it.
