@@ -137,7 +137,8 @@ function restore(s: Snapshot, nodes: CNode[], edges: CEdge[], levels: Level[]): 
 }
 
 // How often the routes of edges cross, taking each as straight lines between its points. Where
-// two edges meet at one node, they are not counted as crossing near it, where they fan out.
+// two edges meet at one node, they are not counted as crossing near it, where they fan out, or
+// where they join one straight run to it.
 const FAN = 24;
 // How far out of line two points may be and still count as in line.
 const IN_LINE = 0.5;
@@ -218,6 +219,32 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[]): number {
   const fill = bandStart.slice(0, bands);
   const inBand = new Int32Array(bandStart[bands]);
   for (let p = 0; p < count; p++) for (let b = first[p], last = bandOf(high[p]); b <= last; b++) inBand[fill[b]++] = p;
+  // The straight run each route leaves its first node by and the one it reaches its last node by.
+  // Edges that meet at a node and join into one run to it merge there rather than cross.
+  const runs = new Float64Array(edges.length * 8);
+  const inLine = (r: number[], a: number, b: number, c: number): boolean =>
+    (Math.abs(r[a] - r[b]) < IN_LINE && Math.abs(r[a] - r[c]) < IN_LINE) || (Math.abs(r[a + 1] - r[b + 1]) < IN_LINE && Math.abs(r[a + 1] - r[c + 1]) < IN_LINE);
+  for (let ei = 0; ei < edges.length; ei++) {
+    const r = edges[ei].route;
+    if (r.length < 6) continue;
+    let k = 3;
+    while (k + 3 < r.length && inLine(r, 0, k, k + 3)) k += 3;
+    const last = r.length - 3;
+    let j = last - 3;
+    while (j >= 3 && inLine(r, last, j, j - 3)) j -= 3;
+    runs.set([r[0], r[1], r[k], r[k + 1], r[j], r[j + 1], r[last], r[last + 1]], ei * 8);
+  }
+  // Whether a point lies on the first (1) or last (2) run of an edge's route.
+  const onRun = (ei: number, end: number, x: number, y: number): boolean => {
+    const o = ei * 8 + (end === 1 ? 0 : 4);
+    const x0 = runs[o];
+    const y0 = runs[o + 1];
+    const dx = runs[o + 2] - x0;
+    const dy = runs[o + 3] - y0;
+    const length = dx * dx + dy * dy;
+    const t = length > 0 ? Math.max(0, Math.min(1, ((x - x0) * dx + (y - y0) * dy) / length)) : 0;
+    return Math.hypot(x - x0 - t * dx, y - y0 - t * dy) < IN_LINE;
+  };
   let total = 0;
   for (let band = 0; band < bands; band++) {
     const bandEnd = bandStart[band + 1];
@@ -257,7 +284,9 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[]): number {
         const y = ay[p] + at * dy;
         // Where two edges meet at a node, the parts of them that lead to it fan in.
         const fan = (v: number, pe: number, qe: number): boolean =>
-          ((ends[p] & pe) !== 0 && (ends[q] & qe) !== 0) || (Math.abs(x - nodes[v].x) < nodes[v].w / 2 + FAN && Math.abs(y - nodes[v].y) < nodes[v].h / 2 + FAN);
+          ((ends[p] & pe) !== 0 && (ends[q] & qe) !== 0) ||
+          (Math.abs(x - nodes[v].x) < nodes[v].w / 2 + FAN && Math.abs(y - nodes[v].y) < nodes[v].h / 2 + FAN) ||
+          (onRun(owner[p], pe, x, y) && onRun(owner[q], qe, x, y));
         if (ep.src === eq.src && fan(ep.src, 1, 1)) continue;
         if (ep.src === eq.dst && fan(ep.src, 1, 2)) continue;
         if (ep.dst === eq.src && fan(ep.dst, 2, 1)) continue;

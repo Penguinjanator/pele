@@ -534,6 +534,36 @@ describe('compound layout', () => {
     return node;
   }
 
+  // The example from issue 3: two groups of steps, each of which all lead to one store in a third.
+  function fanIn(): { nodes: CNode[]; edges: CEdge[] } {
+    const nodes = [group(100), group(101), group(102), cnode(80, 60, 2)];
+    const edges: CEdge[] = [];
+    for (const g of [0, 1]) {
+      for (let i = 0; i < 5; i++) {
+        const v = nodes.length;
+        nodes.push(cnode(40, 40, g));
+        nodes[v].seq = v;
+        if (i > 0) edges.push(edge(v - 1, v));
+        edges.push(edge(v, 3));
+      }
+    }
+    return { nodes, edges };
+  }
+
+  it('does not count edges that join one straight run into the node they meet at as crossing', () => {
+    const nodes = [cnode(40, 40), cnode(40, 40), cnode(40, 40)];
+    nodes[1].x = 100;
+    nodes[2].x = 50;
+    nodes[2].y = 300;
+    const edges = [edge(0, 2), edge(1, 2)];
+    edges[0].route = [0, 20, 0, 0, 200, 0, 50, 200, 0, 50, 280, 0];
+    edges[1].route = [100, 20, 0, 100, 150, 0, 50, 150, 0, 50, 280, 0];
+    expect(routeCrossings(nodes, edges)).toBe(0);
+    const { nodes: fan, edges: into } = fanIn();
+    compoundLayout(fan, into, 'TB', { ...OPTIONS, tracks: true });
+    expect(routeCrossings(fan, into)).toBe(0);
+  });
+
   it('orders the ports on the far side of a group by where their edges go, so that a fan into one node does not cross between groups', () => {
     for (const dir of ['TB', 'LR'] as Dir[]) {
       // Two groups of steps, each of which sends an edge to one store in a third group.
