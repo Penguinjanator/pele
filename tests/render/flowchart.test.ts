@@ -91,6 +91,25 @@ describe('flowchart rendering', () => {
     expect(svg).toContain('two');
   });
 
+  it.each(['b', 'strong', 'i', 'em'])('keeps <%s> formatting across explicit line breaks', (tag) => {
+    for (const br of ['<br/>', '<br>', '<BR />', '\\n', '\n']) {
+      const source = `flowchart LR\n  A["<${tag}>First${br}Second</${tag}> plain${br}Third"]`;
+      const reopened = `flowchart LR\n  A["<${tag}>First</${tag}>${br}<${tag}>Second</${tag}> plain${br}Third"]`;
+      expect(render(source, options).svg, `${tag} across ${JSON.stringify(br)}`).toBe(render(reopened, options).svg);
+    }
+  });
+
+  it('keeps nested HTML formatting across breaks without changing other labels or the base style', () => {
+    const source = 'flowchart LR\n  A["<b><i>First<br/><br/>Second</i> bold</b> plain"] --> B[plain]';
+    const reopened = 'flowchart LR\n  A["<b><i>First</i></b><br/><br/><b><i>Second</i> bold</b> plain"] --> B[plain]';
+    for (const suffix of ['', '\n  style A font-weight:bold']) {
+      expect(render(source + suffix, options).svg).toBe(render(reopened + suffix, options).svg);
+    }
+    expect(render('flowchart LR\n A["<b>First<br/>Second"] --> B[plain]', options).svg).toBe(
+      render('flowchart LR\n A["<b>First</b><br/><b>Second</b>"] --> B[plain]', options).svg
+    );
+  });
+
   it('applies style, classDef and linkStyle', () => {
     const { svg } = render(
       'flowchart TD\n  A --> B\n  style A fill:#f9f,stroke:#333,stroke-width:4px,color:#fff\n  classDef warn fill:#ff0\n  class B warn\n  linkStyle 0 stroke:#f00,stroke-width:3px',
