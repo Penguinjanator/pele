@@ -142,7 +142,12 @@ function restore(s: Snapshot, nodes: CNode[], edges: CEdge[], levels: Level[]): 
 const FAN = 24;
 // How far out of line two points may be and still count as in line.
 const IN_LINE = 0.5;
-const CURVE_PIECES = 4;
+// The straight pieces a curve is taken as: an S, and a rounded corner, which turns half as far.
+const CURVE_PIECES = 3;
+const CORNER_PIECES = 2;
+// The most pieces one step of a route can make: a step at right angles, an S, or a straight run
+// into a rounded corner.
+const STEP_PIECES = Math.max(3, CURVE_PIECES, CORNER_PIECES + 1);
 // How far the handles of a rounded corner reach along its two legs, as the drawing has them.
 const HANDLE = 0.62;
 // The most pieces in a band that are put in order one at a time.
@@ -159,7 +164,7 @@ export function styleOf(opt: LayeredOptions): Style {
 }
 export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Curved): number {
   let size = 0;
-  for (const e of edges) if (e.src !== e.dst && e.route.length > 3) size += (e.route.length / 3 - 1) * (CURVE_PIECES + 1);
+  for (const e of edges) if (e.src !== e.dst && e.route.length > 3) size += (e.route.length / 3 - 1) * STEP_PIECES;
   const ax = new Float64Array(size);
   const ay = new Float64Array(size);
   const bx = new Float64Array(size);
@@ -250,8 +255,8 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
         const turn = part | (k + 3 === r.length - 3 ? 2 : 0);
         let px = sx;
         let py = sy;
-        for (let i = 1; i <= CURVE_PIECES; i++) {
-          const t = i / CURVE_PIECES;
+        for (let i = 1; i <= CORNER_PIECES; i++) {
+          const t = i / CORNER_PIECES;
           const u = 1 - t;
           const x = u * u * u * sx + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * atX;
           const y = u * u * u * sy + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * atY;
