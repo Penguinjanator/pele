@@ -40,8 +40,9 @@ const RE_ENTITY = /&(?:#(\d+)|#[xX]([0-9a-fA-F]+)|(\w+));/g;
 const OPEN = 'ﬂ°';
 const CLOSE = '¶ß';
 
-// Mermaid's placeholders run from `ﬂ°` to `¶ß`, with a second `°` marking a numeric code.
-function decodePlaceholders(text: string): string {
+// Mermaid's placeholders run from `ﬂ°` to `¶ß`, with a second `°` marking a numeric code. Like Mermaid, turn them
+// back into entities, so that each code is decoded once.
+function restorePlaceholders(text: string): string {
   let out = '';
   let last = 0;
   let from = text.indexOf(OPEN);
@@ -50,9 +51,7 @@ function decodePlaceholders(text: string): string {
     if (stop === -1) break;
     if (text[stop + 1] === 'ß') {
       const numeric = text[from + 2] === '°';
-      const body = text.slice(from + (numeric ? 3 : 2), stop);
-      const raw = text.slice(from, stop + 2);
-      out += text.slice(last, from) + (numeric ? codePoint(Number(body), raw) : (lookup(body) ?? '&' + body + ';'));
+      out += text.slice(last, from) + (numeric ? '&#' : '&') + text.slice(from + (numeric ? 3 : 2), stop) + ';';
       last = stop + 2;
     }
     from = text.indexOf(OPEN, stop + 1);
@@ -62,7 +61,7 @@ function decodePlaceholders(text: string): string {
 
 // Turns Mermaid's `#35;` / `#quot;` codes (as hidden by encodeEntities) and HTML entities into characters.
 export function decodeEntities(text: string): string {
-  if (text.includes(CLOSE)) text = decodePlaceholders(text);
+  if (text.includes(CLOSE)) text = restorePlaceholders(text);
   if (text.includes('&')) {
     text = text.replace(RE_ENTITY, (m, dec?: string, hex?: string, name?: string) => {
       if (dec) return codePoint(Number(dec), m);
