@@ -36,3 +36,15 @@ export function typeset(tex: string, size: number): MathMarkup | undefined {
   found.set(key, markup);
   return markup;
 }
+
+// Match Mermaid: diagram titles stay plain text.
+export function withoutMath<T>(run: () => T): T {
+  if (resolver === undefined) return run();
+  const outer = resolver;
+  resolver = undefined;
+  try {
+    return run();
+  } finally {
+    resolver = outer;
+  }
+}

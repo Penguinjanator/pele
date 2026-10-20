@@ -1,4 +1,5 @@
 import type { Config } from '../../preprocess.js';
+import { titleLabel } from '../../svg/title.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, marker } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
@@ -786,7 +787,9 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean)
 
   let minY = 0;
   let titleOut = '';
-  const title = text(db.title, size, false, tight ? titleRoom(options) : wrapW, Style.Bold);
+  const room = titleRoom(options);
+  const plainTitle = titleLabel(db.title, measurer, size, tight ? room : Infinity);
+  const title = tight ? breakLabel(plainTitle, measurer, Math.max(120, room)) : plainTitle;
   if (minX > maxX) extend(0, Math.max(title.width, 40));
   if (title.width > 0) {
     const cx = (minX + maxX) / 2;

@@ -1,4 +1,5 @@
 import type { Config } from '../../preprocess.js';
+import { titleLabel } from '../../svg/title.js';
 import { escText, labelSvg, num } from '../../svg/builder.js';
 import { edgeLabelSvg, marker, markerTrim, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
@@ -519,7 +520,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
     routes.push({ edge: drawn[i], points, loop: s === t ? k + 1 : 0, label, lx, ly });
   }
 
-  const title = layoutLabel(model.title, false, measurer, size, tight ? titleRoom(options) : 4000, Style.Bold);
+  const title = titleLabel(model.title, measurer, size, tight ? titleRoom(options) : 4000);
   const titleHeight = title.height > 0 ? title.height + 12 : 0;
   const inner = Math.max(maxX - minX, title.width);
   const ox = pad - minX + (inner - (maxX - minX)) / 2;

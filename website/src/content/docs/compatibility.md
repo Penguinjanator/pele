@@ -89,7 +89,7 @@ Pass an [`icons`](/api#renderoptions) resolver to supply custom icons such as `f
 
 ### Math
 
-Mermaid uses KaTeX to typeset TeX between `$$` delimiters in labels. In Pele, pass a [`math`](/api#math) resolver to use KaTeX, MathJax, or another typesetter in flowchart, swimlane, and sequence labels. Without a resolver, labels show the TeX source.
+Mermaid 12.1 uses KaTeX to typeset `$$...$$` in labels. Pass a [`math`](/api#math) resolver to typeset the same labels in Pele with KaTeX, Temml, MathJax, or another typesetter. If you don't pass a resolver, labels show the TeX source.
 
 ## Reporting differences
 

@@ -126,7 +126,7 @@ All options are optional.
 | `links` | `boolean` | Enables links. Defaults to `true`. |
 | `images` | `boolean` | Enables images. Defaults to `true`. |
 | `icons` | `(name: string) => string \| null \| undefined` | Supplies trusted SVG markup for icon names such as `fa:fa-car`. See [Security](/security#app-responsibilities). |
-| `math` | `(tex: string, size: number) => MathMarkup \| null \| undefined` | Typesets TeX between `$$` delimiters in flowchart, swimlane, and sequence labels. See [Math](#math). |
+| `math` | `(tex: string, size: number) => MathMarkup \| null \| undefined` | Typesets `$$...$$` in labels. See [Math](#math). |
 | `config` | `object` | Default Mermaid settings. Frontmatter and directives override them. Support varies by diagram type. |
 
 ### RenderResult
@@ -367,7 +367,7 @@ interface TextMeasurer {
 
 ## Math
 
-Pass a `math` resolver to typeset TeX between `$$` delimiters in flowchart, swimlane, and sequence labels. Pele doesn't include a typesetter. If you don't pass a resolver, or it doesn't return markup, labels show the TeX source.
+Pele doesn't include a typesetter, so pass a `math` resolver to typeset `$$...$$` in labels. It typesets the same labels as Mermaid 12.1 in flowchart, swimlane, sequence, state, class, ER, mindmap, kanban, block, requirement, and use case diagrams. As in Mermaid, class members and diagram titles stay as text. If you don't pass a resolver, or it doesn't return markup, labels show the TeX source.
 
 ```ts
 type MathResolver = (tex: string, size: number) => MathMarkup | null | undefined;

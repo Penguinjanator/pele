@@ -1,4 +1,5 @@
 import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode, type CompoundResult, type Dir } from '../../layout/compound.js';
+import { titleLabel } from '../../svg/title.js';
 import type { LayeredOptions } from '../../layout/layered.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
@@ -184,7 +185,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     ? variant.layout(cnodes, cedges, rootDir, layoutOptions, tight)
     : compoundLayout(cnodes, cedges, rootDir, layoutOptions);
 
-  const title = layoutLabel(db.title, false, measurer, size, tight ? titleRoom(options) : 4000, Style.Bold);
+  const title = titleLabel(db.title, measurer, size, tight ? titleRoom(options) : 4000);
   const titleHeight = title.height > 0 ? title.height + 12 : 0;
   const inner = Math.max(layout.width, title.width);
   const ox = pad + (inner - layout.width) / 2;

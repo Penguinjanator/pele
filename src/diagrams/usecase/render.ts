@@ -1,11 +1,12 @@
 import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode } from '../../layout/compound.js';
+import { titleLabel } from '../../svg/title.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num, type IconResolver } from '../../svg/builder.js';
 import { markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { classNames, resolveStyle, rounded, type ResolvedStyle } from '../../svg/theme.js';
-import { layoutLabel, type Label } from '../../text/label.js';
+import { labelLine, layoutLabel, lineMiddle, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
 import { runsAcross, turnToFit } from '../common/fit-width.js';
@@ -248,7 +249,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
           view.rows.push([key, value]);
           view.keyW = Math.max(view.keyW, key.width);
           valueW = Math.max(valueW, value.width);
-          view.h += Math.max(value.height, Math.round(small * 1.5)) + ROW_PAD;
+          view.h += Math.max(key.height, value.height, Math.round(small * 1.5)) + ROW_PAD;
         }
         // The root of an empty object has a value and no key, and then there is no key column.
         if (view.keyW > 0) view.keyW += 2 * CELL_PAD;
@@ -323,7 +324,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
     portSep: 20,
   });
 
-  const title = layoutLabel(model.title, false, measurer, size, 4000, Style.Bold);
+  const title = titleLabel(model.title, measurer, size, 4000);
   const titleHeight = title.height > 0 ? title.height + 12 : 0;
   const inner = Math.max(layout.width, title.width);
   const ox = pad + (inner - layout.width) / 2;
@@ -390,7 +391,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
       let lines = `M${num(x0)},${num(y)}H${num(x0 + w)}`;
       if (view.keyW > 0) lines += `M${num(x0 + view.keyW)},${num(y)}V${num(h / 2)}`;
       for (const [key, value] of view.rows) {
-        const rowH = Math.max(value.height, Math.round(small * 1.5)) + ROW_PAD;
+        const rowH = Math.max(key.height, value.height, Math.round(small * 1.5)) + ROW_PAD;
         cells +=
           labelSvg(key, x0 + CELL_PAD + key.width / 2, y + rowH / 2, ' class="pele-json-key" fill="var(--_m)"', icons) +
           leftLabel(value, x0 + view.keyW + CELL_PAD, y + rowH / 2, ` class="pele-json-value"${textAttrs}`, icons);
@@ -568,8 +569,7 @@ function leftLabel(label: Label, x: number, cy: number, attrs: string, icons: Ic
   if (label.lines.length < 2) return labelSvg(label, x + label.width / 2, cy, attrs, icons);
   let out = '';
   for (let i = 0; i < label.lines.length; i++) {
-    const line: Label = { ...label, lines: [label.lines[i]], widths: [label.widths[i]], height: label.lineHeight };
-    out += labelSvg(line, x + label.widths[i] / 2, cy - label.height / 2 + (i + 0.5) * label.lineHeight, attrs, icons);
+    out += labelSvg(labelLine(label, i), x + label.widths[i] / 2, cy - label.height / 2 + lineMiddle(label, i), attrs, icons);
   }
   return out;
 }

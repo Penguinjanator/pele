@@ -343,3 +343,24 @@ export function withHeights(label: Label): Label {
   for (const h of heights) height += h;
   return { ...label, heights, height };
 }
+
+export function hasMath(line: Span[]): boolean {
+  for (const span of line) if (span.math) return true;
+  return false;
+}
+
+export function lineMiddle(label: Label, i: number): number {
+  const heights = label.heights;
+  if (!heights) return (i + 0.5) * label.lineHeight;
+  let top = 0;
+  for (let k = 0; k < i; k++) top += heights[k];
+  return top + heights[i] / 2;
+}
+
+export function labelLine(label: Label, i: number): Label {
+  const width = label.widths[i];
+  const height = label.heights ? label.heights[i] : label.lineHeight;
+  const line: Label = { lines: [label.lines[i]], widths: [width], width, height, size: label.size, lineHeight: label.lineHeight };
+  if (height !== label.lineHeight) line.heights = [height];
+  return line;
+}

@@ -107,7 +107,8 @@ describe('math in labels', () => {
     const { asked, math } = recorder();
     const src = 'pie\n  "$$x$$" : 3';
     expect(render(src, { ...options, math }).svg).toBe(render(src, options).svg);
-    render('classDiagram\n  class A["$$x$$"]', { ...options, math });
+    render('timeline\n  2020 : $$x$$', { ...options, math });
+    render('gantt\n  section S\n    $$x$$ :a1, 2024-01-01, 3d', { ...options, math });
     expect(asked).toEqual([]);
   });
 
@@ -194,5 +195,107 @@ describe('math in labels', () => {
     const src = 'sequenceDiagram\n  A->>B: averyveryverylongwordthatmustbreak $$x$$ more\n  B->>A: ok';
     const narrow = { ...options, maxWidth: 220 };
     expect(render(src, { ...narrow, math: tall.math }).height - render(src, { ...narrow, math: short.math }).height).toBeGreaterThanOrEqual(40);
+  });
+});
+
+const COVERAGE: [string, string, string[]][] = [
+  [
+    'state',
+    'stateDiagram-v2\n  state "$$a$$" as s1\n  s1 : $$b$$\n  [*] --> s1 : $$c$$\n  note right of s1 : $$d$$\n  state "$$e$$" as C {\n    x --> y\n  }',
+    ['a', 'b', 'c', 'd', 'e'],
+  ],
+  ['class', 'classDiagram\n  class A {\n    <<$$a$$>>\n  }\n  note for A "$$b$$"\n  A "$$c$$" --> "1" B : $$d$$\n  class C["$$e$$"]', ['a', 'b', 'c', 'd', 'e']],
+  ['er', 'erDiagram\n  p["$$a$$"] {\n    string name "$$b$$"\n  }\n  p ||--o{ q : "$$c$$"', ['a', 'b', 'c']],
+  ['mindmap', 'mindmap\n  root(("$$a$$"))\n    $$b$$', ['a', 'b']],
+  ['kanban', 'kanban\n  todo["$$a$$"]\n    t1["$$b$$"]', ['a', 'b']],
+  ['block', 'block-beta\n  a["$$a$$"] b["$$b$$"]\n  a -- "$$c$$" --> b', ['a', 'b', 'c']],
+  [
+    'requirement',
+    'requirementDiagram\n  requirement "$$a$$" {\n    id: "$$b$$"\n    text: "$$c$$"\n  }\n  element e1 {\n    type: "$$d$$"\n    docref: "$$e$$"\n  }',
+    ['a', 'b', 'c', 'd', 'e'],
+  ],
+  ['usecase', 'usecase-beta\n  actor C("$$a$$")\n  systemBoundary "$$b$$"\n    U("$$c$$")\n  end\n  C --> U', ['a', 'b', 'c']],
+];
+
+describe('math in other diagram types', () => {
+  for (const [type, src, expected] of COVERAGE) {
+    it(`typesets the labels Mermaid typesets in ${type} diagrams`, () => {
+      const { asked, math } = recorder();
+      const { svg } = render(src, { ...options, math });
+      expect([...new Set(asked.map(([tex]) => tex))].sort()).toEqual(expected);
+      // Ignore attributes: IDs retain the TeX source.
+      expect(svg.replace(/"[^"]*"/g, '""')).not.toContain('$$');
+      assertWellFormed(svg);
+    });
+  }
+
+  it('leaves class members as text, as Mermaid does', () => {
+    const { asked, math } = recorder();
+    const { svg } = render('classDiagram\n  class A {\n    +$$m$$ int\n  }\n  A : $$n$$ text', { ...options, math });
+    expect(asked).toEqual([]);
+    expect(svg).toContain('$$m$$ int');
+    expect(svg).toContain('$$n$$ text');
+  });
+
+  it('leaves titles as text, as Mermaid does', () => {
+    for (const body of ['flowchart LR\n  A', 'sequenceDiagram\n  A->>B: hi', 'stateDiagram-v2\n  [*] --> s1', 'erDiagram\n  A ||--o{ B : has', 'kanban\n  todo[Todo]', 'mindmap\n  root']) {
+      const { asked, math } = recorder();
+      const { svg } = render(`---\ntitle: $$t$$\n---\n${body}`, { ...options, math });
+      expect(asked, body).toEqual([]);
+      expect(svg, body).toContain('$$t$$');
+    }
+  });
+
+  const TALL: [string, string][] = [
+    ['er', 'erDiagram\n  p {\n    string name "$$t$$<br/>after"\n  }'],
+    ['mindmap', 'mindmap\n  root\n    child["$$t$$<br/>after"]'],
+    ['kanban', 'kanban\n  todo[Todo]\n    t1["$$t$$<br/>after"]'],
+    ['requirement', 'requirementDiagram\n  requirement r1 {\n    id: 1\n    text: "$$t$$<br/>after"\n  }'],
+    ['usecase', 'usecase-beta\n  actor C("C")\n  U("`$$t$$\nafter`")\n  C --> U'],
+    ['state', 'stateDiagram-v2\n  s1 : $$t$$<br/>after'],
+    ['class', 'classDiagram\n  class A\n  note for A "$$t$$<br/>after"'],
+  ];
+  for (const [type, src] of TALL) {
+    it(`puts the line after tall math below it in ${type} diagrams`, () => {
+      const { math } = recorder(() => ({ svg: '', width: 30, height: 60 }));
+      const { svg } = render(src, { ...options, math });
+      const box = /<svg class="pele-math" x="[-\d.]+" y="([-\d.]+)" width="30" height="60"/.exec(svg);
+      const after = /y="([-\d.]+)"[^>]*>after</.exec(svg);
+      expect(box, type).not.toBeNull();
+      expect(after, type).not.toBeNull();
+      expect(Number(after![1]), type).toBeGreaterThan(Number(box![1]) + 60);
+    });
+  }
+
+  const spans = (svg: string): [number, number, number, number][] =>
+    [...svg.matchAll(/<svg class="pele-math" x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"/g)].map(
+      (m) => [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])]
+    );
+
+  it('makes room between classes for tall cardinalities at both ends of an edge', () => {
+    const { math } = recorder(() => ({ svg: '', width: 20, height: 40 }));
+    const { svg } = render('classDiagram\n  A "$$x$$" --> "$$y$$" B', { ...options, math });
+    const [first, second] = spans(svg).sort((a, b) => a[1] - b[1]);
+    expect(first[1] + first[3]).toBeLessThanOrEqual(second[1]);
+  });
+
+  it('gives a JSON row in a use case diagram the height of its key', () => {
+    const { math } = recorder(() => ({ svg: '', width: 20, height: 40 }));
+    const { svg } = render('usecase-beta\n  json Payload@{"$$x$$":1,"other":2}', { ...options, math });
+    const [key] = spans(svg);
+    const other = /y="([-\d.]+)"[^>]*>other</.exec(svg)!;
+    expect(Number(other[1]) - 14 * 0.35 - 14 * 0.75).toBeGreaterThanOrEqual(key[1] + key[3]);
+  });
+
+  it('widens kanban columns to hold math that cannot wrap', () => {
+    const { math } = recorder(() => ({ svg: '', width: 300, height: 30 }));
+    const { svg } = render('kanban\n  todo[Todo]\n    a["$$x$$"]\n  done[Done]\n    b[Other]', { ...options, math });
+    const card = /<rect width="([\d.]+)" height="[\d.]+" fill="var\(--_bg\)"/.exec(svg)!;
+    const [box] = spans(svg);
+    expect(box[0] + box[2]).toBeLessThanOrEqual(Number(card[1]));
+    expect(render('kanban\n  todo[Todo]\n    a[plain]', options).svg).toContain('<rect width="184"');
+    const narrow = render('kanban\n  todo[Todo]\n    a["$$x$$"]\n  done[Done]\n    b[Other]', { ...options, math, maxWidth: 240 }).svg;
+    const narrowCard = /<rect width="([\d.]+)" height="[\d.]+" fill="var\(--_bg\)"/.exec(narrow)!;
+    expect(spans(narrow)[0][0] + spans(narrow)[0][2]).toBeLessThanOrEqual(Number(narrowCard[1]));
   });
 });
