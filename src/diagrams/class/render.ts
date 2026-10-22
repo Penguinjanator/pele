@@ -1,4 +1,5 @@
 import { cnode, compoundLayout, direction, type CEdge, type CNode } from '../../layout/compound.js';
+import { wrapComponents } from '../../layout/components.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, struckTitle, titleCrossed, type Crossings } from '../../svg/cluster.js';
@@ -322,7 +323,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
   // which sits beside it on the side the line then bends toward, away from the neighbors that bend
   // the other way. Neighbors are set apart far enough for the text between them.
   const sides = new Map<number, End[]>();
-  const cards: { text: string; math: Label | undefined; x: number; y: number }[] = [];
+  const cards: { text: string; math: Label | undefined; x: number; y: number; w: number; h: number; parent: number }[] = [];
   const attach = (ce: CEdge, at: number, item: number, room: number, order: number): End | undefined => {
     const route = ce.route;
     const c = cnodes[item];
@@ -419,7 +420,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
   let minY = 0;
   let maxX = layout.width;
   let maxY = layout.height;
-  const card = (raw: string, width: number, x: number, y: number, side: number, after: boolean): void => {
+  const card = (parent: number, raw: string, width: number, x: number, y: number, side: number, after: boolean): void => {
     if (!raw) return;
     const math = mathText(raw, tiny);
     const h = math ? Math.max(tinyHeight, math.height) : tinyHeight;
@@ -432,7 +433,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
       cx += (after ? 1 : -1) * (9 + width / 2);
       cy += (side === 0 ? -1 : 1) * (3 + h / 2);
     }
-    cards.push({ text: decodeEntities(raw), math, x: cx, y: cy });
+    cards.push({ text: decodeEntities(raw), math, x: cx, y: cy, w: width, h, parent });
     minX = Math.min(minX, cx - width / 2);
     maxX = Math.max(maxX, cx + width / 2);
     minY = Math.min(minY, cy - h / 2);
@@ -452,14 +453,28 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
       const view = views[ce.src];
       const x = c.x + view.w / 2;
       const spread = Math.min(view.h / 2 - 4, 8 + k * 6);
-      card(edge.startLabelRight, startRoom[i], x, c.y - spread, 1, false);
-      card(edge.endLabelLeft, endRoom[i], x, c.y + spread, 1, true);
+      card(ce.src, edge.startLabelRight, startRoom[i], x, c.y - spread, 1, false);
+      card(ce.dst, edge.endLabelLeft, endRoom[i], x, c.y + spread, 1, true);
+      ce.labelX = c.x + view.w / 2 + LOOP + k * 8 + 4 + ce.labelW / 2;
+      ce.labelY = c.y;
     } else if (route.length >= 6) {
       const last = route.length - 3;
       const from = starts[i];
       const to = ends[i];
-      card(edge.startLabelRight, startRoom[i], route[0], route[1], from ? from.side : 2, from ? from.after : true);
-      card(edge.endLabelLeft, endRoom[i], route[last], route[last + 1], to ? to.side : 0, to ? to.after : true);
+      card(ce.src, edge.startLabelRight, startRoom[i], route[0], route[1], from ? from.side : 2, from ? from.after : true);
+      card(ce.dst, edge.endLabelLeft, endRoom[i], route[last], route[last + 1], to ? to.side : 0, to ? to.after : true);
+    }
+  }
+
+  const available = options.maxWidth;
+  if (available !== undefined && available > 0 && maxX - minX + 2 * pad > available) {
+    const cardNodes = cards.map((item) => ({ ...cnode(item.w, item.h, item.parent), x: item.x, y: item.y }));
+    const wrapped = wrapComponents(cnodes.concat(cardNodes), cedges, Math.max(1, available - 2 * pad), numberOption(conf, 'nodeSpacing', NODE_SEP));
+    if (wrapped) {
+      cards.forEach((item, i) => { item.x = cardNodes[i].x; item.y = cardNodes[i].y; });
+      minX = minY = 0;
+      maxX = wrapped.width;
+      maxY = wrapped.height;
     }
   }
 
@@ -600,8 +615,6 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
         edx: -1,
         edy: 0,
       };
-      ce.labelX = c.x + view.w / 2 + reach + 4 + ce.labelW / 2;
-      ce.labelY = c.y;
     } else {
       const route = ce.route;
       for (let k = 0; k < route.length; k += 3) {
