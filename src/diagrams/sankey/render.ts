@@ -14,7 +14,7 @@ const LABEL_GAP = 6;
 const VALUE_GAP = 15;
 const CAREFUL = 300;
 
-// Two 32-bit hashes, so that different gradients practically never share an id.
+// Two 32-bit hashes, so different gradients practically never share an id.
 function contentId(text: string): string {
   let a = 0x811c9dc5;
   let b = 5381;
@@ -91,7 +91,8 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
     }
   }
   const nodeStyle = (i: number): string => custom.get(model.nodes[i].id) ?? '';
-  const nodeColor = (i: number): string => /fill:([^;"]+)/.exec(nodeStyle(i))?.[1] ?? seriesColor(i);
+  // Match the whole fill to preserve semicolons in escaped entities.
+  const nodeColor = (i: number): string => /^ style="fill:(.*);"$/.exec(nodeStyle(i))?.[1] ?? seriesColor(i);
 
   // Labels sit beside the bars, on the side that faces the middle of the chart unless that
   // side is crowded.
@@ -177,9 +178,8 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
   });
 
   const fixed = linkColor === 'gradient' || linkColor === 'source' || linkColor === 'target' ? '' : fillStyle(linkColor);
-  // A gradient needs an id. Without an idPrefix every diagram on a page shares one, and Chrome
-  // then draws the first copy's gradient even when that copy is hidden or themed differently.
-  // A prefix with other characters could end the url() and void the whole fill.
+  // Without an idPrefix diagrams share gradient ids, and Chrome then uses a hidden or differently
+  // themed copy's gradient. Other characters would end the url() and void the whole fill.
   const idPrefix = options.idPrefix ?? '';
   const gradient = linkColor === 'gradient' && /^[\w-]+$/.test(idPrefix);
   const gradients = new Map<string, string>();
@@ -191,8 +191,8 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
     const x1 = nodes[link.target].x;
     let paint = `fill="${seriesColor(end)}"${fixed || nodeStyle(end)}`;
     if (gradient) {
-      // The id comes from what the gradient draws, so diagrams that share a prefix draw the same
-      // gradient for it. The colour after the url is used where the gradient is missing.
+      // Ids come from the gradient itself, so diagrams sharing a prefix agree on them. The colour
+      // after the url() is the fallback.
       const stops =
         `x1="${num(x0)}" x2="${num(x1)}"><stop offset="0" stop-color="${nodeColor(link.source)}"/>` +
         `<stop offset="1" stop-color="${nodeColor(link.target)}"/>`;

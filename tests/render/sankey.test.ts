@@ -113,7 +113,7 @@ describe('sankey rendering', () => {
 
   it('honours linkColor', () => {
     const link = (svg: string): string => /class="pele-sankey-link" data-id="a-&gt;b"[^>]*/.exec(svg)![0];
-    // Without an idPrefix there are no gradient ids, so a gradient link takes its source's colour.
+    // Without an idPrefix, gradient links take their source's colour.
     expect(link(render(BASIC, options).svg)).toContain('fill="var(--pele-series-1,#4c78a8)"');
     expect(link(render(configured('linkColor: gradient'), options).svg)).toContain('fill="var(--pele-series-1,#4c78a8)"');
     expect(link(render(configured('linkColor: source'), options).svg)).toContain('fill="var(--pele-series-1,#4c78a8)"');
@@ -147,6 +147,13 @@ describe('sankey rendering', () => {
     expect(svg).toContain('<stop offset="0" stop-color="#123456"/><stop offset="1" stop-color="var(--pele-series-2,#f58518)"/>');
     expect(svg).toMatch(/data-id="a-&gt;b"[^>]* fill="url\(#p_1-sankey-[a-z0-9]+\) #123456"/);
     expect(svg).not.toContain('url(#x)');
+  });
+
+  it('keeps escaped nodeColors whole in gradients', () => {
+    const { svg } = render(configured(`nodeColors:\n  a: 'red&blue'\n  b: 'x"y'`), { ...options, idPrefix: 'p1' });
+    assertWellFormed(svg);
+    expect(svg).toContain('<stop offset="0" stop-color="red&amp;blue"/><stop offset="1" stop-color="x&quot;y"/>');
+    expect(svg).toMatch(/data-id="a-&gt;b"[^>]* fill="url\(#p1-sankey-[a-z0-9]+\) red&amp;blue"/);
   });
 
   it('keeps links flat when the idPrefix could not appear in a url()', () => {
