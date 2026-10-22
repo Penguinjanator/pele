@@ -47,8 +47,11 @@ const CJK = '\\u2e80-\\u9fff\\uf900-\\ufaff\\uff00-\\uff60';
 const CLOSE = '、。，．：；！？）］｝」』】〕〉》〙〗ー…‥・ゝゞぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ,.:;!?)\\]}';
 const OPEN = '（［｛「『【〔〈《〘〖([{';
 const RE_CJK = new RegExp(`[${CJK}]`);
+// Break hints: a zero-width space, and a soft hyphen, which shows as '-' where a line breaks.
+const HINT = '\\u200b\\u00ad';
+const RE_HINT = new RegExp(`[${HINT}]`);
 const RE_PIECE = new RegExp(
-  `\\s*(?:[${OPEN}]*[${CJK}][${CLOSE}]*|[^\\s${CJK}]+[${CLOSE}]*)\\s*|\\s+`,
+  `\\s*(?:[${OPEN}]*[${CJK}][${CLOSE}]*|[^\\s${CJK}${HINT}]+[${HINT}]*[${CLOSE}]*|[${HINT}]+)\\s*|\\s+`,
   'g'
 );
 
@@ -211,10 +214,11 @@ function measureSpans(line: Span[], measurer: TextMeasurer, size: number): numbe
 function wrap(line: Span[], measurer: TextMeasurer, size: number, max: number, out: Span[][], widths: number[]): void {
   let current: Span[] = [];
   let width = 0;
-  const commit = (): void => {
+  const commit = (hyphen = false): void => {
     const last = current[current.length - 1];
     if (plain(last)) {
-      const trimmed = last.text.trimEnd();
+      let trimmed = last.text.trimEnd();
+      if (hyphen && last.text.endsWith('\u00ad')) trimmed = trimmed.slice(0, -1) + '-';
       if (trimmed !== last.text) {
         last.text = trimmed;
         const w = measurer.width(trimmed, size, last.style);
@@ -235,18 +239,43 @@ function wrap(line: Span[], measurer: TextMeasurer, size: number, max: number, o
       width += w;
       continue;
     }
-    for (const piece of span.text.match(RE_PIECE) ?? []) {
-      let part = piece;
-      if (width > 0 && width + measurer.width(part.trimEnd(), size, span.style) > max) {
-        commit();
+    const pieces = span.text.match(RE_PIECE) ?? [];
+    // A piece ending in a soft hyphen fits if its '-' does, or if the rest of the word does, which
+    // hides the hyphen. The line only grows along a word, so no later hyphen in it fits either,
+    // and the remaining width of each word makes this one check.
+    const soft = span.text.includes('\u00ad');
+    const n = soft ? pieces.length : 0;
+    const own = new Float64Array(n);
+    const rest = new Float64Array(n + 1);
+    for (let q = n - 1; q >= 0; q--) {
+      // A soft hyphen before a space is no break of its own: the space is.
+      const shy = pieces[q].endsWith('\u00ad');
+      const end = pieces[q].trimEnd();
+      own[q] = measurer.width(shy ? end.slice(0, -1) : end, size, span.style);
+      // Word width beyond this span is unknown.
+      rest[q] = !shy ? own[q] : q === n - 1 ? (span === line[line.length - 1] ? own[q] : Infinity) : own[q] + rest[q + 1];
+    }
+    for (let p = 0; p < pieces.length; p++) {
+      let part = pieces[p];
+      const partWidth = soft ? own[p] : measurer.width(part.trimEnd(), size, span.style);
+      const fits =
+        !soft || !part.endsWith('\u00ad')
+          ? width + partWidth <= max
+          : width + measurer.width(part.slice(0, -1) + '-', size, span.style) <= max || width + rest[p] <= max;
+      if (width > 0 && !fits) {
+        // Breaking at whitespace leaves a preceding soft hyphen hidden.
+        commit(part.trimStart() === part);
         part = part.trimStart();
       }
       const last = current[current.length - 1];
       if (plain(last) && last.style === span.style) {
         last.text += part;
-        last.width = measurer.width(last.text, size, last.style);
-        width = 0;
-        for (const s of current) width += s.width;
+        // Remeasuring for each zero-width piece would take quadratic time.
+        if (partWidth > 0 || part.trimEnd() !== part) {
+          const before = last.width;
+          last.width = measurer.width(last.text, size, last.style);
+          width += last.width - before;
+        }
       } else {
         const w = measurer.width(part, size, span.style);
         current.push({ text: part, style: span.style, width: w });
@@ -284,7 +313,7 @@ export function layoutLabel(
   if (!RE_MARKUP.test(raw) && !raw.includes('&') && !raw.includes('ﬂ')) {
     const text = raw.trim();
     const width = measurer.width(text, size, base);
-    if (width <= maxWidth || !(text.includes(' ') || RE_CJK.test(text))) {
+    if (width <= maxWidth || !(text.includes(' ') || RE_CJK.test(text) || RE_HINT.test(text))) {
       return {
         lines: [[{ text, style: base, width }]],
         widths: [width],
