@@ -12,6 +12,7 @@ import { layoutSankey, type Alignment } from './layout.js';
 
 const LABEL_GAP = 6;
 const VALUE_GAP = 15;
+const LABEL_ROOM = 1.8;
 const CAREFUL = 300;
 
 // Two 32-bit hashes, so different gradients practically never share an id.
@@ -52,13 +53,15 @@ function fillStyle(color: unknown): string {
 
 export function renderSankey(model: SankeyModel, config: Config, options: RenderOptions): Rendered {
   const conf = isRecord(config.sankey) ? config.sankey : {};
-  return fitWidth(options, numberOption(conf, 'width', 600, 1, 10000), 160, (chartWidth) => draw(model, conf, options, chartWidth));
+  const natural = numberOption(conf, 'width', 600, 1, 10000);
+  return fitWidth(options, natural, 160, (chartWidth) => draw(model, conf, options, chartWidth, natural));
 }
 
-function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWidth: number): Rendered {
+function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWidth: number, natural: number): Rendered {
   const size = options.fontSize ?? 16;
-  const small = Math.round(size * 0.875);
-  const lineHeight = small * 1.5;
+  const least = Math.round(size * 0.625);
+  // Labels shrink with a chart narrowed to fit, as they would if the whole picture were scaled down.
+  let small = Math.max(least, Math.round(size * 0.875 * Math.min(1, chartWidth / natural)));
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
   const pad = options.padding ?? 8;
 
@@ -74,14 +77,31 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
       : 'justify';
   const linkColor = typeof conf.linkColor === 'string' ? conf.linkColor : 'gradient';
 
-  const { nodes, links } = layoutSankey(model, {
-    width: chartWidth,
-    height: chartHeight,
-    nodeWidth,
-    nodePadding: numberOption(conf, 'nodePadding', 12, 0, 200) + (showValues ? VALUE_GAP : 0),
-    labelHeight: small * 1.15,
-    alignment,
-  });
+  const lay = (labelSize: number): ReturnType<typeof layoutSankey> =>
+    layoutSankey(model, {
+      width: chartWidth,
+      height: chartHeight,
+      nodeWidth,
+      nodePadding: numberOption(conf, 'nodePadding', 12, 0, 200) + (showValues ? VALUE_GAP : 0),
+      labelHeight: labelSize * 1.15,
+      alignment,
+    });
+  let layout = lay(small);
+  // Labels also shrink with the most crowded column, so each keeps about LABEL_ROOM lines.
+  const rows = new Map<number, number>();
+  let fullest = 1;
+  for (const node of layout.nodes) {
+    const count = (rows.get(node.layer) ?? 0) + 1;
+    rows.set(node.layer, count);
+    if (count > fullest) fullest = count;
+  }
+  const crowded = Math.max(least, Math.round(chartHeight / fullest / LABEL_ROOM));
+  if (crowded < small) {
+    small = crowded;
+    layout = lay(small);
+  }
+  const { nodes, links } = layout;
+  const lineHeight = small * 1.5;
 
   const custom = new Map<string, string>();
   if (isRecord(conf.nodeColors)) {

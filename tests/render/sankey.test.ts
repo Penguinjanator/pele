@@ -225,6 +225,18 @@ Upgraded to Pro,Stayed on Pro,284`;
     expect(gap(bar('E'))).toBeLessThan(gap(bar('C')));
   });
 
+  it('shrinks labels in narrow or crowded charts, down to 10px', () => {
+    const labelSize = (svg: string): number => Number(/class="pele-labels" font-size="(\d+)"/.exec(svg)![1]);
+    const fan = (n: number): string => 'sankey\n' + Array.from({ length: n }, (_, i) => `s${i},t,1\n`).join('');
+    expect(labelSize(render(BASIC, options).svg)).toBe(14);
+    expect(labelSize(render(fan(20), options).svg)).toBe(11);
+    expect(labelSize(render(fan(60), options).svg)).toBe(10);
+    const narrow = labelSize(render(BASIC, { ...options, maxWidth: 320 }).svg);
+    expect(narrow).toBeLessThan(14);
+    expect(narrow).toBeGreaterThanOrEqual(10);
+    expect(labelSize(render(fan(20), { ...options, fontSize: 32 }).svg)).toBe(20);
+  });
+
   it('grows the picture to hold labels that reach outside the chart', () => {
     const { width, svg } = render(configured('labelStyle: outlined', 'sankey\nA,Somewhere with a very long name indeed,1\n'), options);
     expect(width).toBeGreaterThan(800);
