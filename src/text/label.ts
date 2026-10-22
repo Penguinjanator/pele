@@ -24,6 +24,8 @@ export interface Label {
 }
 
 export const LINE_HEIGHT = 1.5;
+// Lines of one wrapped label sit closer, so the label reads as one block.
+const WRAPPED_LINE_HEIGHT = 1.3;
 
 const RE_BREAK = /<br\s*\/?>|\\n|\n/gi;
 const RE_TAG = /<\/?([a-zA-Z][\w-]*)(?:\s[^<>]*)?\/?>/y;
@@ -296,7 +298,8 @@ export function layoutLabel(
     wrap([{ text, style: base, width }], measurer, size, maxWidth, lines, widths);
     let widest = 0;
     for (const w of widths) if (w > widest) widest = w;
-    return { lines, widths, width: widest, height: lines.length * lineHeight, size, lineHeight };
+    const snug = lines.length > 1 ? Math.round(size * WRAPPED_LINE_HEIGHT) : lineHeight;
+    return { lines, widths, width: widest, height: lines.length * snug, size, lineHeight: snug };
   }
   return layoutMarkup(raw, markdown, measurer, size, maxWidth, base, lineHeight);
 }
@@ -348,7 +351,8 @@ function layoutLines(
     }
   }
   for (const w of widths) if (w > width) width = w;
-  return { lines, widths, width, height: lines.length * lineHeight, size, lineHeight };
+  const snug = lines.length > 1 ? Math.round(size * WRAPPED_LINE_HEIGHT) : lineHeight;
+  return { lines, widths, width, height: lines.length * snug, size, lineHeight: snug };
 }
 
 export function withHeights(label: Label): Label {
