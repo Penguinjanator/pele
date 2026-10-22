@@ -63,7 +63,7 @@ const BAR_STYLE =
   'width:auto;max-width:none;border:1px solid var(--_b);border-radius:var(--pele-radius,4px);background:var(--_bg);color:var(--_fg);line-height:0';
 const BUTTON_STYLE =
   'appearance:none;display:grid;place-items:center;width:24px;height:24px;margin:0;padding:0;border:0;' +
-  'border-radius:calc(var(--pele-radius,4px) - 1px);background:transparent;color:inherit;font:inherit;cursor:pointer';
+  'border-radius:calc(var(--pele-radius,4px) - 1px);background:transparent;color:inherit;font:inherit;cursor:var(--pele-zoom-cursor,pointer)';
 const ICONS = {
   zoomIn: 'M5 12h14M12 5v14',
   zoomOut: 'M5 12h14',
@@ -154,7 +154,7 @@ export function zoomWith(element: HTMLElement, options: ZoomOptions, observe: bo
       if (!button) return;
       button.disabled = off;
       button.style.opacity = off ? '0.35' : '';
-      button.style.cursor = off ? 'default' : 'pointer';
+      button.style.cursor = off ? 'default' : 'var(--pele-zoom-cursor,pointer)';
     };
     dim(buttons.zoomIn, (scale || fit()) >= most() * 0.999);
     dim(buttons.zoomOut, scale === 0);

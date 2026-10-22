@@ -256,7 +256,7 @@ const zoom = enableZoom(container);
 | `refresh()` | Call after replacing the SVG in the container. |
 | `destroy()` | Removes the behavior and resets the diagram. |
 
-The buttons use the diagram's color variables. Position them with `--pele-zoom-top`, `--pele-zoom-right`, `--pele-zoom-bottom`, and `--pele-zoom-left`.
+The buttons use the diagram's color variables. Position them with `--pele-zoom-top`, `--pele-zoom-right`, `--pele-zoom-bottom`, and `--pele-zoom-left`. `--pele-zoom-cursor` sets their cursor and defaults to `pointer`.
 
 ## parse
 
