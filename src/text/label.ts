@@ -29,6 +29,15 @@ const RE_BREAK = /<br\s*\/?>|\\n|\n/gi;
 const RE_TAG = /<\/?([a-zA-Z][\w-]*)(?:\s[^<>]*)?\/?>/y;
 const RE_ICON = /(fa[bklrs]?):fa-([\w-]+)/g;
 const RE_MARKUP = /[<\\\n*_]|fa[bklrs]?:fa-/;
+const TAG_STYLES = new Map([
+  ['b', Style.Bold],
+  ['strong', Style.Bold],
+  ['i', Style.Italic],
+  ['em', Style.Italic],
+  ['sub', Style.Sub],
+  ['sup', Style.Sup],
+]);
+const SHIFT = Style.Sub | Style.Sup;
 
 // Break between any two Chinese or Japanese characters. Hangul is left out: Korean puts spaces between words.
 const CJK = '\\u2e80-\\u9fff\\uf900-\\ufaff\\uff00-\\uff60';
@@ -124,15 +133,21 @@ function pushIcons(line: Span[], text: string, style: number): void {
   pushText(line, text.slice(last), style);
 }
 
+interface Open {
+  style: number;
+  // Sub/sup stack; only the innermost tag shifts text.
+  shifts: number[];
+}
+
 // Splits inline HTML and, for markdown labels, emphasis markers into styled spans.
-function inline(line: Span[], source: string, markdown: boolean, base: number, htmlStyle: number): number {
-  let style = htmlStyle;
+function inline(line: Span[], source: string, markdown: boolean, base: number, open: Open): void {
+  let style = open.style;
   let marked = 0;
   let text = '';
   let i = 0;
   const n = source.length;
   const flush = (): void => {
-    pushIcons(line, text, style);
+    pushIcons(line, text, style | (open.shifts[open.shifts.length - 1] ?? 0));
     text = '';
   };
   while (i < n) {
@@ -143,10 +158,15 @@ function inline(line: Span[], source: string, markdown: boolean, base: number, h
       if (m && m.index === i) {
         const tag = m[1].toLowerCase();
         const closing = source[i + 1] === '/';
-        const bit = tag === 'b' || tag === 'strong' ? Style.Bold : tag === 'i' || tag === 'em' ? Style.Italic : 0;
-        if (bit) {
+        const bit = TAG_STYLES.get(tag) ?? 0;
+        if (bit & SHIFT) {
           flush();
-          htmlStyle = closing ? (htmlStyle & ~bit) | (base & bit) : htmlStyle | bit;
+          const at = open.shifts.lastIndexOf(bit);
+          if (!closing) open.shifts.push(bit);
+          else if (at !== -1) open.shifts.splice(at, 1);
+        } else if (bit) {
+          flush();
+          open.style = closing ? (open.style & ~bit) | (base & bit) : open.style | bit;
           style = closing ? (style & ~bit) | (base & bit) : style | bit;
         }
         i += m[0].length;
@@ -174,7 +194,6 @@ function inline(line: Span[], source: string, markdown: boolean, base: number, h
     i++;
   }
   flush();
-  return htmlStyle;
 }
 
 function measureSpans(line: Span[], measurer: TextMeasurer, size: number): number {
@@ -316,10 +335,10 @@ function layoutLines(
   const widths: number[] = [];
   let width = 0;
   // HTML tags can span explicit breaks; Markdown emphasis stays local to each line.
-  let htmlStyle = base;
+  const open: Open = { style: base, shifts: [] };
   for (const part of source.split(RE_BREAK)) {
     const line: Span[] = [];
-    htmlStyle = inline(line, part.trim(), markdown, base, htmlStyle);
+    inline(line, part.trim(), markdown, base, open);
     const w = measureSpans(line, measurer, size);
     if (w > maxWidth) {
       wrap(line, measurer, size, maxWidth, lines, widths);

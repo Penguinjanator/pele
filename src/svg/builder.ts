@@ -135,9 +135,15 @@ function mathSvg(math: MathMarkup, box: string, size: number, attrs: string): st
 
 const BOLD = ' font-weight="var(--_w)"';
 const ITALIC = ' font-style="italic"';
+const SUB = ' baseline-shift="sub" font-size="smaller"';
+const SUP = ' baseline-shift="super" font-size="smaller"';
 
 export function spanStyle(style: number): string {
-  return (style & Style.Bold ? BOLD : '') + (style & Style.Italic ? ITALIC : '');
+  return (
+    (style & Style.Bold ? BOLD : '') +
+    (style & Style.Italic ? ITALIC : '') +
+    (style & Style.Sub ? SUB : style & Style.Sup ? SUP : '')
+  );
 }
 
 // The emphasis every span of a label has. It is written once, on the text element, where a
