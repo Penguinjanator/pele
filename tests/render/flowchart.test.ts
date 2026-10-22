@@ -85,6 +85,22 @@ describe('flowchart rendering', () => {
     assertWellFormed(svg);
   });
 
+  it('styles other inline tags as browsers do', () => {
+    const styles: [string, string][] = [
+      ['cite', 'font-style="italic"'],
+      ['dfn', 'font-style="italic"'],
+      ['var', 'font-style="italic"'],
+      ['kbd', 'font-family="var(--_fm)"'],
+      ['samp', 'font-family="var(--_fm)"'],
+      ['tt', 'font-family="var(--_fm)"'],
+      ['ins', 'text-decoration="underline"'],
+    ];
+    for (const [tag, attr] of styles) {
+      const { svg } = render(`flowchart LR\n  A["plain <${tag}>tagged</${tag}> plain"]`, options);
+      expect(svg, tag).toContain(`<tspan ${attr}>tagged</tspan>`);
+    }
+  });
+
   it('drops real HTML tags and keeps their text', () => {
     const { svg } = render('flowchart LR\n  A["<span title=x>red</span> and <small>print</small><img src=x>"]', options);
     expect(svg).toContain('red and print');

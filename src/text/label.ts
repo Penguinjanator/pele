@@ -36,10 +36,17 @@ const TAG_STYLES = new Map([
   ['strong', Style.Bold],
   ['i', Style.Italic],
   ['em', Style.Italic],
+  ['cite', Style.Italic],
+  ['dfn', Style.Italic],
+  ['var', Style.Italic],
   ['code', Style.Mono],
+  ['kbd', Style.Mono],
+  ['samp', Style.Mono],
+  ['tt', Style.Mono],
   ['sub', Style.Sub],
   ['sup', Style.Sup],
   ['u', Style.Underline],
+  ['ins', Style.Underline],
 ]);
 const SHIFT = Style.Sub | Style.Sup;
 const HTML_TAGS = new Set(
