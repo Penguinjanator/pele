@@ -13,7 +13,7 @@ import { linked, sanitizeUrl } from '../../util/url.js';
 import { leftLabelSvg } from '../common/literal-label.js';
 import type { C4Db } from './db.js';
 import { HEAD_LEFT, HEAD_TOP, layoutC4 } from './layout.js';
-import { HEAD, LANE, Lanes, crosses, cylRy, queueRx, route, type Box } from './route.js';
+import { HEAD, LABEL_PAD, LANE, Lanes, crosses, cylRy, queueRx, route, type Box } from './route.js';
 
 const PAIR_SHIFT = 7;
 const NARROW_GAP = 36;
@@ -163,7 +163,7 @@ function draw(db: C4Db, _config: Config, options: RenderOptions, tight: boolean,
     const text = (db.c4Type === 'C4Dynamic' ? index + 1 + ': ' : '') + rel.label;
     const label = layoutLabel(text, false, measurer, small, r.room);
     const techn = layoutLabel(rel.techn ? `[${rel.techn}]` : undefined, false, measurer, small, r.room, Style.Italic);
-    const lw = Math.max(label.width, techn.width) + 8;
+    const lw = Math.max(label.width, techn.width) + LABEL_PAD;
     const lh = label.height + techn.height;
     if (lh === 0) return;
 
