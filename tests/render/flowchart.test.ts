@@ -77,6 +77,14 @@ describe('flowchart rendering', () => {
     assertWellFormed(svg);
   });
 
+  it('underlines <u> text', () => {
+    const { svg } = render('flowchart LR\n  A["a <u>underlined</u> word"]\n  B["<u>all of it</u>"]', options);
+    expect(svg).toContain('<tspan text-decoration="underline">underlined</tspan>');
+    expect(svg).toMatch(/<tspan[^>]* text-decoration="underline">all of it<\/tspan>/);
+    expect(render('kanban\n  todo[Todo]\n    t1[<u>card</u>]', options).svg).toMatch(/text-decoration="underline"[^>]*>card</);
+    assertWellFormed(svg);
+  });
+
   it('drops real HTML tags and keeps their text', () => {
     const { svg } = render('flowchart LR\n  A["<span title=x>red</span> and <small>print</small><img src=x>"]', options);
     expect(svg).toContain('red and print');

@@ -39,6 +39,7 @@ const TAG_STYLES = new Map([
   ['code', Style.Mono],
   ['sub', Style.Sub],
   ['sup', Style.Sup],
+  ['u', Style.Underline],
 ]);
 const SHIFT = Style.Sub | Style.Sup;
 const HTML_TAGS = new Set(

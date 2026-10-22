@@ -135,6 +135,7 @@ function mathSvg(math: MathMarkup, box: string, size: number, attrs: string): st
 
 const BOLD = ' font-weight="var(--_w)"';
 const ITALIC = ' font-style="italic"';
+const UNDERLINE = ' text-decoration="underline"';
 const MONO = ' font-family="var(--_fm)"';
 const SUB = ' baseline-shift="sub" font-size="smaller"';
 const SUP = ' baseline-shift="super" font-size="smaller"';
@@ -144,6 +145,7 @@ export function spanStyle(style: number): string {
     (style & Style.Bold ? BOLD : '') +
     (style & Style.Italic ? ITALIC : '') +
     (style & Style.Mono ? MONO : '') +
+    (style & Style.Underline ? UNDERLINE : '') +
     (style & Style.Sub ? SUB : style & Style.Sup ? SUP : '')
   );
 }
