@@ -14,6 +14,18 @@ const LABEL_GAP = 6;
 const VALUE_GAP = 15;
 const CAREFUL = 300;
 
+// Two 32-bit hashes, so that different gradients practically never share an id.
+function contentId(text: string): string {
+  let a = 0x811c9dc5;
+  let b = 5381;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    a = Math.imul(a ^ c, 0x01000193);
+    b = (Math.imul(b, 33) + c) | 0;
+  }
+  return (a >>> 0).toString(36) + (b >>> 0).toString(36);
+}
+
 function isRecord(value: unknown): value is Config {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -79,6 +91,7 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
     }
   }
   const nodeStyle = (i: number): string => custom.get(model.nodes[i].id) ?? '';
+  const nodeColor = (i: number): string => /fill:([^;"]+)/.exec(nodeStyle(i))?.[1] ?? seriesColor(i);
 
   // Labels sit beside the bars, on the side that faces the middle of the chart unless that
   // side is crowded.
@@ -164,13 +177,29 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
   });
 
   const fixed = linkColor === 'gradient' || linkColor === 'source' || linkColor === 'target' ? '' : fillStyle(linkColor);
+  // A gradient needs an id. Without an idPrefix every diagram on a page shares one, and Chrome
+  // then draws the first copy's gradient even when that copy is hidden or themed differently.
+  // A prefix with other characters could end the url() and void the whole fill.
+  const idPrefix = options.idPrefix ?? '';
+  const gradient = linkColor === 'gradient' && /^[\w-]+$/.test(idPrefix);
+  const gradients = new Map<string, string>();
   let linksOut = '';
   for (const link of links) {
-    // Without definitions there are no gradients, so a gradient link takes its source's colour.
     const end = linkColor === 'target' ? link.target : link.source;
     const half = Math.max(link.thickness, 1) / 2;
     const x0 = nodes[link.source].x + nodeWidth;
     const x1 = nodes[link.target].x;
+    let paint = `fill="${seriesColor(end)}"${fixed || nodeStyle(end)}`;
+    if (gradient) {
+      // The id comes from what the gradient draws, so diagrams that share a prefix draw the same
+      // gradient for it. The colour after the url is used where the gradient is missing.
+      const stops =
+        `x1="${num(x0)}" x2="${num(x1)}"><stop offset="0" stop-color="${nodeColor(link.source)}"/>` +
+        `<stop offset="1" stop-color="${nodeColor(link.target)}"/>`;
+      const id = `${idPrefix}-sankey-${contentId(stops)}`;
+      gradients.set(id, `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" ${stops}</linearGradient>`);
+      paint = `fill="url(#${id}) ${nodeColor(link.source)}"`;
+    }
     const mid = num((x0 + x1) / 2);
     const from = escText(model.nodes[link.source].id);
     const to = escText(model.nodes[link.target].id);
@@ -181,7 +210,7 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
         link.targetY + half
       )}C${mid},${num(link.targetY + half)} ${mid},${num(link.sourceY + half)} ${num(x0)},${num(
         link.sourceY + half
-      )}Z" fill="${seriesColor(end)}"${fixed || nodeStyle(end)}>` +
+      )}Z" ${paint}>` +
       `<title>${from} → ${to}: ${escText(prefix)}${rounded(link.value)}${escText(suffix)}</title></path>`;
   }
 
@@ -202,6 +231,7 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
     model,
     labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       `<g transform="translate(${num(ox)},${num(oy)})">` +
+      (gradients.size > 0 ? `<defs>${[...gradients.values()].join('')}</defs>` : '') +
       `<g class="pele-sankey-links" fill-opacity="0.4">${linksOut}</g>` +
       `<g class="pele-sankey-nodes">${nodesOut}</g>` +
       `<g class="pele-labels" font-size="${small}">${labelsOut}</g>` +

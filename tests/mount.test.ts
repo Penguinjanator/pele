@@ -79,16 +79,17 @@ const FLOW = 'flowchart LR\n  A[One] --> B[Two] --> C[Three] --> D[Four] --> E[F
 
 describe('mount', () => {
   it('draws a chart for the room the element has, and again when that changes', () => {
-    const natural = render(SANKEY, options);
+    const own = { ...options, idPrefix: 'own' };
+    const natural = render(SANKEY, own);
     const el = element(1000);
     const drawn: RenderResult[] = [];
-    const handle = mount(el, SANKEY, { ...options, onRender: (result) => drawn.push(result) });
+    const handle = mount(el, SANKEY, { ...own, onRender: (result) => drawn.push(result) });
     expect(el.innerHTML).toBe(natural.svg);
     expect(handle.result.width).toBe(natural.width);
 
     resize(el, 420);
     expect(handle.result.width).toBe(400);
-    expect(el.innerHTML).toBe(render(SANKEY, { ...options, maxWidth: 400 }).svg);
+    expect(el.innerHTML).toBe(render(SANKEY, { ...own, maxWidth: 400 }).svg);
 
     resize(el, 340);
     expect(handle.result.width).toBe(320);
@@ -523,12 +524,13 @@ describe('mount', () => {
   });
 
   it('keeps the text it had when other text cannot be drawn', () => {
+    const own = { ...options, idPrefix: 'own' };
     const el = element(1000);
-    const handle = mount(el, SANKEY, options);
+    const handle = mount(el, SANKEY, own);
     handle.update('flowchart LR\n  A -->');
     resize(el, 340);
     expect(handle.result?.width).toBe(320);
-    expect(el.innerHTML).toBe(render(SANKEY, { ...options, maxWidth: 320 }).svg);
+    expect(el.innerHTML).toBe(render(SANKEY, { ...own, maxWidth: 320 }).svg);
     // The error stays with its text, however often that text is given.
     handle.update('flowchart LR\n  A -->');
     expect(handle.error).toBeInstanceOf(PeleError);

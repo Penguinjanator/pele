@@ -110,7 +110,7 @@ All options are optional.
 | `fontFamily` | `string` | Label font. Defaults to `sans-serif`. See [Fonts](/theming#fonts). |
 | `fontFamilyMono` | `string` | Monospace label font. Defaults to `monospace`. |
 | `fontSize` | `number` | Base font size in pixels. Defaults to `16`. |
-| `idPrefix` | `string` | Prefix for accessibility title and description IDs. Use a unique prefix for each diagram on a page. `mount()` gives each diagram its own by default. |
+| `idPrefix` | `string` | Prefixes accessibility title and description IDs and Sankey link gradient IDs. Use a unique prefix per diagram on a page to avoid shared IDs; `mount()` does this by default. Without a prefix, Sankey links use flat colors to avoid sharing gradient IDs across diagrams. Gradients also need a prefix containing only letters, digits, `-` and `_`. |
 | `responsive` | `boolean` | Allows the SVG to shrink to fit its container. Defaults to `true`. Set `false` for a fixed pixel size. |
 | `maxWidth` | `number` | Available width in pixels. See [Narrow screens](#narrow-screens). |
 | `autoDirection` | `boolean` | Allows supported diagrams to switch to a vertical layout. Defaults to `true`. |
