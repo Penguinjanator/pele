@@ -41,6 +41,16 @@ const TAG_STYLES = new Map([
   ['sup', Style.Sup],
 ]);
 const SHIFT = Style.Sub | Style.Sup;
+const HTML_TAGS = new Set(
+  (
+    'a abbr address article aside audio b bdi bdo big blockquote body br button caption center cite code col ' +
+    'colgroup data dd del details dfn dialog div dl dt em embed fieldset figcaption figure font footer form h1 h2 ' +
+    'h3 h4 h5 h6 head header hr html i iframe img input ins kbd label legend li link main map mark meta meter nav ' +
+    'noscript object ol optgroup option output p picture pre progress q rp rt ruby s samp script section select ' +
+    'small source span strike strong style sub summary sup table tbody td template textarea tfoot th thead time ' +
+    'title tr track tt u ul var video wbr'
+  ).split(' ')
+);
 
 // Break between any two Chinese or Japanese characters. Hangul is left out: Korean puts spaces between words.
 const CJK = '\\u2e80-\\u9fff\\uf900-\\ufaff\\uff00-\\uff60';
@@ -175,8 +185,12 @@ function inline(line: Span[], source: string, markdown: boolean, base: number, o
           open.style = closing ? (open.style & ~bit) | (base & bit) : open.style | bit;
           style = closing ? (style & ~bit) | (base & bit) : style | bit;
         }
-        i += m[0].length;
-        continue;
+        // Other HTML tags are dropped and their text kept. Anything else shaped like a tag, such
+        // as the type in List<T>, is text.
+        if (bit || HTML_TAGS.has(tag)) {
+          i += m[0].length;
+          continue;
+        }
       }
     } else if (markdown && (ch === '*' || ch === '_')) {
       const double = source[i + 1] === ch;
