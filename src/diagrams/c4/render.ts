@@ -55,7 +55,7 @@ export function renderC4(db: C4Db, _config: Config, options: RenderOptions): Ren
 function draw(db: C4Db, _config: Config, options: RenderOptions, tight: boolean, gap = NARROW_GAP): [Rendered, number] {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.8125);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const links: LinkInfo[] = [];
   const { order, boxes } = layoutC4(db, measurer, size, small, tight ? Math.max(80, (options.maxWidth ?? 320) - 2 * pad) : undefined, gap);

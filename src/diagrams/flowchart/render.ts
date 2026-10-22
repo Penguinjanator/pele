@@ -68,7 +68,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
   variant?.prepare(graph);
   const size = options.fontSize ?? 16;
   const edgeSize = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const wrapWidth = Math.min(numberOption(flow, 'wrappingWidth', 200), variant && tight ? 100 : Infinity);
   const pad = options.padding ?? 8;
   const icons = options.icons;

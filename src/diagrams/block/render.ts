@@ -331,7 +331,7 @@ export function renderBlock(model: BlockModel, config: Config, options: RenderOp
 function draw(model: BlockModel, config: Config, options: RenderOptions, tight: boolean): Rendered {
   const size = options.fontSize ?? 16;
   const edgeSize = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const icons = options.icons;
   const configured = (config.block as Config | undefined)?.padding;

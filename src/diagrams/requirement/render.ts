@@ -162,7 +162,7 @@ function draw(model: RequirementModel, _config: Config, options: RenderOptions, 
   const graph = buildRequirementGraph(model);
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
 
   const index = new Map<string, number>();

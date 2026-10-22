@@ -136,7 +136,7 @@ export function renderIshikawa(model: IshikawaModel, _config: Config, options: R
 function draw(model: IshikawaModel, _config: Config, options: RenderOptions, down: boolean): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   if (down) return verticalCauses(model, options);
   const root = model.root;
@@ -250,7 +250,7 @@ function draw(model: IshikawaModel, _config: Config, options: RenderOptions, dow
 function verticalCauses(model: IshikawaModel, options: RenderOptions): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const room = Math.max(140, (options.maxWidth ?? 320) - 2 * pad);
   const title = layoutLabel(model.title, false, measurer, size, titleRoom(options), Style.Bold);

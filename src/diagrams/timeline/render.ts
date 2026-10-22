@@ -41,7 +41,7 @@ export function renderTimeline(model: TimelineModel, config: Config, options: Re
 function draw(model: TimelineModel, config: Config, options: RenderOptions, vertical: boolean): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const multicolor = (config.timeline as Config | undefined)?.disableMulticolor !== true;
   const periods = model.periods;

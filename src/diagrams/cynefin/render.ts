@@ -64,7 +64,7 @@ export function renderCynefin(model: CynefinModel, config: Config, options: Rend
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.8125);
   const itemSize = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const icons = options.icons;
   const showDescriptions = (config.cynefin as Config | undefined)?.showDomainDescriptions !== false;

@@ -74,7 +74,7 @@ export function renderGit(model: GitModel, config: Config, options: RenderOption
 function draw(model: GitModel, config: Config, options: RenderOptions, direction: GitModel['direction']): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.75);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
 
   const showBranches = flag(config, 'showBranches', true);

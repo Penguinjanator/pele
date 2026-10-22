@@ -96,6 +96,18 @@ describe('flowchart rendering', () => {
     expect(svg).toContain('<tspan font-style="italic">Markdown</tspan>');
   });
 
+  it('draws <code> spans in labels with the monospace font', () => {
+    const { svg } = render('flowchart TD\n  A["Call <code>render()</code> once"]', options);
+    expect(svg).toMatch(/<tspan[^>]* font-family="var\(--_fm\)">render\(\)<\/tspan>/);
+    expect(svg).not.toMatch(/font-family="var\(--_fm\)">Call /);
+  });
+
+  it('writes the monospace family once when a whole label is code', () => {
+    const { svg } = render('flowchart TD\n  A["<code>render()</code>"]', options);
+    expect(svg).toMatch(/<text[^>]* font-family="var\(--_fm\)"/);
+    expect(svg.match(/font-family="var\(--_fm\)"/g)?.length).toBe(1);
+  });
+
   it('closes markdown emphasis in a label that is already bold', () => {
     const { svg } = render('flowchart TD\n  A["`one **two** three`"]\n  style A font-weight:bold', options);
     expect(svg).not.toContain('**');

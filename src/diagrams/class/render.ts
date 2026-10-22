@@ -95,7 +95,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
   const small = Math.round(size * 0.875);
   const tiny = Math.round(size * 0.8);
   const tinyHeight = Math.round(tiny * 1.4);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   // Keep annotations and cardinalities literal unless math is typeset.
   const mathText = (raw: string, fontSize: number): Label | undefined => {

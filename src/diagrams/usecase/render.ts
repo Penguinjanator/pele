@@ -209,7 +209,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
   const tiny = Math.round(size * 0.8125);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const icons = options.icons;
   const rootDir = turned ? 'TB' : direction(model.direction);

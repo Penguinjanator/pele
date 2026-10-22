@@ -135,6 +135,7 @@ function mathSvg(math: MathMarkup, box: string, size: number, attrs: string): st
 
 const BOLD = ' font-weight="var(--_w)"';
 const ITALIC = ' font-style="italic"';
+const MONO = ' font-family="var(--_fm)"';
 const SUB = ' baseline-shift="sub" font-size="smaller"';
 const SUP = ' baseline-shift="super" font-size="smaller"';
 
@@ -142,6 +143,7 @@ export function spanStyle(style: number): string {
   return (
     (style & Style.Bold ? BOLD : '') +
     (style & Style.Italic ? ITALIC : '') +
+    (style & Style.Mono ? MONO : '') +
     (style & Style.Sub ? SUB : style & Style.Sup ? SUP : '')
   );
 }
@@ -149,7 +151,7 @@ export function spanStyle(style: number): string {
 // The emphasis every span of a label has. It is written once, on the text element, where a
 // CSS rule for the label reaches it.
 export function sharedStyle(label: Label): number {
-  let shared = Style.Bold | Style.Italic;
+  let shared = Style.Bold | Style.Italic | Style.Mono;
   let any = false;
   for (const line of label.lines) {
     for (const span of line) {
@@ -166,6 +168,7 @@ export function textStyle(attrs: string, shared: number): string {
   return (
     attrs +
     (shared & Style.Bold && !attrs.includes(' font-weight="') ? BOLD : '') +
-    (shared & Style.Italic && !attrs.includes(' font-style="') ? ITALIC : '')
+    (shared & Style.Italic && !attrs.includes(' font-style="') ? ITALIC : '') +
+    (shared & Style.Mono && !attrs.includes(' font-family="') ? MONO : '')
   );
 }

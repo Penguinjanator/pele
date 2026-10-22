@@ -20,7 +20,7 @@ function draw(model: PacketModel, config: Config, options: RenderOptions, down: 
   const size = options.fontSize ?? 16;
   const labelSize = Math.round(size * 0.875);
   const bitSize = Math.round(size * 0.625);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
 
   const packet = (config.packet ?? {}) as Config;

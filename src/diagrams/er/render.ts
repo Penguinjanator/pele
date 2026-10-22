@@ -134,7 +134,7 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
   const graph = buildErGraph(db);
   const size = options.fontSize ?? 16;
   const smallSize = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const icons = options.icons;
 

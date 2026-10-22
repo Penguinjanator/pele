@@ -26,7 +26,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
   const small = Math.round(size * 0.875);
   const tiny = Math.round(size * 0.75);
   const least = Math.round(size * 0.5625);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const treemap = (config.treemap ?? {}) as Config;
   const pad = options.padding ?? option(config, 'diagramPadding', 8, 0, 2000);
 

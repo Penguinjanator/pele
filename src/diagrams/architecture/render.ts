@@ -216,7 +216,7 @@ function draw(model: ArchitectureModel, config: Config, options: RenderOptions, 
   const size = setting(config, 'fontSize', options.fontSize ?? 16, 4, 128);
   const groupPad = Math.min(setting(config, 'padding', 20, 0, 256), tight ? 12 : Infinity);
   const small = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const icons = options.icons;
   const half = iconSize / 2;

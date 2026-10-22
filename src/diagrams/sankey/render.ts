@@ -62,7 +62,7 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
   const least = Math.round(size * 0.625);
   // Labels shrink with a chart narrowed to fit, as they would if the whole picture were scaled down.
   let small = Math.max(least, Math.round(size * 0.875 * Math.min(1, chartWidth / natural)));
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
 
   const chartHeight = numberOption(conf, 'height', 400, 1, 10000);

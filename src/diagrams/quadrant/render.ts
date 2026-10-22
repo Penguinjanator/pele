@@ -35,7 +35,7 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
   const size = options.fontSize ?? 16;
   const axisSize = Math.round(size * 0.875);
   const pointSize = Math.round(size * 0.75);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const natural = Math.round(Math.max(100, length(config, 'chartWidth', 500, 4000)));
   const width = Math.round(capWidth(options, natural, 280));
   const height = Math.round((Math.max(100, length(config, 'chartHeight', 500, 4000)) * width) / natural);

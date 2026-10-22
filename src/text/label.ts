@@ -36,6 +36,7 @@ const TAG_STYLES = new Map([
   ['strong', Style.Bold],
   ['i', Style.Italic],
   ['em', Style.Italic],
+  ['code', Style.Mono],
   ['sub', Style.Sub],
   ['sup', Style.Sup],
 ]);

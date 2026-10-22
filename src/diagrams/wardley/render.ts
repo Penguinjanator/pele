@@ -70,7 +70,7 @@ function draw(model: WardleyModel, config: Config, options: RenderOptions, plotW
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.8125);
   const tiny = Math.round(size * 0.6875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
 
   // A narrower map is not as much shorter, so that components keep some room between them.

@@ -128,7 +128,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
   const curve = (config.flowchart as Config | undefined)?.curve;
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const wrapWidth = numberOption(config, 'wrappingWidth', 200);
   const pad = options.padding ?? 8;
   const icons = options.icons;

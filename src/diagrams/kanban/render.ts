@@ -123,7 +123,7 @@ export function renderKanban(model: KanbanModel, config: Config, options: Render
   const small = Math.round(size * 0.875);
   const line = Math.round(size * 1.5);
   const smallLine = Math.round(small * 1.5);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const icons = options.icons;
   const conf = (config.kanban ?? {}) as Config;

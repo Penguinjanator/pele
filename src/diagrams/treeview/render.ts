@@ -52,7 +52,7 @@ export function renderTreeView(model: TreeViewModel, config: Config, options: Re
 
 function draw(model: TreeViewModel, config: Config, options: RenderOptions, tight: boolean): Rendered {
   const size = options.fontSize ?? 16;
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const icons = iconConfig(config);
 

@@ -51,7 +51,7 @@ export function renderMindmap(model: MindmapModel, config: Config, options: Rend
 // It is far narrower than branches spreading to both sides, and as tall as it needs to be.
 function draw(model: MindmapModel, config: Config, options: RenderOptions, down: boolean): Rendered {
   const size = options.fontSize ?? 16;
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const icons = options.icons;
   const maxNodeWidth = (config.mindmap as Config | undefined)?.maxNodeWidth;

@@ -78,7 +78,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
   const graph = agentGraph(db, config);
   const size = options.fontSize ?? 16;
   const edgeSize = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const wrapWidth = numberOption(config, 'wrappingWidth', 120);
   const minWidth = numberOption(config, 'minNodeWidth', 120);
   const pad = options.padding ?? 8;

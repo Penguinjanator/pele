@@ -43,7 +43,7 @@ function draw(model: JourneyModel, _config: Config, options: RenderOptions, down
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
   const tiny = Math.round(size * 0.75);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   if (down) return verticalJourney(model, options);
   const tasks = model.tasks;
@@ -219,7 +219,7 @@ function draw(model: JourneyModel, _config: Config, options: RenderOptions, down
 function verticalJourney(model: JourneyModel, options: RenderOptions): Rendered {
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
-  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily);
+  const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const room = Math.max(140, (options.maxWidth ?? 320) - 2 * pad);
   const title = fitLabel(model.title, measurer, size, room, Style.Bold);
