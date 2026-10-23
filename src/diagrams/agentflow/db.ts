@@ -402,7 +402,7 @@ export class AgentflowDb implements AgentflowModel {
 
     const max = this.options.maxEdges;
     if (max !== undefined && this.edges.length >= max) {
-      throw new PeleError(`Edge limit exceeded. ${this.edges.length} edges found, but the limit is ${max}.`, 'limit', {
+      throw new PeleError(`Edge limit exceeded. The limit is ${max}.`, 'limit', {
         type: 'agentflow',
       });
     }
