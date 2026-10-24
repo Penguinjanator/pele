@@ -255,6 +255,13 @@ describe('venn diagram rendering', () => {
     expect(both).not.toContain('Front');
   });
 
+  it('keeps the character before a comment', () => {
+    const model = parse('venn-beta\nset A%% note\nset B:5%% note\nunion A,B%% note');
+    if (model.type !== 'venn') throw new Error('wrong type');
+    expect(model.subsets.map((s) => s.sets)).toEqual([['A'], ['B'], ['A', 'B']]);
+    expect(model.subsets[1].size).toBe(5);
+  });
+
   it('uses the last statement about a set or an overlap', () => {
     const svg = svgOf('set A["first"]:10\nset B:10\nset A["second"]:40');
     const circles = circlesOf(svg);
