@@ -78,6 +78,8 @@ const RE_DIRECTION = [
   /.*direction\s+LR[^\n]*/y,
 ];
 const RE_LINE_END = /[\n\r\u2028\u2029]/g;
+// Consume line breaks too: the grammar rejects blank statements.
+const RE_BARE_TITLE = /title[^\S\r\n]*(?=[\r\n]|$)\s*/y;
 
 // Follows the lexer Jison compiles from c4Diagram.jison: its rule order, its start conditions,
 // and what it returns once the input runs out in each of them.
@@ -163,7 +165,14 @@ export function tokenize(src: string): Tokens {
           }
         }
       }
-      if (c === 116 && statement('title', T.title)) continue;
+      if (c === 116) {
+        RE_BARE_TITLE.lastIndex = p;
+        if (RE_BARE_TITLE.test(src)) {
+          p = RE_BARE_TITLE.lastIndex;
+          continue;
+        }
+        if (statement('title', T.title)) continue;
+      }
       if (c === 97) {
         if (statement('accDescription', T.accDescription)) continue;
         const title = src.startsWith('accTitle', p);

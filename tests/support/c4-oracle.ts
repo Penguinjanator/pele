@@ -7,6 +7,20 @@ import { createOracle, recordingYy, type Call, type Outcome, type Pair } from '.
 
 export const oracle = createOracle(resolve('tests/compat/c4/upstream/c4Diagram.jison'));
 
+// Match Pele: titles stay on one line; bare titles are ignored.
+{
+  const lexer = oracle.parser.lexer as unknown as { rules: RegExp[]; performAction: (...args: unknown[]) => unknown };
+  const titles = lexer.rules.filter((rule) => rule.source === String.raw`^(?:title\s[^#\n;]+)`);
+  if (titles.length !== 1) throw new Error('Expected one C4 title rule');
+  const index = lexer.rules.indexOf(titles[0]);
+  lexer.rules[index] = new RegExp(String.raw`^(?:title[^\S\r\n]*(?=[\r\n]|$)\s*()|title[^\S\r\n][^#\n;]+)`, titles[0].flags);
+  const action = lexer.performAction;
+  lexer.performAction = function (this: unknown, yy, yy_, rule, ...rest) {
+    if (rule === index && (yy_ as { matches: (string | undefined)[] }).matches[1] !== undefined) return undefined;
+    return action.call(this, yy, yy_, rule, ...rest);
+  };
+}
+
 export function oracleTokens(src: string): Pair[] {
   return oracle.tokens(src, recordingYy(oracle.methods).yy);
 }

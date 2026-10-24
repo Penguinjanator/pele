@@ -524,6 +524,13 @@ Rel(a, c, "x", $link="https://example.com/rel")`);
     expect(wide.width).toBeGreaterThan(600);
   });
 
+  it('treats a bare title as no title and keeps a title after a tab', () => {
+    const bare = model('C4Context\ntitle\nPerson(a, "Alice")\nPerson(b, "Bob")');
+    expect(bare.title).toBeUndefined();
+    expect(bare.shapes.map((shape) => shape.label)).toEqual(['Alice', 'Bob']);
+    expect(model('C4Context\ntitle\tOwn\nSystem(a, "A")').title).toBe('Own');
+  });
+
   it('treats accTitle as the title, as the grammar does, and accDescr as the description', () => {
     const { svg } = draw('C4Context\naccTitle: Shown on top\naccDescr: For screen readers\nSystem(a, "A")');
     expect(svg).toContain('Shown on top</t');
