@@ -68,8 +68,8 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
   const chartHeight = numberOption(conf, 'height', 400, 1, 10000);
   const nodeWidth = Math.min(numberOption(conf, 'nodeWidth', 10, 1, 200), chartWidth);
   const showValues = conf.showValues !== false;
-  const prefix = textOption(conf, 'prefix');
-  const suffix = textOption(conf, 'suffix');
+  const prefix = decodeEntities(textOption(conf, 'prefix'));
+  const suffix = decodeEntities(textOption(conf, 'suffix'));
   const outlined = conf.labelStyle === 'outlined';
   const alignment: Alignment =
     conf.nodeAlignment === 'left' || conf.nodeAlignment === 'right' || conf.nodeAlignment === 'center'
@@ -231,7 +231,7 @@ function draw(model: SankeyModel, conf: Config, options: RenderOptions, chartWid
       )}C${mid},${num(link.targetY + half)} ${mid},${num(link.sourceY + half)} ${num(x0)},${num(
         link.sourceY + half
       )}Z" ${paint}>` +
-      `<title>${from} → ${to}: ${escText(prefix)}${rounded(link.value)}${escText(suffix)}</title></path>`;
+      `<title>${from} → ${to}: ${esc(prefix)}${rounded(link.value)}${esc(suffix)}</title></path>`;
   }
 
   const title = layoutLabel(model.title, false, measurer, size, titleRoom(options), Style.Bold);
