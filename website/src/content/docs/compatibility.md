@@ -65,10 +65,6 @@ Diagrams scale down to fit narrower containers. Pass [`maxWidth`](/api#narrow-sc
 
 Set `responsive: false` for a fixed pixel size.
 
-### Subgraphs
-
-A flowchart subgraph keeps its own `direction` even when it links to nodes outside the subgraph.
-
 ### Limits
 
 Pele limits source length, SVG output size, and edges in flowcharts and agentflow. See [Security](/security#limits) for defaults and options.
