@@ -52,11 +52,12 @@ interface Band {
 function hardWrap(text: string, columns: number): string[] {
   const out: string[] = [];
   for (const line of decodeEntities(text).split('\n')) {
-    if (line.length <= columns) {
+    const chars = line.length <= columns ? undefined : Array.from(line);
+    if (chars === undefined || chars.length <= columns) {
       out.push(line);
       continue;
     }
-    for (let i = 0; i < line.length; i += columns) out.push(line.slice(i, i + columns));
+    for (let i = 0; i < chars.length; i += columns) out.push(chars.slice(i, i + columns).join(''));
   }
   return out;
 }

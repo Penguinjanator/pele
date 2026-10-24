@@ -86,6 +86,12 @@ describe('eventmodeling rendering', () => {
     expect(count(svg, /class="pele-em-data"/g)).toBe(4);
   });
 
+  it('wraps long data lines without splitting emoji', () => {
+    const { svg } = render(`eventmodeling\ntf 01 cmd A {${'a'.repeat(47)}😀Z}`, options);
+    expect(svg).toContain(`>${'a'.repeat(47)}😀</tspan>`);
+    expect(svg).toContain('>Z</tspan>');
+  });
+
   it('keeps comment lines inside data blocks, as Mermaid does', () => {
     const { svg } = render('eventmodeling\n%% a real comment\ntf 01 evt A [[D]]\ndata D {\n  %% kept\n  a: 1\n}\n', options);
     expect(svg).toContain('>%% kept</tspan>');
