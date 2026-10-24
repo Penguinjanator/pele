@@ -186,12 +186,18 @@ const RE_ENTITY = /#\w+;/g;
 const RE_INT = /^\+?\d+$/;
 const RE_LINE_BREAK = new RegExp('[\\n\\r' + String.fromCharCode(0x2028, 0x2029) + ']', 'g');
 
+function recording(steps: Edit[][] | undefined): Edit[] | undefined {
+  if (steps === undefined) return undefined;
+  const edits: Edit[] = [];
+  steps.push(edits);
+  return edits;
+}
+
 // Does what Mermaid's `text.replace(/keyword.*:\S*#.*;/g, drop the last character)` does:
 // on a line where the keyword is followed by a colon, a color-like `#`, and later a semicolon,
 // the last semicolon goes. Mermaid's regex backtracks without bound; this is one pass.
 function dropColorSemicolons(text: string, keyword: string, steps: Edit[][] | undefined): string {
-  const edits: Edit[] = [];
-  steps?.push(edits);
+  const edits = recording(steps);
   let from = text.indexOf(keyword);
   if (from === -1) return text;
   let out = '';
@@ -217,7 +223,7 @@ function dropColorSemicolons(text: string, keyword: string, steps: Edit[][] | un
     if (hash !== -1) {
       const semi = text.lastIndexOf(';', lineEnd - 1);
       if (semi > hash) {
-        edits.push([semi, semi + 1, 0]);
+        edits?.push([semi, semi + 1, 0]);
         out += text.slice(last, semi);
         last = semi + 1;
       }
@@ -231,12 +237,11 @@ function dropColorSemicolons(text: string, keyword: string, steps: Edit[][] | un
 export function encodeEntities(text: string, steps?: Edit[][]): string {
   if (!text.includes('#')) return text;
   text = dropColorSemicolons(dropColorSemicolons(text, 'style', steps), 'classDef', steps);
-  const edits: Edit[] = [];
-  steps?.push(edits);
+  const edits = recording(steps);
   return text.replace(RE_ENTITY, (s, at: number) => {
     const inner = s.substring(1, s.length - 1);
     const code = (RE_INT.test(inner) ? 'ﬂ°°' : 'ﬂ°') + inner + '¶ß';
-    edits.push([at, at + s.length, code.length]);
+    edits?.push([at, at + s.length, code.length]);
     return code;
   });
 }
