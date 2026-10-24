@@ -256,6 +256,12 @@ describe('XY chart rendering', () => {
     }
   });
 
+  it('keeps the character before a comment', () => {
+    const model = parse('xychart-beta\nx-axis [a, b]\nbar [1,2]%% note');
+    expect(model.type === 'xychart' && model.plots).toEqual([{ type: 'bar', title: '', data: [['a', 1], ['b', 2]] }]);
+    expect(() => parse('xychart-beta\ntitle Sales:%% note\nbar [1,2]')).toThrow(PeleError);
+  });
+
   it('gives the same output for the same input', () => {
     expect(render(CHART, options).svg).toBe(render(CHART, options).svg);
   });
