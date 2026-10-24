@@ -29,6 +29,7 @@ const RE_WEEKDAY = /weekday\s+(monday|tuesday|wednesday|thursday|friday|saturday
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const RE_WEEKEND = /weekend\s+(?:(friday)|saturday)\b/iy;
 const RE_DATE = /\d\d\d\d-\d\d-\d\d\b/y;
+const RE_BARE_TITLE = /title[^\S\r\n]*(?=[\r\n]|$)/iy;
 
 // Statements that start with a keyword, grouped by the keyword's first letter and kept in the grammar's rule order.
 const KEYWORDS = new Map<number, [RegExp, number][]>([
@@ -42,7 +43,7 @@ const KEYWORDS = new Map<number, [RegExp, number][]>([
       [/topAxis\b/iy, T.topAxis],
       [/tickInterval\s[^#\n;]+/iy, T.tickInterval],
       [/todayMarker\s[^\n;]+/iy, T.todayMarker],
-      [/title\s[^\n]+/iy, T.title],
+      [/title[^\S\r\n][^\n]+/iy, T.title],
     ],
   ],
   [101, [[/excludes\s[^#\n;]+/iy, T.excludes]]],
@@ -107,6 +108,12 @@ export function tokenize(src: string): Tokens {
         }
         if ((e = at(RE_CLICK)) >= 0) {
           state = S.click;
+          p = e;
+          return true;
+        }
+        break;
+      case 116:
+        if ((e = at(RE_BARE_TITLE)) >= 0) {
           p = e;
           return true;
         }

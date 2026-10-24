@@ -223,6 +223,13 @@ describe('gantt rendering', () => {
     expect(render('---\ntitle: From front matter\n---\n' + src.replace('gantt\n', 'gantt\n title Own\n'), options).svg).toContain('>Own<');
   });
 
+  it('treats a bare title as no title and keeps a title after a tab', () => {
+    const model = parse('gantt\ntitle\nsection Work\nTask :2026-01-01, 1d') as GanttModel;
+    expect(model.title).toBeUndefined();
+    expect(model.getTasks(NOW).map((task) => [task.task, task.section])).toEqual([['Task ', 'Work']]);
+    expect((parse('gantt\ntitle\tPlan\n') as GanttModel).title).toBe('Plan');
+  });
+
   it('writes accessible names', () => {
     const { svg } = render('gantt\n accTitle: Plan\n accDescr: Tasks for Q4\n dateFormat YYYY-MM-DD\n A :a, 2014-01-07, 3d\n', options);
     expect(svg).toContain('<title id="pele-title">Plan</title>');

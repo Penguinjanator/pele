@@ -15,6 +15,20 @@ export const lexerRules = (oracle.parser.lexer as unknown as { rules: RegExp[] }
   lexerRules[lexerRules.indexOf(comments[0])] = /(?!)/;
 }
 
+// Match Pele: titles stay on one line; bare titles are ignored.
+{
+  const lexer = oracle.parser.lexer as unknown as { performAction: (...args: unknown[]) => unknown };
+  const titles = lexerRules.filter((rule) => rule.source === String.raw`^(?:title\s[^\n]+)`);
+  if (titles.length !== 1) throw new Error('Expected one Gantt title rule');
+  const index = lexerRules.indexOf(titles[0]);
+  lexerRules[index] = new RegExp(String.raw`^(?:title[^\S\r\n]*(?=[\r\n]|$)|title[^\S\r\n][^\n]+)`, titles[0].flags);
+  const action = lexer.performAction;
+  lexer.performAction = function (this: unknown, yy, yy_, rule, ...rest) {
+    if (rule === index && /^title[^\S\r\n]*$/i.test((yy_ as { yytext: string }).yytext)) return undefined;
+    return action.call(this, yy, yy_, rule, ...rest);
+  };
+}
+
 export function oracleTokens(src: string): Pair[] {
   return oracle.tokens(src, {});
 }
