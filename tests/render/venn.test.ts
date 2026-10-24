@@ -262,6 +262,13 @@ describe('venn diagram rendering', () => {
     expect(model.subsets[1].size).toBe(5);
   });
 
+  it('treats a bare title as no title', () => {
+    const model = parse('venn-beta\ntitle\nset A\nset title\ntitle Kept\nset B');
+    if (model.type !== 'venn') throw new Error('wrong type');
+    expect(model.title).toBe('Kept');
+    expect(model.subsets.map((s) => s.sets)).toEqual([['A'], ['title'], ['B']]);
+  });
+
   it('uses the last statement about a set or an overlap', () => {
     const svg = svgOf('set A["first"]:10\nset B:10\nset A["second"]:40');
     const circles = circlesOf(svg);

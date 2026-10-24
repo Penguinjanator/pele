@@ -72,3 +72,17 @@ export function peleParse(src: string): Outcome {
   if (comments.length !== 1) throw new Error('Expected one Venn preceding-character comment rule');
   rules[rules.indexOf(comments[0])] = /(?!)/;
 }
+
+// Match Pele: skip bare titles like comments.
+{
+  const lexer = oracle.parser.lexer as unknown as { next(): unknown; _input: string; matched: string };
+  const next = lexer.next;
+  lexer.next = function (this: typeof lexer) {
+    const bare = /^title[^\S\n]*(?:\n[\n\r]*|$)/i.exec(this._input);
+    if (bare && /\n[ \t]*$/.test(this.matched)) {
+      this._input = this._input.slice(bare[0].length);
+      this.matched += bare[0];
+    }
+    return next.call(this);
+  };
+}

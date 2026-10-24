@@ -107,6 +107,12 @@ export class VennLexer {
     return i;
   }
 
+  private afterLineFeed(at: number): boolean {
+    let k = at - 1;
+    while (this.src.charCodeAt(k) === 32 || this.src.charCodeAt(k) === 9) k--;
+    return this.src.charCodeAt(k) === 10;
+  }
+
   private lineEnd(from: number): number {
     const end = this.src.indexOf('\n', from);
     return end === -1 ? this.src.length : end;
@@ -127,6 +133,13 @@ export class VennLexer {
       const c = src.charCodeAt(i);
       if (c === 37 && src.charCodeAt(i + 1) === 37 && src.charCodeAt(i + 2) !== 123) {
         this.at = this.lineEnd(i + 2);
+        continue;
+      }
+      if (this.lineStart && this.word(i, 'title') && this.afterLineFeed(i) && src.slice(i + 5, this.lineEnd(i + 5)).trim() === '') {
+        // Skip a bare title like a comment, so it doesn't end indented text.
+        let j = this.lineEnd(i + 5);
+        while (src.charCodeAt(j) === 10 || src.charCodeAt(j) === 13) j++;
+        this.at = j;
         continue;
       }
       if (this.lineStart) {
