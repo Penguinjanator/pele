@@ -1,4 +1,5 @@
 import { PeleError } from '../../errors.js';
+import { decodeEntities } from '../../text/entities.js';
 import type { RadarAst } from './parser.js';
 
 export interface RadarAxis {
@@ -51,7 +52,7 @@ export function buildRadar(ast: RadarAst, title: string | undefined): RadarModel
       }
       entries = axes.map((axis) => {
         const value = byAxis.get(axis.name);
-        if (value === undefined) throw invalid('Missing entry for axis ' + axis.label);
+        if (value === undefined) throw invalid('Missing entry for axis ' + decodeEntities(axis.label));
         return value;
       });
     }
