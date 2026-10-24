@@ -138,6 +138,7 @@ describe('eventmodeling rendering', () => {
       expect((error as PeleError).message).toBe('Duplicate event modeling frame ID "01" on line 4');
       expect((error as PeleError).line).toBe(4);
     }
+    expect(() => render('eventmodeling\ntf 01 cmd\n%% a comment line\n\n', options)).toThrow(expect.objectContaining({ line: 2, column: 10 }));
     for (const src of ['eventmodeling\ntitle T\n', 'eventmodeling\ntf 01 evt data\n', 'eventmodeling\ntf 01 evt A {\n', 'eventmodeling\ntf 1234 evt A\n']) {
       expect(() => render(src, options), src).toThrow(PeleError);
     }

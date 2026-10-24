@@ -258,6 +258,14 @@ export class Reader {
 
   fail(expected: string): never {
     const found = this.kind === -1 ? 'end of input' : `\`${this.text()}\``;
-    throw syntaxError(this.diagram, this.tokens.src, this.tokens.starts[this.i], `Expecting ${expected} but found ${found}.`);
+    const { src, starts, ends } = this.tokens;
+    let at = starts[this.i];
+    if (this.kind === -1) {
+      // Locate EOF errors after the last token, before trailing line breaks and hidden comments.
+      let k = this.i;
+      while (k > 0 && src.slice(starts[k - 1], ends[k - 1]).trim() === '') k--;
+      if (k > 0) at = ends[k - 1];
+    }
+    throw syntaxError(this.diagram, src, at, `Expecting ${expected} but found ${found}.`);
   }
 }
