@@ -187,9 +187,6 @@ export function tokenize(src: string): Tokens {
           } else {
             p = until('\n', p + 2);
           }
-        } else if (c !== 125 && d === 37) {
-          // Any character but `}` followed by `%` starts a comment that runs to the end of the line.
-          p = until('\n', p + 2);
         } else if (c === 10) {
           let e = p + 1;
           while (src.charCodeAt(e) === 10) e++;

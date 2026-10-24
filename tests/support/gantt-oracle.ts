@@ -8,6 +8,13 @@ const oracle = createOracle(resolve('tests/compat/gantt/upstream/gantt.jison'));
 
 export const lexerRules = (oracle.parser.lexer as unknown as { rules: RegExp[] }).rules;
 
+// Match Pele: comments leave the preceding character intact.
+{
+  const comments = lexerRules.filter((rule) => rule.source === String.raw`^(?:[^\}]%%*[^\n]*)`);
+  if (comments.length !== 1) throw new Error('Expected one Gantt preceding-character comment rule');
+  lexerRules[lexerRules.indexOf(comments[0])] = /(?!)/;
+}
+
 export function oracleTokens(src: string): Pair[] {
   return oracle.tokens(src, {});
 }

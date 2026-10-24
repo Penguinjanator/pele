@@ -343,6 +343,10 @@ describe('gantt scheduling', () => {
     expect(v).toMatchObject({ id: 'v', vert: true, order: -1 });
   });
 
+  it('keeps a task whose name runs into %%', () => {
+    expect(tasksOf('gantt\ndateFormat YYYY-MM-DD\nA%% label : 2026-10-24, 1d').map((task) => task.task)).toEqual(['A%% label ']);
+  });
+
   it('treats ids that are Object.prototype names as ordinary ids', () => {
     const { links } = render('gantt\n dateFormat YYYY-MM-DD\n A :__proto__, 2024-10-01, 3d\n B :constructor, after __proto__, 2d\n click __proto__ href "https://mermaid.js.org/"\n', options);
     expect(links).toEqual([{ id: '__proto__', href: 'https://mermaid.js.org/', internal: false }]);
