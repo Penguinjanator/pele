@@ -54,3 +54,11 @@ export function peleParse(src: string): Outcome {
     return { ok: false, calls, error: String((e as Error).message) };
   }
 }
+
+// Match Pele: comments leave the preceding character intact.
+{
+  const rules = (oracle.parser.lexer as unknown as { rules: RegExp[] }).rules;
+  const comments = rules.filter((rule) => rule.source === String.raw`^(?:[^\}]%%[^\n]*)`);
+  if (comments.length !== 1) throw new Error('Expected one Venn preceding-character comment rule');
+  rules[rules.indexOf(comments[0])] = /(?!)/;
+}
