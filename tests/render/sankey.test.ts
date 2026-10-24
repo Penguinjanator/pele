@@ -386,8 +386,8 @@ Upgraded to Pro,Stayed on Pro,284`;
     expect(() => render('sankey\na,b\n', options)).toThrow(/Expecting 'COMMA', 'NEWLINE', 'EOF', got 'EOF'|Expecting 'COMMA'/);
   });
 
-  it('draws values that are not usable numbers as empty flows', () => {
-    const { svg } = render('sankey\na,b,abc\na,c,-3\nb,d,0\nc,d,2\n', options);
+  it('draws non-positive values as empty flows', () => {
+    const { svg } = render('sankey\na,b,0\na,c,-3\nb,d,0\nc,d,2\n', options);
     expect(svg).not.toContain('NaN');
     expect(count(svg, /class="pele-sankey-link"/g)).toBe(4);
     expect(svg).toContain('<title>a → b: 0</title>');

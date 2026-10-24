@@ -5,6 +5,7 @@ import { T, TOKEN_NAMES, tokenize } from './lexer.js';
 
 const RE_LINE_BREAKS = /[\n\r]+/g;
 const RE_INVALID_XML = /[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]/u;
+const RE_NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 
 function isBlank(c: number): boolean {
   if (c === 10 || c === 13) return false;
@@ -75,10 +76,16 @@ export function parseSankey(src: string, db: SankeyDb): void {
     expect(T.COMMA, ", 'NEWLINE', 'EOF'");
     const to = name();
     expect(T.COMMA, ", 'NEWLINE', 'EOF'");
-    const amount = field();
+    const start = starts[i];
+    const amount = field().trim();
+    const value = Number(amount);
+    // Mermaid accepts non-numeric values and numeric prefixes here.
+    if (!RE_NUMBER.test(amount) || !Number.isFinite(value)) {
+      throw syntaxError('sankey', src, start, 'Expecting a finite decimal number');
+    }
     const source = db.findOrCreateNode(from);
     const target = db.findOrCreateNode(to);
-    db.addLink(source, target, parseFloat(amount.trim()));
+    db.addLink(source, target, value);
     if (types[i] !== T.NEWLINE) break;
     i++;
   }
