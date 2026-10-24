@@ -130,4 +130,64 @@ describe('zoom', () => {
     expect(() => shrunk.fire('focusin', { target: shrunk.svg })).not.toThrow();
     expect((shrunk.svg.style as { outline?: string }).outline).toBe('');
   });
+
+  it('narrows a drawing at rest so that the buttons do not hide its text', () => {
+    const bar = { left: 362, right: 392, top: 8, bottom: 64 };
+    // Text coordinates use a 400-wide drawing; centered drawings model auto margins.
+    const mounted = (text: { left: number; right: number; top: number; bottom: number }, centered = false) => {
+      const style: Record<string, string> = centered ? { maxWidth: '350px' } : {};
+      const box = () => {
+        const width = Math.min(400, parseFloat(style.maxWidth) || 400);
+        const right = parseFloat(style.marginRight);
+        const left = !centered ? 0 : Number.isNaN(right) ? (400 - width) / 2 : 400 - right - width;
+        return { left, right: left + width, top: 0, bottom: width / 4, width, height: width / 4 };
+      };
+      const shown = () => {
+        const at = box();
+        const k = at.width / 400;
+        return { left: at.left + text.left * k, right: at.left + text.right * k, top: text.top * k, bottom: text.bottom * k };
+      };
+      const svg = {
+        localName: 'svg',
+        style,
+        getAttribute: (name: string) => ({ width: '1200', height: '300' })[name] ?? null,
+        setAttribute: () => {},
+        removeAttribute: () => {},
+        getBoundingClientRect: box,
+        querySelectorAll: () => [{ getBoundingClientRect: shown }],
+      };
+      const node = () => ({ style: {}, setAttribute: () => {}, addEventListener: () => {}, append: () => {}, remove: () => {}, getBoundingClientRect: () => bar });
+      const element = {
+        firstElementChild: svg,
+        clientLeft: 0,
+        clientWidth: 400,
+        clientHeight: 100,
+        style: {},
+        ownerDocument: { createElement: node },
+        append: (child: { parentNode?: unknown }) => (child.parentNode = element),
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        getBoundingClientRect: () => ({ left: 0, right: 400, top: 0, bottom: 100 }),
+      };
+      return { style, box, zoom: enableZoom(element as unknown as HTMLElement) };
+    };
+    const label = { left: 330, right: 380, top: 30, bottom: 40 };
+    const left = mounted(label);
+    expect([left.style.maxWidth, left.style.marginRight]).toEqual(['358px', '42px']);
+    left.zoom.zoomBy(2);
+    expect(left.style.maxWidth).toBe('none');
+    left.zoom.refresh();
+    expect([left.style.width, left.style.maxWidth]).toEqual([undefined, '358px']);
+    expect(mounted({ ...label, left: 300, right: 350 }).style.maxWidth).toBeUndefined();
+    expect(mounted({ ...label, top: 70, bottom: 80 }).style.maxWidth).toBeUndefined();
+
+    const centered = mounted({ ...label, left: 360, right: 395 }, true);
+    expect(centered.box().right).toBe(358);
+    expect(centered.box().left).toBe(25);
+    centered.zoom.refresh();
+    centered.zoom.refresh();
+    expect(centered.box()).toMatchObject({ left: 25, right: 358 });
+    centered.zoom.destroy();
+    expect([centered.style.maxWidth, centered.style.marginRight]).toEqual(['350px', undefined]);
+  });
 });

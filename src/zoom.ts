@@ -53,6 +53,7 @@ export function frame(
 
 const STEP = 1.25;
 const PAN = 48;
+const GAP = 4;
 
 // The class `pele` lets a page's rule for `.pele` give the buttons the diagram's colors, and the
 // variables let it move them: they sit over the diagram, where a page may have things of its own.
@@ -88,6 +89,7 @@ export function zoomWith(element: HTMLElement, options: ZoomOptions, observe: bo
   let roomy = false;
   let bleed = '';
   let restStyle = { width: '', height: '', maxWidth: '', margin: '', display: '' };
+  let cleared: { before: [string, string]; after: [string, string] } | null = null;
   // The scale shown, or 0 while the drawing rests at the size that fits.
   let scale = 0;
   let x = 0;
@@ -162,15 +164,21 @@ export function zoomWith(element: HTMLElement, options: ZoomOptions, observe: bo
   };
   const ours = (event: Event): boolean => bar !== undefined && event.target instanceof view().Node && bar.contains(event.target as Node);
 
-  const settle = (): void => {
+  const restore = (): void => {
     if (!svg) return;
-    scale = 0;
-    svg.setAttribute('viewBox', `0 0 ${natural.width} ${natural.height}`);
+    unclear();
     svg.style.width = restStyle.width;
     svg.style.height = restStyle.height;
     svg.style.maxWidth = restStyle.maxWidth;
     svg.style.margin = restStyle.margin;
     svg.style.display = restStyle.display;
+  };
+
+  const settle = (): void => {
+    if (!svg) return;
+    restore();
+    scale = 0;
+    svg.setAttribute('viewBox', `0 0 ${natural.width} ${natural.height}`);
     svg.style.cursor = '';
     svg.style.userSelect = '';
     measure();
@@ -180,6 +188,39 @@ export function zoomWith(element: HTMLElement, options: ZoomOptions, observe: bo
     else svg.removeAttribute('tabindex');
     take(zoomable());
     offer();
+    clear();
+  };
+
+  // Narrows a drawing whose text the buttons hide at rest. The right margin keeps centered and
+  // right-aligned drawings clear of them too.
+  const clear = (): void => {
+    if (!svg || !bar || bar.hidden) return;
+    const at = bar.getBoundingClientRect();
+    const hidden = [...svg.querySelectorAll('text')].some((text) => {
+      const r = text.getBoundingClientRect();
+      return r.right > at.left && r.left < at.right && r.bottom > at.top && r.top < at.bottom;
+    });
+    const drawing = svg.getBoundingClientRect();
+    const end = at.left - GAP;
+    if (!hidden || drawing.right - end >= drawing.width / 2) return;
+    // Account for transforms and CSS zoom when setting styles.
+    const outer = element.getBoundingClientRect();
+    const k = element.offsetWidth > 0 ? outer.width / element.offsetWidth : 1;
+    const padding = parseFloat(view().getComputedStyle(element).paddingRight) || 0;
+    const edge = outer.left + (element.clientLeft + element.clientWidth - padding) * k;
+    const before: [string, string] = [svg.style.maxWidth, svg.style.marginRight];
+    svg.style.maxWidth = `${(end - drawing.left) / k}px`;
+    svg.style.marginRight = `${Math.max(edge - end, 0) / k}px`;
+    cleared = { before, after: [svg.style.maxWidth, svg.style.marginRight] };
+    if (svg.getBoundingClientRect().right > end + 1) unclear();
+    measure();
+  };
+  const unclear = (): void => {
+    if (!svg || !cleared) return;
+    // Preserve later style changes made by the page.
+    if (svg.style.maxWidth === cleared.after[0]) svg.style.maxWidth = cleared.before[0];
+    if (svg.style.marginRight === cleared.after[1]) svg.style.marginRight = cleared.before[1];
+    cleared = null;
   };
 
   // Shows the drawing at a scale, keeping the point under (clientX, clientY) where it is.
@@ -250,6 +291,8 @@ export function zoomWith(element: HTMLElement, options: ZoomOptions, observe: bo
 
   const refresh = (): void => {
     watch();
+    if (scale !== 0) restore();
+    else unclear();
     const first = element.firstElementChild;
     svg = first && first.localName === 'svg' ? (first as SVGSVGElement) : null;
     scale = 0;
@@ -431,6 +474,7 @@ export function zoomWith(element: HTMLElement, options: ZoomOptions, observe: bo
     resized,
     destroy() {
       settle();
+      unclear();
       if (svg) {
         svg.style.touchAction = '';
         svg.removeAttribute('tabindex');
