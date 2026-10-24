@@ -86,7 +86,7 @@ describe('worst cases', () => {
     const chain = (count: number): string => 'flowchart LR\n' + repeat(count, (i) => `N${i} --> N${i + 1}\n`);
     expect(render(chain(5000), { measurer: metricsMeasurer, limit: Infinity }).svg).toContain('<svg');
     expect(() => render(chain(5001), { measurer: metricsMeasurer, limit: Infinity })).toThrow(PeleError);
-    expect(() => render(chain(11), { measurer: metricsMeasurer, maxEdges: 10 })).toThrow(/limit is 10\b/);
+    expect(() => render(chain(11), { measurer: metricsMeasurer, maxEdges: 10 })).toThrow('Edge limit exceeded. The limit is 10.');
     expect(() => parse(chain(11), { maxEdges: 10 })).toThrow(/limit is 10\b/);
     try {
       render(chain(11), { maxEdges: 10 });
