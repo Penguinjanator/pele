@@ -12,6 +12,19 @@ const comments = rules.filter((rule) => rule.source === String.raw`^(?:[^\}]%%[^
 if (comments.length !== 1) throw new Error('Expected one timeline preceding-character comment rule');
 rules[rules.indexOf(comments[0])] = /(?!)/;
 
+// Match Pele: keep titles on one line.
+const titles = rules.filter((rule) => rule.source === String.raw`^(?:title\s[^\n]+)`);
+if (titles.length !== 1) throw new Error('Expected one timeline title rule');
+rules[rules.indexOf(titles[0])] = new RegExp(
+  titles[0].source.replace(String.raw`title\s`, String.raw`title[^\S\r\n]`),
+  titles[0].flags
+);
+
+// Use the whitespace rule to skip bare titles.
+const spaces = rules.filter((rule) => rule.source === String.raw`^(?:\s+)`);
+if (spaces.length !== 1) throw new Error('Expected one timeline whitespace rule');
+rules[rules.indexOf(spaces[0])] = new RegExp(String.raw`^(?:\s+|title[^\S\n]*(?=\n|$))`, spaces[0].flags);
+
 // The grammar reaches the title and accessibility setters through getCommonDb(); record those calls too.
 function recorder() {
   const rec = recordingYy([...oracle.methods, 'setDiagramTitle', 'setAccTitle', 'setAccDescription'], {

@@ -182,6 +182,16 @@ describe('timeline rendering', () => {
     expect(() => render('timeline\n  accDescr {\n  never closed\n', options)).toThrow(PeleError);
   });
 
+  it('treats a bare title as no title', () => {
+    const model = parse('timeline\ntitle\n2024 : Event\n2025 : Next');
+    expect(model.type).toBe('timeline');
+    if (model.type === 'timeline') {
+      expect(model.title).toBeUndefined();
+      expect(model.periods.map((p) => p.text)).toEqual(['2024 ', '2025 ']);
+    }
+    expect(parse('timeline\n  title\u00a0Kept\n  2024 : Event').title).toBe('Kept');
+  });
+
   it('keeps the character before a comment', () => {
     const model = parse('timeline\nA%% label : event\nB : e2');
     expect(model.type).toBe('timeline');

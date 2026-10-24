@@ -77,16 +77,26 @@ export function tokenize(src: string): Tokens {
         continue;
       }
     }
-    // `\s` after a keyword also takes a line break, so `title` alone on a line takes the next line as its text.
-    if (keywordAt(src, p, 'title') && isSpace(src.charCodeAt(p + 5)) && p + 6 < n && src.charCodeAt(p + 6) !== 10) {
-      emit(T.title, lineEnd(src, p + 6));
-      continue;
+    if (keywordAt(src, p, 'title')) {
+      // Unlike Mermaid, ignore bare titles.
+      e = p + 5;
+      while (src.charCodeAt(e) !== 10 && isSpace(src.charCodeAt(e))) e++;
+      if (e === n || src.charCodeAt(e) === 10) {
+        p = e;
+        continue;
+      }
+      const sep = src.charCodeAt(p + 5);
+      if (sep !== 13 && isSpace(sep)) {
+        emit(T.title, lineEnd(src, p + 6));
+        continue;
+      }
     }
     e = accessibility(src, p, out, T.acc_title);
     if (e !== p) {
       p = e;
       continue;
     }
+    // Like Mermaid, a bare section uses the next line as its name.
     if (keywordAt(src, p, 'section') && isSpace(src.charCodeAt(p + 7))) {
       e = p + 8;
       while (e < n && src.charCodeAt(e) !== 58 && src.charCodeAt(e) !== 10) e++;
