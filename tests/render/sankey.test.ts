@@ -86,6 +86,9 @@ describe('sankey rendering', () => {
     const money = render(configured('prefix: "$"\nsuffix: " M"'), options).svg;
     expect(money).toContain('>$8 M</tspan>');
     expect(money).toContain('<title>a → b: $5 M</title>');
+    const coded = render(configured('prefix: "&euro;"\nsuffix: " &amp;lt;"\nlabelStyle: outlined'), options).svg;
+    expect(coded).toContain('>€8 &amp;lt;</tspan>');
+    expect(coded).toContain('<title>a → b: €5 &amp;lt;</title>');
     const hidden = render(configured('showValues: false'), options).svg;
     expect(hidden).not.toContain('pele-sankey-value');
     expect(hidden).toContain('>a</text>');
