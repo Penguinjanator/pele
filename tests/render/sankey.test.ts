@@ -396,6 +396,11 @@ Upgraded to Pro,Stayed on Pro,284`;
     }
   });
 
+  it('reports the line of an error after blank lines', () => {
+    expect(() => parse('sankey\n\na,b,1\n\nb,c,abc')).toThrow(expect.objectContaining({ line: 5, column: 5 }));
+    expect(() => parse('sankey\n\na,b,1\n\nb,c,abc')).toThrow(/^Parse error on line 5:\nb,c,abc\n/);
+  });
+
   it('draws non-positive values as empty flows', () => {
     const { svg } = render('sankey\na,b,0\na,c,-3\nb,d,0\nc,d,2\n', options);
     expect(svg).not.toContain('NaN');
