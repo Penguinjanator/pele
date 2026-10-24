@@ -383,6 +383,9 @@ describe('agentflow rendering', () => {
     expect(() => render('---\ntitle: T\n---\nagentflow-beta TB\n  a@{ shape: rounded }  \n  b -.-> c', options)).toThrow(
       expect.objectContaining({ line: 6, column: 8 })
     );
+    const metadata = '%%{init:\n{}\n}%%\nagentflow-beta\na["#35;"] --> b@{shape: ';
+    expect(() => parse(metadata + 'bad}')).toThrow(expect.objectContaining({ code: 'semantic', line: 5, column: 16 }));
+    expect(() => parse(metadata + '[bad}')).toThrow(expect.objectContaining({ code: 'syntax', line: 5, column: 16, message: expect.stringMatching(/\(5:16\)$/) }));
   });
 
   it('maps a flow from its keyword to its end, and a metadata block as an attachment', () => {
