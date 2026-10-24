@@ -1,7 +1,9 @@
 import { createVideoOutro, outroLength, endHold, phoneGeometry, phoneShrinkLength } from '../lib/video-outro';
-import { parse, render, type FlowchartModel, type RenderResult } from 'pele';
+import { parse, render, type FlowchartModel, type MathMarkup, type RenderResult } from 'pele';
+import temml from 'temml';
+import 'temml/dist/Temml-Local.css';
 import { highlightLines } from '../lib/highlight';
-import { videoStory } from '../lib/video-story';
+import { videoStories, type VideoStoryName } from '../lib/video-story';
 import { videoThemes, type VideoTheme } from '../lib/video-themes';
 import { chartMotion, type ChartModel } from '../lib/video-chart-motion';
 import { gitViewport, renderGitPreview } from '../lib/video-git-preview';
@@ -25,6 +27,7 @@ const play = get<HTMLButtonElement>('#play');
 const slider = get<HTMLInputElement>('#timeline');
 const editor = get<HTMLTextAreaElement>('#editor');
 const status = get<HTMLElement>('#status');
+const videoStory = videoStories[film.dataset.story as VideoStoryName];
 const frames: Frame[] = [];
 const chapters: number[] = [];
 const chartSources = new WeakMap<RenderResult, { source: string; model: ChartModel }>();
@@ -38,13 +41,33 @@ const scrollAt = (time: number) => {
   const t = Math.max(0, Math.min(1, (time - captureScroll.at) / 120));
   return captureScroll.from + (captureScroll.to - captureScroll.from) * (1 - (1 - t) ** 3);
 };
-const options = { maxWidth: 600, fontFamily: 'Inter Variable, sans-serif', idPrefix: 'film-' };
+let mathFailed = false;
+let mathProbe: HTMLElement | undefined;
+function typeset(tex: string, size: number): MathMarkup | null {
+  if (!mathProbe) {
+    mathProbe = document.createElement('div');
+    mathProbe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;display:inline-block;white-space:nowrap';
+    document.body.append(mathProbe);
+  }
+  try {
+    mathProbe.innerHTML = temml.renderToString(tex, { displayMode: true, throwOnError: true });
+  } catch {
+    mathFailed = true;
+    return null;
+  }
+  mathProbe.style.fontSize = `${size}px`;
+  const expression = mathProbe.querySelector('math')!;
+  const { width, height } = expression.getBoundingClientRect();
+  return { html: expression.outerHTML, width, height };
+}
+const options = { maxWidth: 600, fontFamily: 'Inter Variable, sans-serif', idPrefix: 'film-', math: typeset };
 const chartOptions = (type: string) => type === 'xychart' ? { ...options, fontSize: 24 } : options;
 let duration = 0;
 let outroAt = Infinity;
 let mobileLayout: { scale: number; height: number } | undefined;
 let lastResult: RenderResult | undefined;
 let completeFlow: FlowchartModel | undefined;
+let richFlow = false;
 let gitCommitIds: Set<string> | undefined;
 let gitBranches: Set<string> | undefined;
 let gitBounds: ReturnType<typeof gitViewport> | undefined;
@@ -53,32 +76,58 @@ function balanced(source: string): string {
   const stack: string[] = [];
   const closers: Record<string, string> = { '[': ']', '{': '}', '(': ')' };
   let quote = false;
-  for (const char of source) {
+  let math: string[] | undefined;
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i];
+    if (quote && source.startsWith('$$', i)) {
+      math = math ? undefined : [];
+      i++;
+      continue;
+    }
+    if (math) {
+      if (char === '{') math.push(source.endsWith('\\frac', i) ? '}{}' : '}');
+      else if (char === '}') math.pop();
+      continue;
+    }
     if (char === '"') quote = !quote;
     if (quote) continue;
     if (closers[char]) stack.push(closers[char]);
     else if (char === stack.at(-1)) stack.pop();
   }
-  return source + (quote ? '"' : '') + stack.reverse().join('');
+  return source + (math ? math.reverse().join('') + '$$' : '') + (quote ? '"' : '') + stack.reverse().join('');
+}
+
+// Hold the previous frame while a tag, a $$ or a node's label is half typed.
+function richReady(model: FlowchartModel, typed: string, next: string, displayed: string): boolean {
+  if (/<[^>]*$/.test(typed.slice(typed.lastIndexOf('\n') + 1))) return false;
+  if (typed.endsWith('$') && next === '$') return false;
+  if (displayed.includes('$$$$')) return false;
+  return [...model.nodes].every(([id, node]) => {
+    const full = completeFlow!.nodes.get(id);
+    return full && (full.text === full.id || node.text !== id);
+  });
 }
 
 function add(source: string, cursor: number, chapter: number, hold: number, nextCharacter = ''): void {
   const displayed = balanced(source);
   try {
     const model = parse(displayed);
-    let ready = !(/[\d.]/.test(nextCharacter) && /[\d.]$/.test(source.slice(0, cursor)));
+    const typed = source.slice(0, cursor);
+    let ready = !(/[\d.]/.test(nextCharacter) && /[\d.]$/.test(typed));
     if (model.type === 'xychart') ready &&= videoStory[chapter].steps.includes(displayed);
+    if (model.type === 'flowchart' && richFlow) ready &&= richReady(model, typed, nextCharacter, displayed);
     const commitIds = gitCommitIds;
     const branches = gitBranches;
     if (ready) {
+      mathFailed = false;
       const result = model.type === 'gitGraph' && commitIds && branches && gitBounds
         ? renderGitPreview(model, commitIds, branches, gitBounds)
-        : model.type === 'flowchart' && completeFlow
+        : model.type === 'flowchart' && completeFlow && !richFlow
         ? renderFlowPreview(model, completeFlow, options)
         : render(model, model.type === 'mindmap' ? { ...options, maxWidth: 900 } : chartOptions(model.type));
-      if (result) {
+      if (result && !mathFailed) {
         lastResult = result;
-        if (model.type === 'pie' || model.type === 'xychart') chartSources.set(result, { source: displayed, model });
+        if (model.type === 'pie' || model.type === 'xychart' || model.type === 'sankey') chartSources.set(result, { source: displayed, model });
       }
     }
   } catch { /* Retain the latest valid diagram during incomplete syntax. */ }
@@ -91,6 +140,7 @@ for (const [chapter, story] of videoStory.entries()) {
   lastResult = undefined;
   const complete = parse(story.steps.at(-1)!);
   completeFlow = complete.type === 'flowchart' ? complete : undefined;
+  richFlow = /\$\$|<\w/.test(story.steps.at(-1)!);
   gitCommitIds = complete.type === 'gitGraph' ? new Set(complete.commits.keys()) : undefined;
   gitBranches = complete.type === 'gitGraph' ? new Set(complete.lanes) : undefined;
   gitBounds = complete.type === 'gitGraph' ? gitViewport(complete, options) : undefined;
@@ -123,7 +173,7 @@ for (const [chapter, story] of videoStory.entries()) {
     duration += 700;
   }
   if (complete.type === 'xychart') duration += 200;
-  if (complete.type === 'mindmap') {
+  if (chapter === videoStory.length - 1) {
     duration += 450;
     outroAt = duration;
     const landscape = lastResult;
@@ -296,7 +346,7 @@ function present(animate = false): void {
   diagram.style.left = '30px';
   diagram.style.right = '30px';
   showSource(frame.source, frame.cursor, animate && frames[index - 1]?.chapter === frame.chapter);
-  applyTheme(frame.theme, animate && (frames[index - 1]?.chapter === frame.chapter || videoStory[frame.chapter].name === 'Mindmap'));
+  applyTheme(frame.theme, animate && (frames[index - 1]?.chapter === frame.chapter || videoStory[frame.chapter - 1]?.themes !== undefined));
   draw(frame.result, animate);
   updateOutro(position - outroAt);
   layoutDiagram();
@@ -354,7 +404,7 @@ editor.addEventListener('input', () => {
   try {
     const model = parse(editor.value);
     const result = render(model, chartOptions(model.type));
-    if (model.type === 'pie' || model.type === 'xychart') chartSources.set(result, { source: editor.value, model });
+    if (model.type === 'pie' || model.type === 'xychart' || model.type === 'sankey') chartSources.set(result, { source: editor.value, model });
     draw(result, true);
     status.textContent = 'Live preview · edited';
   } catch (error) {
@@ -379,7 +429,13 @@ function advanceMotion(now: number): void {
       displayedChart = chartSources.get(motion.target)?.model;
       paint(motion.target);
       motion = undefined;
-    } else paint(render(displayedChart, chartOptions(displayedChart.type)), motion.template);
+    } else {
+      const frame = render(displayedChart, chartOptions(displayedChart.type));
+      if (frame.type === 'sankey') {
+        frame.svg = frame.svg.replace(/(class="pele-sankey-value"[^>]*>)([\d.]+)/g, (_, open, value) => open + Math.round(Number(value)));
+      }
+      paint(frame, motion.template);
+    }
   }
 }
 

@@ -1,6 +1,12 @@
 import type { VideoTheme } from './video-themes';
 
-export const videoStory: { name: string; steps: string[]; themes?: VideoTheme[] }[] = [
+export interface VideoScene {
+  name: string;
+  steps: string[];
+  themes?: VideoTheme[];
+}
+
+const launch: VideoScene[] = [
   {
     name: 'Flow',
     steps: [
@@ -54,3 +60,33 @@ export const videoStory: { name: string; steps: string[]; themes?: VideoTheme[] 
     ],
   },
 ];
+
+const formula = 'x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}';
+const energy = ['Geothermal,Energy,65', 'Hydro,Energy,20', 'Oil,Energy,15', 'Energy,Power,40', 'Energy,Heating,30', 'Energy,Industry,15', 'Energy,Transport,15'];
+
+const visual: VideoScene[] = [
+  {
+    name: 'Math',
+    steps: [
+      'flowchart',
+      'flowchart\n  Q["$$ax^2 + bx + c = 0$$"]',
+      `flowchart\n  Q["$$ax^2 + bx + c = 0$$"]\n  Q --> X["$$${formula}$$"]`,
+    ],
+  },
+  {
+    name: 'Chemistry',
+    steps: [
+      'flowchart',
+      'flowchart\n  In["<b>Reactants</b><br>6CO<sub>2</sub> + 6H<sub>2</sub>O"]',
+      'flowchart\n  In["<b>Reactants</b><br>6CO<sub>2</sub> + 6H<sub>2</sub>O"]\n  In -->|<u>light</u>| Out["<b>Products</b><br>C<sub>6</sub>H<sub>12</sub>O<sub>6</sub> + 6O<sub>2</sub>"]',
+    ],
+  },
+  {
+    name: 'Sankey',
+    steps: energy.map((_, index) => ['sankey', ...energy.slice(0, index + 1)].join('\n  ')),
+    themes: ['everforest', 'gruvbox', 'rose-pine', 'paper'],
+  },
+];
+
+export const videoStories = { launch, visual };
+export type VideoStoryName = keyof typeof videoStories;

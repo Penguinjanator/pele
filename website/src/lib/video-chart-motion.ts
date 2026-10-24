@@ -1,6 +1,6 @@
-import { parse, type PieModel, type XyChartModel } from 'pele';
+import { parse, type PieModel, type SankeyModel, type XyChartModel } from 'pele';
 
-export type ChartModel = PieModel | XyChartModel;
+export type ChartModel = PieModel | SankeyModel | XyChartModel;
 
 export function chartMotion(from: ChartModel, source: string): ((progress: number) => ChartModel) | undefined {
   const target = parse(source);
@@ -12,6 +12,14 @@ export function chartMotion(from: ChartModel, source: string): ((progress: numbe
         const start = from.sections.get(label) ?? 0;
         return [label, start + (value - start) * progress];
       }));
+      return model;
+    };
+  }
+  if (from.type === 'sankey' && target.type === 'sankey' && model.type === 'sankey') {
+    const starts = target.links.map(link =>
+      from.links.find(old => old.source.id === link.source.id && old.target.id === link.target.id)?.value ?? 0);
+    return progress => {
+      model.links.forEach((link, index) => { link.value = starts[index] + (target.links[index].value - starts[index]) * progress; });
       return model;
     };
   }
