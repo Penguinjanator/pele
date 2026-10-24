@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { SankeyModel } from '../../src/diagrams/sankey/db.js';
 import { PeleError, parse, render, supports } from '../../src/index.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 import { loadCorpus } from '../support/corpus.js';
@@ -383,7 +384,7 @@ Upgraded to Pro,Stayed on Pro,284`;
   });
 
   it('rejects what Mermaid rejects', () => {
-    for (const src of ['sankey\n', 'sankey\na,b\n', 'sankey\na,b,1,2\n', 'sankey\na,,1\n', 'sankey\n"",b,1\n', 'sankey\na,b,1\n   \nc,d,2\n', 'sankey x\na,b,1\n']) {
+    for (const src of ['sankey\n', 'sankey\na,b\n', 'sankey\na,b,1,2\n', 'sankey\na,,1\n', 'sankey\n"",b,1\n', 'sankey x\na,b,1\n']) {
       expect(() => render(src, options), src).toThrow(PeleError);
     }
     expect(() => render('sankey\na,b\n', options)).toThrow(/Expecting 'COMMA', 'NEWLINE', 'EOF', got 'EOF'|Expecting 'COMMA'/);
@@ -399,6 +400,24 @@ Upgraded to Pro,Stayed on Pro,284`;
   it('reports the line of an error after blank lines', () => {
     expect(() => parse('sankey\n\na,b,1\n\nb,c,abc')).toThrow(expect.objectContaining({ line: 5, column: 5 }));
     expect(() => parse('sankey\n\na,b,1\n\nb,c,abc')).toThrow(/^Parse error on line 5:\nb,c,abc\n/);
+  });
+
+  it('ignores blanks at the start and end of each row', () => {
+    const links = (src: string): string[] =>
+      (parse(src) as SankeyModel).links.map((link) => `${link.source.id}>${link.target.id}:${link.value}`);
+    expect(links('sankey-beta \na,b,1')).toEqual(['a>b:1']);
+    expect(links('sankey-beta\n\ta,b,1\nc,d,2')).toEqual(['a>b:1', 'c>d:2']);
+    expect(links('sankey-beta\na,b,1\n   \nc,d,2')).toEqual(['a>b:1', 'c>d:2']);
+    expect(links('sankey-beta\na,b,1\n "c d",e,2')).toEqual(['a>b:1', 'c d>e:2']);
+    expect(links('sankey-beta\nd,e,"2" \ng,h,3')).toEqual(['d>e:2', 'g>h:3']);
+    expect(links('sankey\n"a  \n  b",c,1')).toEqual(['a  \n  b>c:1']);
+    expect(links('sankey\na,b,1\n ,c,2')).toEqual(['a>b:1', '>c:2']);
+  });
+
+  it('reports errors after blanks at row edges where they are written', () => {
+    expect(() => parse('sankey \n\t a,b,1 \n  \n \tb,c,abc ')).toThrow(expect.objectContaining({ line: 4, column: 7 }));
+    expect(() => parse('sankey\n "a \n b", c ,x')).toThrow(expect.objectContaining({ line: 3, column: 9 }));
+    expect(() => parse('sankey\n a,b,1 \n c,d')).toThrow(expect.objectContaining({ line: 3, column: 5 }));
   });
 
   it('draws non-positive values as empty flows', () => {

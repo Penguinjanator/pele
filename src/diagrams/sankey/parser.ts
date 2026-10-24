@@ -22,22 +22,54 @@ function isBlank(c: number): boolean {
   );
 }
 
-// Mermaid's sankeyUtils: strip blanks at both ends of the text, then collapse runs of line
-// breaks so that no row is empty. Its first step is a regex that rescans every run of blanks;
-// this does the same in one pass.
-export function prepareTextForParsing(text: string, steps?: Edit[][]): string {
-  let start = 0;
+function trimRows(text: string, edits: Edit[]): string {
   let end = text.length;
-  while (start < end && isBlank(text.charCodeAt(start))) start++;
-  while (end > start && isBlank(text.charCodeAt(end - 1))) end--;
-  const sliced = text.slice(start, end);
-  const collapsed = sliced.replace(RE_LINE_BREAKS, '\n');
+  while (end > 0 && isBlank(text.charCodeAt(end - 1))) end--;
+  let out = '';
+  let kept = 0;
+  let quoted = false;
+  for (let i = 0; i < end; ) {
+    const c = text.charCodeAt(i);
+    if (quoted) {
+      if (c === 34) {
+        if (text.charCodeAt(i + 1) === 34) i++;
+        else quoted = false;
+      }
+      i++;
+    } else if (c === 34) {
+      quoted = true;
+      i++;
+    } else if (isBlank(c)) {
+      let j = i + 1;
+      while (isBlank(text.charCodeAt(j))) j++;
+      const p = text.charCodeAt(i - 1);
+      const q = text.charCodeAt(j);
+      // Preserve blank first fields, which Mermaid accepts as empty names.
+      if (i === 0 || q === 10 || q === 13 || ((p === 10 || p === 13) && q !== 44)) {
+        out += text.slice(kept, i);
+        edits.push([i, j, 0]);
+        kept = j;
+      }
+      i = j;
+    } else {
+      i++;
+    }
+  }
+  if (end < text.length) edits.push([end, text.length, 0]);
+  return out + text.slice(kept, end);
+}
+
+// Unlike Mermaid's sankeyUtils, also trim row edges outside quoted fields.
+export function prepareTextForParsing(text: string, steps?: Edit[][]): string {
+  const edits: Edit[] = [];
+  const rows = trimRows(text, edits);
+  const collapsed = rows.replace(RE_LINE_BREAKS, '\n');
   const trimmed = collapsed.trim();
   if (steps !== undefined) {
     const lead = collapsed.length - collapsed.trimStart().length;
     steps.push(
-      [[0, start, 0], [end, text.length, 0]],
-      replacements(sliced, RE_LINE_BREAKS, 1),
+      edits,
+      replacements(rows, RE_LINE_BREAKS, 1),
       [[0, lead, 0], [lead + trimmed.length, collapsed.length, 0]]
     );
   }

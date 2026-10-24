@@ -18,9 +18,15 @@ const FRAGMENTS = [
   '__proto__', 'constructor', 'a,b,1', '\na,b,1', 'a,b,1\n', '"a","b","1"', ' a , b , 1 ',
 ];
 
-// Mermaid's own reference implementation of the text preparation step.
+// Extend Mermaid's text preparation to trim row edges outside quotes.
+// Preserve blank first fields.
+const ROW_EDGES = /"(?:[^"]|"")*"?|(?<=[\n\r])[^\S\n\r]+(?![\s,])|[^\S\n\r]+(?=[\n\r])/g;
 const reference = (text: string): string =>
-  text.replaceAll(/^[^\S\n\r]+|[^\S\n\r]+$/g, '').replaceAll(/([\n\r])+/g, '\n').trim();
+  text
+    .replaceAll(/^[^\S\n\r]+|[^\S\n\r]+$/g, '')
+    .replaceAll(ROW_EDGES, (match) => (match[0] === '"' ? match : ''))
+    .replaceAll(/([\n\r])+/g, '\n')
+    .trim();
 
 const energy = readFileSync('tests/compat/sankey/upstream/energy.csv', 'utf8');
 const raw = [
