@@ -6,7 +6,7 @@ const BLANK = 'about:blank';
 const RE_INVALID_PROTOCOL = /^([^\w]*)(javascript|data|vbscript)/im;
 const RE_HTML_ENTITIES = /&#(\w+)(^\w|;)?/g;
 const RE_HTML_CTRL_ENTITY = /&(newline|tab);/gi;
-const RE_CTRL = /[\u0000-\u001F\u007F-\u009F -‍﻿]/gim;
+const RE_CTRL = /[\u0000-\u001F\u007F-\u009F -‍﻿\uD800-\uDFFF\uFFFE\uFFFF]/gimu;
 const RE_SCHEME = /^.+(:|&colon;)/gim;
 const RE_WS_ESCAPE = /(\\|%5[cC])((%(6[eE]|72|74))|[nrt])/g;
 
