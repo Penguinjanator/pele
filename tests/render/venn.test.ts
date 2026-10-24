@@ -306,8 +306,8 @@ describe('venn diagram rendering', () => {
     };
     expect(message('venn-beta\nunion A')).toBe('union requires multiple identifiers');
     expect(message('venn-beta\nset A\nunion A,B')).toBe('unknown set identifier: B');
-    expect(message('venn-beta\nset A\nunion A,"B#35;x"')).toBe('unknown set identifier: B#x');
-    expect(message('venn-beta\nset "B#x"\nset A\nunion A,"B#35;x"')).toBe('unknown set identifier: B#x');
+    expect(message('venn-beta\nset A\nunion A,"B#35;x"')).toBe('unknown set identifier: B#35;x');
+    expect(message('venn-beta\nset "B#x"\nset A\nunion A,"B#35;x"')).toBe('unknown set identifier: B#35;x');
     expect(message('venn-beta\nset A,B')).toMatch(/^Parse error on line 2:\nset A,B\n-----\^\nExpecting 'EOF', 'NEWLINE', 'TITLE', 'SET', 'UNION', 'TEXT', 'INDENT_TEXT', 'STYLE', got 'COMMA'$/);
     expect(message('venn-beta\nset A $')).toMatch(/^Lexical error on line 2\. Unrecognized text\./);
   });

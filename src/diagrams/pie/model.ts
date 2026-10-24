@@ -1,5 +1,4 @@
 import { PeleError } from '../../errors.js';
-import { decodeEntities } from '../../text/entities.js';
 import type { PieAst } from './parser.js';
 
 export interface PieModel {
@@ -16,7 +15,7 @@ export function buildPie(ast: PieAst, title: string | undefined): PieModel {
   for (const { label, value } of ast.sections) {
     if (value < 0) {
       throw new PeleError(
-        `"${decodeEntities(label)}" has invalid value: ${value}. Negative values are not allowed in pie charts. All slice values must be >= 0.`,
+        `"${label}" has invalid value: ${value}. Negative values are not allowed in pie charts. All slice values must be >= 0.`,
         'semantic',
         { type: 'pie' }
       );
