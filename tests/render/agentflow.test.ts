@@ -418,6 +418,7 @@ describe('agentflow rendering', () => {
       throw new Error('expected a failure');
     };
     const open = fails('agentflow-beta TB\n  flow orphan["Orphan"]\n    a --> b');
+    expect(fails('agentflow-beta TB\n  flow f["F"]\n    a --> b\n\n%% trailing\n')).toMatchObject({ line: 3, column: 12 });
     expect(open.code).toBe('syntax');
     expect(open.message).toMatch(/^Parse error on line \d+:/);
     expect(open.message).toContain("Expecting 'end', got '$end'");

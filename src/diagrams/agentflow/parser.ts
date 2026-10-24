@@ -88,6 +88,8 @@ interface Frame {
 
 const TEXT_TOKENS = "'UNICODE_TEXT', 'TEXT', 'TAGSTART'";
 const SEPARATORS = "'COMMENT', 'SEMI', 'NEWLINE', 'EOF'";
+const TRAILING = new Uint8Array(T.EOF + 1);
+for (const t of [T.COMMENT, T.NEWLINE, T.SPACE, T.EOF]) TRAILING[t] = 1;
 const NO_ITEMS: string[] = [];
 
 // Mermaid trims spaces and tabs between a closing brace and the end of its line before parsing.
@@ -104,7 +106,14 @@ export function parseAgentflow(source: string, db: AgentflowDb, raw = false): vo
 
   const fail = (expected: string): never => {
     const t = types[i];
-    const at = src === source ? starts[i] : inputOffset([replacements(source, RE_BRACE_TRAIL, 2)], starts[i]);
+    let from = starts[i];
+    if (t === T.EOF || t === T.END) {
+      // Comments are tokens here, so skip trailing ones.
+      let k = i;
+      while (k > 0 && TRAILING[types[k - 1]]) k--;
+      from = src.slice(0, starts[k]).trimEnd().length;
+    }
+    const at = src === source ? from : inputOffset([replacements(source, RE_BRACE_TRAIL, 2)], from);
     if (t === T.ERROR) throw syntaxError('agentflow', source, at, '', true);
     throw syntaxError('agentflow', source, at, `Expecting ${expected}, got '${TOKEN_NAMES[t]}'`);
   };
