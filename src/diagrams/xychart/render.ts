@@ -97,13 +97,10 @@ export function renderXyChart(model: XyChartModel, config: Config, options: Rend
   // The value range: as written, or taken from the data, where bars stand on zero and the
   // range grows to whole steps.
   const bars = plots.filter((plot) => plot.type === 'bar').length;
-  let lo = model.yAxis.min;
-  let hi = model.yAxis.max;
+  let lo = finite(model.yAxis.min) ?? Infinity;
+  let hi = finite(model.yAxis.max) ?? -Infinity;
   const exact = model.hasSetYAxis && isFinite(lo) && isFinite(hi) && lo !== hi;
-  if (exact) {
-    lo = finite(lo)!;
-    hi = finite(hi)!;
-  } else {
+  if (!exact) {
     lo = Infinity;
     hi = -Infinity;
     for (const plot of plots) {
