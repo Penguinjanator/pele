@@ -8,8 +8,7 @@ import { oracleParse, oracleTokens, peleParse, peleTokens } from '../support/san
 
 // Compares Pele's sankey lexer and parser with the parser Mermaid generates from sankey.jison:
 // the same tokens and model calls for ASCII inputs. Pele additionally rejects decoded names
-// forbidden in XML and values that are not finite decimal numbers. Unicode names are a Pele
-// extension, covered by the rendering tests.
+// forbidden in XML and non-finite values. Rendering tests cover Pele's Unicode extension.
 // Set FUZZ to raise the number of mutated inputs.
 
 const FRAGMENTS = [
@@ -48,8 +47,7 @@ function compare(src: string): void {
   const fields = tokens.filter(([kind]) => kind === 'NON_ESCAPED_TEXT' || kind === 'ESCAPED_TEXT');
   const invalidValue = expected.ok && fields.some(([, text], i) => {
     if (i % 3 !== 2) return false;
-    const amount = text.trim();
-    return amount === '' || /^[+-]?0[xob]/i.test(amount) || !Number.isFinite(Number(amount));
+    return !Number.isFinite(parseFloat(text));
   });
   const accepted = expected.ok && !invalidName && !invalidValue;
   expect(actual.ok, `acceptance of ${JSON.stringify(src)}`).toBe(accepted);

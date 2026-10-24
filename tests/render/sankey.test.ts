@@ -386,6 +386,13 @@ Upgraded to Pro,Stayed on Pro,284`;
     expect(() => render('sankey\na,b\n', options)).toThrow(/Expecting 'COMMA', 'NEWLINE', 'EOF', got 'EOF'|Expecting 'COMMA'/);
   });
 
+  it('reads values that start with a number, and refuses the rest', () => {
+    expect(render('sankey\na,b,50%\nb,c, 2e1 kWh\n', options).svg).toContain('<title>b → c: 20</title>');
+    for (const value of ['abc', '', 'Infinity', '1e400', '-']) {
+      expect(() => render(`sankey\na,b,1\nb,c,${value}\n`, options), value).toThrow(expect.objectContaining({ code: 'syntax', line: 3, column: 5 }));
+    }
+  });
+
   it('draws non-positive values as empty flows', () => {
     const { svg } = render('sankey\na,b,0\na,c,-3\nb,d,0\nc,d,2\n', options);
     expect(svg).not.toContain('NaN');
