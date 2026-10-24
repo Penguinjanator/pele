@@ -71,7 +71,14 @@ export function written(src: string, offset: number): [source: string, offset: n
 }
 
 export function locate(src: string, offset: number): { line: number; column: number; snippet: string } {
-  [src, offset] = written(src, offset);
+  // Keep EOF errors on the last content line.
+  const end = src.trimEnd().length;
+  if (end > 0 && offset >= end) {
+    [src, offset] = written(src, end - 1);
+    offset++;
+  } else {
+    [src, offset] = written(src, offset);
+  }
   let line = 1;
   let lineStart = 0;
   for (let i = src.indexOf('\n'); i !== -1 && i < offset; i = src.indexOf('\n', i + 1)) {

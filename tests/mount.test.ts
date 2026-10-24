@@ -497,7 +497,7 @@ describe('mount', () => {
     const [drawing, error] = children;
     expect(drawing.style.opacity).toBe('0.4');
     expect(error.className).toBe('pele pele-error');
-    expect(error.textContent).toBe("Parse error on line 3: Expecting 'NODE_STRING', got 'EOF'");
+    expect(error.textContent).toBe("Parse error on line 2: Expecting 'NODE_STRING', got 'EOF'");
     expect(error.title).toBe((handle.error as Error).message);
     expect(error.attributes.style).toContain('margin-top:-1.3em');
     // A drawing for another width keeps it.
