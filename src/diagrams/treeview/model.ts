@@ -1,5 +1,5 @@
-import { PeleError } from '../../errors.js';
-import { preprocessBoxDrawing, remapErrorLines } from './boxDrawing.js';
+import { locate, PeleError } from '../../errors.js';
+import { lineStart, preprocessBoxDrawing, remapErrorLines } from './boxDrawing.js';
 import { parseTreeView, type TreeViewAst } from './parser.js';
 
 export type NodeType = 'file' | 'directory';
@@ -61,19 +61,26 @@ export function populate(ast: TreeViewAst, db: TreeViewDb): void {
 
 // Reads the source to a syntax tree, accepting box-drawing input. Errors name lines of the original text.
 export function readTreeView(source: string): TreeViewAst {
-  const { text, lineMap } = preprocessBoxDrawing(source);
+  const { text, lineMap, columns } = preprocessBoxDrawing(source);
   try {
     return parseTreeView(text);
   } catch (error) {
-    if (lineMap.size === 0 || !(error instanceof PeleError)) throw error;
-    const head = error.message.indexOf('\n');
+    // The parser already located errors in unchanged text.
+    if (!(error instanceof PeleError) || text === source) throw error;
+    const line = lineMap.get(error.line);
+    if (line === undefined) throw error;
+    const at = error.column > 0 ? (columns.get(error.line)?.(error.column - 1) ?? error.column - 1) : 0;
+    const written = locate(source, lineStart(source, line) + at);
+    const head = error.message.includes('\n') ? error.message.indexOf('\n') : error.message.length;
+    const rest = error.message.slice(head);
     const message =
-      head === -1 ? remapErrorLines(error.message, lineMap) : remapErrorLines(error.message.slice(0, head), lineMap) + error.message.slice(head);
+      remapErrorLines(error.message.slice(0, head), new Map([[error.line, written.line]])) +
+      (error.snippet ? rest.replace(error.snippet, () => written.snippet) : rest);
     throw new PeleError(message, error.code, {
       type: error.type,
-      line: lineMap.get(error.line) ?? error.line,
-      column: error.column,
-      snippet: error.snippet,
+      line: written.line,
+      column: error.column > 0 ? written.column : 0,
+      snippet: error.snippet ? written.snippet : '',
     });
   }
 }

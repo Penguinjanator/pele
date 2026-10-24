@@ -1,4 +1,4 @@
-import { PeleError } from '../../errors.js';
+import { locate, PeleError } from '../../errors.js';
 
 // Mermaid's box-drawing preprocessor: turns `├──`, `└──`, `│` (and the heavy variants) into the
 // indentation the grammar reads.
@@ -16,6 +16,8 @@ export interface PreprocessResult {
   text: string;
   // Output line number to original line number, both from 1. Empty when the text is unchanged.
   lineMap: Map<number, number>;
+  // Per output line, maps rewritten indices to original indices.
+  columns: Map<number, (at: number) => number>;
 }
 
 export function isBoxDrawingFormat(lines: string[]): boolean {
@@ -37,13 +39,28 @@ export function remapErrorLines(message: string, lineMap: Map<number, number>): 
   });
 }
 
-function fail(line: number, message: string): never {
+export function lineStart(text: string, line: number): number {
+  let at = 0;
+  for (let n = 1; n < line; n++) at = text.indexOf('\n', at) + 1;
+  return at;
+}
+
+function fail(input: string, index: number, message: string): never {
+  const { line } = locate(input, lineStart(input, index + 1));
   throw new PeleError(`Line ${line}: ${message}`, 'syntax', { type: 'treeView', line });
+}
+
+// Undo four-space tab expansion.
+function beforeTabs(line: string, at: number): number {
+  let i = 0;
+  for (let n = 0; i < line.length && n < at; i++) n += line[i] === '\t' ? 4 : 1;
+  return i;
 }
 
 export function preprocessBoxDrawing(input: string): PreprocessResult {
   const lineMap = new Map<number, number>();
-  if (!ALL_BOX_CHARS.test(input)) return { text: input, lineMap };
+  const columns = new Map<number, (at: number) => number>();
+  if (!ALL_BOX_CHARS.test(input)) return { text: input, lineMap, columns };
   const lines = input.split('\n');
 
   let keywordIdx = -1;
@@ -53,7 +70,7 @@ export function preprocessBoxDrawing(input: string): PreprocessResult {
       break;
     }
   }
-  if (keywordIdx === -1) return { text: input, lineMap };
+  if (keywordIdx === -1) return { text: input, lineMap, columns };
 
   const passes = (line: string): boolean => line.trim() === '' || COMMENT_LINE.test(line) || METADATA_LINE.test(line);
 
@@ -63,13 +80,14 @@ export function preprocessBoxDrawing(input: string): PreprocessResult {
     if (passes(line) || DECORATION_ONLY.test(line)) continue;
     contentLines.push(line.replace(/\t/g, '    '));
   }
-  if (!isBoxDrawingFormat(contentLines)) return { text: input, lineMap };
+  if (!isBoxDrawingFormat(contentLines)) return { text: input, lineMap, columns };
 
   const segmentWidth = inferSegmentWidth(contentLines);
   const out: string[] = [];
-  const keep = (text: string, index: number): void => {
+  const keep = (text: string, index: number, column?: (at: number) => number): void => {
     out.push(text);
     lineMap.set(out.length, index + 1);
+    if (column) columns.set(out.length, column);
   };
 
   for (let i = 0; i <= keywordIdx; i++) keep(lines[i], i);
@@ -89,8 +107,9 @@ export function preprocessBoxDrawing(input: string): PreprocessResult {
       while (pos < normalized.length && DASH_CHAR.test(normalized[pos])) pos++;
       while (pos < normalized.length && normalized[pos] === ' ') pos++;
       const content = normalized.slice(pos).trimEnd();
-      if (!content) fail(i + 1, 'Empty node — expected a filename or directory name after the box-drawing prefix');
-      keep(INDENT_UNIT.repeat(depth) + content, i);
+      if (!content) fail(input, i, 'Empty node — expected a filename or directory name after the box-drawing prefix');
+      const indent = INDENT_UNIT.repeat(depth);
+      keep(indent + content, i, (at) => beforeTabs(line, pos + Math.max(at - indent.length, 0)));
     } else if (BOX_ONLY.test(normalized)) {
       continue;
     } else if (ALL_BOX_CHARS.test(normalized)) {
@@ -98,12 +117,13 @@ export function preprocessBoxDrawing(input: string): PreprocessResult {
       keep(line, i);
     } else if (/^\s+/.test(normalized)) {
       fail(
-        i + 1,
+        input,
+        i,
         'Unexpected indentation without box-drawing characters. In box-drawing format, use ├── or └── prefixes for indented nodes.'
       );
     } else {
       keep(line, i);
     }
   }
-  return { text: out.join('\n'), lineMap };
+  return { text: out.join('\n'), lineMap, columns };
 }
