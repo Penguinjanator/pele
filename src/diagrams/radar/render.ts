@@ -24,7 +24,9 @@ function option(config: Config, key: string, fallback: number, min: number, max:
 
 export function relativeRadius(value: number, min: number, max: number, radius: number): number {
   const clipped = Math.min(Math.max(value, min), max);
-  return (radius * (clipped - min)) / (max - min);
+  const scaled = radius * (clipped - min);
+  // Keep the original rounding unless multiplication overflows.
+  return Number.isFinite(scaled) ? scaled / (max - min) : radius * ((clipped - min) / (max - min));
 }
 
 // A closed Catmull-Rom spline through the points, as cubic Bézier segments.
