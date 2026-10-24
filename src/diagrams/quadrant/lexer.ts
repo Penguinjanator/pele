@@ -200,11 +200,6 @@ export function tokenize(src: string): Tokens {
       p = lineEnd(p + 2);
       continue;
     }
-    // Mermaid's second comment rule takes any character before `%%` with it, a line break included.
-    if (c !== 125 && next === 37 && src.charCodeAt(p + 2) === 37) {
-      p = lineEnd(p + 3);
-      continue;
-    }
     if (c === 10 || c === 13) {
       let e = p + 1;
       for (let d = src.charCodeAt(e); d === 10 || d === 13; d = src.charCodeAt(++e));

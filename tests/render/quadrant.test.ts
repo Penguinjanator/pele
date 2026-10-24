@@ -226,6 +226,12 @@ describe('quadrant chart rendering', () => {
     }
   });
 
+  it('keeps the character before a comment', () => {
+    const model = parse('quadrantChart\nquadrant-1 A%% note');
+    expect(model.type === 'quadrantChart' && model.quadrants[0]).toEqual({ text: 'A', type: 'text' });
+    expect(() => parse('quadrantChart\nquadrant-1 A:%% note')).toThrow(PeleError);
+  });
+
   it('gives the same output for the same input', () => {
     expect(render(CHART, options).svg).toBe(render(CHART, options).svg);
   });
