@@ -5,6 +5,7 @@ import { PeleError } from '../../src/errors.js';
 import { loadCorpus, mutator, random } from '../support/corpus.js';
 import { peleTokens, referenceTokens } from '../support/langium.js';
 import { loadTestStrings, peleLexer, peleLongerAlts, referenceLexer, referenceLongerAlts } from '../support/langium-extra.js';
+import '../support/radar-oracle.js';
 
 const FRAGMENTS = [
   'radar-beta', 'radar-beta:', 'radar-beta :', 'title', 'title ', 'accTitle: ', 'accDescr: ', 'accDescr {', 'accDescr {}', '}', '{', '[', ']',
@@ -12,7 +13,7 @@ const FRAGMENTS = [
   '\n', '\r\n', ' ', '\t', '%%', '%% c', '%%{init: {}}%%', '---', '---\n', '\\', 'x', 'A', 'B', 'a-b', 'a_1', '-', '_', 'é', ';',
   '#35;', 'axis', 'axis ', 'curve', 'curve ', 'ticks', 'ticks 5', 'max', 'max 10', 'min', 'min 0', 'graticule', 'graticule polygon',
   'circle', 'polygon', 'showLegend', 'showLegend false', 'true', 'false', 'axis A, B', '\ncurve c{1, 2}', 'curve d{ A: 1, B 2 }',
-  'axisx', 'maxi', 'trues',
+  'axisx', 'maxi', 'trues', 'circles', 'titles', 'falsecurve', 'polygonaxis',
 ];
 
 const HEADLESS = /^\s*(?:axis|curve|ticks|min|max|graticule|showLegend|title|accTitle|accDescr)\b/;
@@ -45,6 +46,11 @@ const corpus = [
   'radar-beta\naxis a-, b',
   'radar-beta\naxis true',
   'radar-beta\naxis circles',
+  'radar-beta\naxis circles, trueNorth, titles, polygon-x\ncurve falsey{circles: 1, trueNorth 2}, titles{1}',
+  'radar-beta\naxis a, b, c\nshowLegend falsecurve x{1,2,3}',
+  'radar-beta\ngraticule polygonaxis a, b, c\ncurve x{1,2,3}',
+  'radar-beta\ngraticule %%{init: {}}%% circlecurve x{1}',
+  'radar-beta\ntitleaxis a',
   'radar-beta\nshowLegend true, ticks 3, max 1.5, min 0, graticule polygon',
   'radar-beta\nshowLegend TRUE',
   'radar-beta\nticks 5 ticks 6\nticks 7',

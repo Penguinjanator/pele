@@ -23,11 +23,12 @@ export interface TokenType {
   // returns the end of the match, or -1.
   scanner?: () => Scanner;
   // Matches in place of the pattern, for a pattern that would rescan text from every position
-  // and needs no memory between calls. Returns the end of the match, or -1.
+  // or that depends on the token before it. Returns the end of the match, or -1.
   match?: Scanner;
 }
 
-export type Scanner = (src: string, at: number) => number;
+// `previous` is the last visible token's type index, or -1 at the start.
+export type Scanner = (src: string, at: number, previous: number) => number;
 
 export interface Tokens {
   kinds: number[];
@@ -74,8 +75,8 @@ export function tokenize(src: string, types: readonly TokenType[], diagram: stri
   const match = (k: number, p: number): number => {
     if (dead[k]) return -1;
     const type = types[k];
-    if (type.match !== undefined) return type.match(src, p);
-    if (type.scanner !== undefined) return (scanners[k] ??= type.scanner())(src, p);
+    if (type.match !== undefined) return type.match(src, p, kinds[kinds.length - 1] ?? -1);
+    if (type.scanner !== undefined) return (scanners[k] ??= type.scanner())(src, p, kinds[kinds.length - 1] ?? -1);
     const pattern = type.pattern;
     if (typeof pattern === 'string') return src.startsWith(pattern, p) ? p + pattern.length : -1;
     pattern.lastIndex = p;

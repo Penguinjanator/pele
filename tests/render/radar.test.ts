@@ -107,6 +107,22 @@ describe('radar rendering', () => {
     );
   });
 
+  it('reads names that start with circle, polygon, true, false or title', () => {
+    const model = parse('radar-beta\n axis circles, polygonal, trueNorth, falsey, titles\n curve titles{1, 2, 3, 4, 5}, circles{ circles: 1, polygonal 2, trueNorth: 3, falsey 4, titles: 5 }');
+    expect(model.type).toBe('radar');
+    if (model.type === 'radar') {
+      expect(model.axes.map((a) => a.name)).toEqual(['circles', 'polygonal', 'trueNorth', 'falsey', 'titles']);
+      expect(model.curves.map((c) => [c.name, c.entries])).toEqual([['titles', [1, 2, 3, 4, 5]], ['circles', [1, 2, 3, 4, 5]]]);
+      expect(model.title).toBeUndefined();
+    }
+    const glued = parse('radar-beta\n axis a, b\n showLegend falsecurve x{1, 2}\n graticule polygonaxis c');
+    if (glued.type === 'radar') {
+      expect(glued.options).toMatchObject({ showLegend: false, graticule: 'polygon' });
+      expect(glued.axes.map((a) => a.name)).toEqual(['a', 'b', 'c']);
+    }
+    expect(() => parse('radar-beta\n axis circle, b')).toThrow('Parse error');
+  });
+
   it('uses the last value of a repeated option and caps ticks at 32', () => {
     const model = parse('radar-beta\n ticks 3\n ticks 100\n max 5\n max 7\n graticule polygon\n showLegend false');
     expect(model.type).toBe('radar');

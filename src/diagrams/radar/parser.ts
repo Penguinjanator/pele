@@ -15,6 +15,7 @@ import {
   stringValue,
   titleValue,
   tokenize,
+  type Scanner,
   type TokenType,
   type Tokens,
 } from '../common/tokens.js';
@@ -93,6 +94,20 @@ function matchAccDescr(src: string, at: number): number {
 }
 
 const ID: TokenType = { name: 'ID', pattern: /[\w]([-\w]*\w)?/y };
+const RE_NAME_REST = /[-\w]*\w/y;
+
+// Gives way to a longer name, except right after its option, as in `graticule polygonaxis`.
+function optionValue(pattern: RegExp, option: T): Scanner {
+  return (src, at, previous) => {
+    pattern.lastIndex = at;
+    if (!pattern.test(src)) return -1;
+    const end = pattern.lastIndex;
+    if (previous === option) return end;
+    RE_NAME_REST.lastIndex = end;
+    return RE_NAME_REST.test(src) ? -1 : end;
+  };
+}
+
 const word = (text: string): TokenType => ({ name: text, pattern: text, longer: [ID] });
 const mark = (text: string): TokenType => ({ name: text, pattern: text });
 
@@ -112,11 +127,12 @@ export const RADAR_TOKENS: readonly TokenType[] = [
   mark(']'),
   mark('{'),
   mark('}'),
-  { name: 'GRATICULE', pattern: /circle|polygon/y },
-  { name: 'BOOLEAN', pattern: /true|false/y },
+  { name: 'GRATICULE', pattern: /circle|polygon/y, match: optionValue(/circle|polygon/y, T.graticule) },
+  { name: 'BOOLEAN', pattern: /true|false/y, match: optionValue(/true|false/y, T.showLegend) },
   { ...ACC_DESCR, match: matchAccDescr },
   ACC_TITLE,
-  TITLE,
+  // A bare title gives way to a longer name, as in `titles`.
+  { ...TITLE, pattern: /[\t ]*title(?:[\t ][^\n\r]*?(?=%%)|[\t ][^\n\r]*|(?![-\w]*\w))/y },
   { name: 'NUMBER', pattern: /(?:[0-9]+\.[0-9]+(?!\.))|(?:0|[1-9][0-9]*(?!\.))/y, match: matchNumber },
   STRING,
   ID,
