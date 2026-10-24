@@ -420,6 +420,13 @@ describe('public api', () => {
     expect(() => render('flowchart TD\n  A --> B', { limit: 5 })).toThrow(/limit/);
   });
 
+  it('shows entity codes in errors as they were written', () => {
+    expect(() => render('flowchart TD\nA[a#35;b] --> -->')).toThrow(/^Parse error on line 2:\nA\[a#35;b\] --> -->\n/);
+    expect(() => render('flowchart TD\na@{shape: "#35;x"}')).toThrow(
+      expect.objectContaining({ code: 'semantic', message: 'No such shape: #35;x.' })
+    );
+  });
+
   it('parses without rendering', () => {
     const model = parse('flowchart LR\n  A[Start] --> B{Choice}');
     expect(model.type).toBe('flowchart');
