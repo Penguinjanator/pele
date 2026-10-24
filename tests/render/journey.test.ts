@@ -170,6 +170,16 @@ describe('journey rendering', () => {
     expect(() => render('journey\n  accDescr {\n  never closed\n', options)).toThrow(PeleError);
   });
 
+  it('treats a bare title as no title', () => {
+    const model = parse('journey\ntitle\nsection Work\nTask: 5: Me');
+    expect(model.type).toBe('journey');
+    if (model.type === 'journey') {
+      expect(model.title).toBeUndefined();
+      expect(model.sections).toEqual(['Work']);
+    }
+    expect(parse('journey\n  title\u00a0Kept\n  Task: 5: Me').title).toBe('Kept');
+  });
+
   it('keeps the character before a comment', () => {
     const model = parse('journey\nA%% label: 5: Me');
     expect(model.type).toBe('journey');
