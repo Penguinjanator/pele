@@ -434,6 +434,7 @@ describe('public api', () => {
     expect(() => render('---\ntitle: T\n---\n\n%% A comment\nflowchart TD\n  A --> B\n  C --> --> D')).toThrow(
       expect.objectContaining({ line: 8, column: 9, message: expect.stringMatching(/^Parse error on line 8:\n  C --> --> D\n--------\^\n/) })
     );
+    expect(() => render('flowchart TD\n  A{a}  \n\n  C --> --> D')).toThrow(expect.objectContaining({ line: 4, column: 9 }));
   });
 
   it('parses without rendering', () => {
