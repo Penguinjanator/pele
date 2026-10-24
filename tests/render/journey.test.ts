@@ -170,6 +170,13 @@ describe('journey rendering', () => {
     expect(() => render('journey\n  accDescr {\n  never closed\n', options)).toThrow(PeleError);
   });
 
+  it('keeps the character before a comment', () => {
+    const model = parse('journey\nA%% label: 5: Me');
+    expect(model.type).toBe('journey');
+    if (model.type === 'journey') expect(model.tasks.map((t) => t.task)).toEqual(['A%% label']);
+    expect(() => render('journey\n  Task: 5: Me;%% c\n', options)).toThrow(/got 'INVALID'/);
+  });
+
   it('exposes the model', () => {
     const model = parse('journey\n  title T\n  First: 2\n  section S\n    A task: 5: Bob, Alice\n    B task: x:\n');
     expect(model.type).toBe('journey');

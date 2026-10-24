@@ -182,6 +182,13 @@ describe('timeline rendering', () => {
     expect(() => render('timeline\n  accDescr {\n  never closed\n', options)).toThrow(PeleError);
   });
 
+  it('keeps the character before a comment', () => {
+    const model = parse('timeline\nA%% label : event\nB : e2');
+    expect(model.type).toBe('timeline');
+    if (model.type === 'timeline') expect(model.periods.map((p) => p.text)).toEqual(['A%% label ', 'B ']);
+    expect(() => render('timeline\n  2024 :%% c\n', options)).toThrow(/got 'INVALID'/);
+  });
+
   it('attaches an event after a section header to the last period, as Mermaid does', () => {
     const model = parse('timeline\n  2001 : a\n  section S\n  : b\n');
     expect(model.type).toBe('timeline');

@@ -23,8 +23,7 @@ export function keywordAt(src: string, p: number, word: string): boolean {
 }
 
 // Skips comments and whitespace. Stops at a line break that starts a token, which is a NEWLINE.
-// Jison compiles `\%%` to a single `%`, so one percent sign starts a comment, and the second
-// comment rule takes any character before `%%` with it, a line break included.
+// Jison compiles `\%%` to `%`, so a single `%` starts a comment.
 export function skipTrivia(src: string, from: number): number {
   const n = src.length;
   let p = from;
@@ -32,8 +31,6 @@ export function skipTrivia(src: string, from: number): number {
     const c = src.charCodeAt(p);
     if (c === 37 && src.charCodeAt(p + 1) !== 123) {
       p = lineEnd(src, p);
-    } else if (c !== 125 && src.charCodeAt(p + 1) === 37 && src.charCodeAt(p + 2) === 37) {
-      p = lineEnd(src, p + 3);
     } else if (c === 10) {
       return p;
     } else if (isSpace(c)) {
