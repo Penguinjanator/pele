@@ -47,6 +47,17 @@ describe('treeView rendering', () => {
     }
     expect(() => render('treeView-beta\n├── \n', options)).toThrow('Line 2: Empty node');
     expect(() => render('treeView-beta\n├── a\n   b\n', options)).toThrow('Line 3: Unexpected indentation');
+    expect(() => render('---\ntitle: T\n---\ntreeView-beta\n└─ "bad', options)).toThrow(
+      expect.objectContaining({ line: 5, column: 4, snippet: '└─ "bad\n---^', message: expect.stringMatching(/^Lexical error on line 5\./) })
+    );
+    expect(() => render('---\ntitle: T\n---\ntreeView-beta\n├── \n', options)).toThrow('Line 5: Empty node');
+    expect(() => render('treeView-beta\n└─ "ok"\t"bad', options)).toThrow(expect.objectContaining({ line: 2, column: 9 }));
+    expect(() => render('treeView-beta\n└── "ok"\t\t"bad', options)).toThrow(
+      expect.objectContaining({ line: 2, column: 11, snippet: '└── "ok"\t\t"bad\n----------^' })
+    );
+    expect(() => render('---\ntitle: T\n---\ntreeView-beta\n"bad\nhello ─ world\nx\ny', options)).toThrow(
+      expect.objectContaining({ line: 5, column: 1 })
+    );
   });
 
   it('draws highlights, descriptions in one column, and extra classes', () => {
