@@ -210,10 +210,16 @@ describe('agentflow rendering', () => {
   });
 
   it('lays a flow out in its own direction', () => {
-    const svg = svgOf('agentflow-beta TB\n  flow f["F"]\n    direction LR\n    a --> b\n  end\n  b --> c');
+    const svg = svgOf('agentflow-beta TB\n  flow f["F"]\n    direction LR\n    a --> b\n  end\n  f --> c');
     expect(node(svg, 'b').x).toBeGreaterThan(node(svg, 'a').x);
     expect(Math.abs(node(svg, 'a').y - node(svg, 'b').y)).toBeLessThan(1);
     expect(node(svg, 'c').y).toBeGreaterThan(node(svg, 'b').y);
+  });
+
+  it("ignores a flow's direction when its nodes link outside it", () => {
+    const flows = 'agentflow-beta LR\nflow S\n direction TB\n s1\n s2\nend\nflow P\n direction TB\n p1\n p2\nend\n';
+    const links = 's1 --> p2\ns2 --> p1\n';
+    expect(svgOf(flows + links)).toBe(svgOf(flows.replace(/ direction TB\n/g, '') + links));
   });
 
   it('keeps a global node out of the flows that mention it', () => {

@@ -1,4 +1,4 @@
-import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, inheritCrossedDirections, shiftLayout, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
@@ -128,6 +128,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
   graph.nodes.forEach((node, i) => {
     cnodes[i].parent = node.parentId !== undefined ? (index.get(node.parentId) ?? -1) : -1;
   });
+  inheritCrossedDirections(cnodes, graph.edges.map((edge) => [index.get(edge.start) ?? -1, index.get(edge.end) ?? -1] as const));
 
   const rootDir = turned ? 'TB' : direction(db.direction);
   // The direction of the level a node sits in.

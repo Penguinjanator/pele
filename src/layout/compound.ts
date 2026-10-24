@@ -370,6 +370,22 @@ export function routeCrossings(nodes: CNode[], edges: CEdge[], style = Style.Cur
   return total;
 }
 
+// Match Mermaid: groups crossed by edges inherit their parent's direction.
+export function inheritCrossedDirections(nodes: CNode[], ends: Iterable<readonly [number, number]>): void {
+  const ancestors = (i: number): Set<number> => {
+    const set = new Set<number>();
+    for (let p = nodes[i].parent; p >= 0 && !set.has(p); p = nodes[p].parent) set.add(p);
+    return set;
+  };
+  for (const [src, dst] of ends) {
+    if (src < 0 || dst < 0 || src === dst) continue;
+    const a = ancestors(src);
+    const b = ancestors(dst);
+    for (const g of a) if (!b.has(g)) nodes[g].dir = undefined;
+    for (const g of b) if (!a.has(g)) nodes[g].dir = undefined;
+  }
+}
+
 export function shiftLayout(nodes: CNode[], edges: CEdge[], ox: number, oy: number): void {
   for (const c of nodes) {
     c.x += ox;

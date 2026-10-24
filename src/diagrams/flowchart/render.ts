@@ -1,4 +1,4 @@
-import { cnode, compoundLayout, direction, shiftLayout, type CEdge, type CNode, type CompoundResult, type Dir } from '../../layout/compound.js';
+import { cnode, compoundLayout, direction, inheritCrossedDirections, shiftLayout, type CEdge, type CNode, type CompoundResult, type Dir } from '../../layout/compound.js';
 import { titleLabel } from '../../svg/title.js';
 import type { LayeredOptions } from '../../layout/layered.js';
 import type { Config } from '../../preprocess.js';
@@ -128,21 +128,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
   graph.nodes.forEach((node, i) => {
     cnodes[i].parent = node.parentId !== undefined ? (index.get(node.parentId) ?? -1) : -1;
   });
-  // As in Mermaid, a group that an edge enters or leaves takes its parent's direction.
-  const ancestors = (i: number): Set<number> => {
-    const set = new Set<number>();
-    for (let p = cnodes[i].parent; p >= 0 && !set.has(p); p = cnodes[p].parent) set.add(p);
-    return set;
-  };
-  for (const edge of graph.edges) {
-    const src = index.get(edge.start);
-    const dst = index.get(edge.end);
-    if (src === undefined || dst === undefined || src === dst) continue;
-    const a = ancestors(src);
-    const b = ancestors(dst);
-    for (const g of a) if (!b.has(g)) cnodes[g].dir = undefined;
-    for (const g of b) if (!a.has(g)) cnodes[g].dir = undefined;
-  }
+  inheritCrossedDirections(cnodes, graph.edges.map((edge) => [index.get(edge.start) ?? -1, index.get(edge.end) ?? -1] as const));
 
   const rootDir = turned ? 'TB' : direction(db.direction);
   const flowsSideways = (i: number): boolean => {
