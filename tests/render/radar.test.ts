@@ -130,6 +130,13 @@ describe('radar rendering', () => {
     expect(width).toBeGreaterThan(320 + 2 * 200);
   });
 
+  it('scales values near the largest double like small ones', () => {
+    const huge = ['1' + '0'.repeat(308), '5' + '0'.repeat(307), '25' + '0'.repeat(306)].join(',');
+    const curve = (values: string): string | undefined =>
+      render(`radar-beta\n axis A, B, C\n curve c{${values}}\n graticule polygon`, options).svg.match(/<polygon class="pele-curve"[^>]* points="([^"]*)"/)?.[1];
+    expect(curve(huge)).toBe(curve('4,2,1'));
+  });
+
   it('copes with no axes, no curves, one axis, and degenerate ranges', () => {
     for (const src of [
       'radar-beta',
