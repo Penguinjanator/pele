@@ -8,7 +8,7 @@ export const sankey: Diagram<SankeyDb> = {
   parse(source, _config, title) {
     const db = new SankeyDb();
     if (title) db.title = title;
-    parseSankey(prepareTextForParsing(source), db);
+    parseSankey(prepareTextForParsing(source), db, source);
     return db;
   },
   render: renderSankey,

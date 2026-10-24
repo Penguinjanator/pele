@@ -1,4 +1,4 @@
-import { syntaxError } from '../../errors.js';
+import { inputOffset, replacements, syntaxError, type Edit, type PeleError } from '../../errors.js';
 import { decodeEntities } from '../../text/entities.js';
 import type { SankeyDb } from './db.js';
 import { T, TOKEN_NAMES, tokenize } from './lexer.js';
@@ -25,22 +25,42 @@ function isBlank(c: number): boolean {
 // Mermaid's sankeyUtils: strip blanks at both ends of the text, then collapse runs of line
 // breaks so that no row is empty. Its first step is a regex that rescans every run of blanks;
 // this does the same in one pass.
-export function prepareTextForParsing(text: string): string {
+export function prepareTextForParsing(text: string, steps?: Edit[][]): string {
   let start = 0;
   let end = text.length;
   while (start < end && isBlank(text.charCodeAt(start))) start++;
   while (end > start && isBlank(text.charCodeAt(end - 1))) end--;
-  return text.slice(start, end).replace(RE_LINE_BREAKS, '\n').trim();
+  const sliced = text.slice(start, end);
+  const collapsed = sliced.replace(RE_LINE_BREAKS, '\n');
+  const trimmed = collapsed.trim();
+  if (steps !== undefined) {
+    const lead = collapsed.length - collapsed.trimStart().length;
+    steps.push(
+      [[0, start, 0], [end, text.length, 0]],
+      replacements(sliced, RE_LINE_BREAKS, 1),
+      [[0, lead, 0], [lead + trimmed.length, collapsed.length, 0]]
+    );
+  }
+  return trimmed;
 }
 
-export function parseSankey(src: string, db: SankeyDb): void {
+// Report errors in `source`, the text before prepareTextForParsing.
+export function parseSankey(src: string, db: SankeyDb, source = src): void {
   const { types, texts, starts } = tokenize(src);
   let i = 0;
+
+  const error = (at: number, detail: string): PeleError => {
+    const steps: Edit[][] = [];
+    if (source !== src) prepareTextForParsing(source, steps);
+    // Map EOF before the trimmed trailing blanks.
+    const offset = at > 0 && at >= src.length ? inputOffset(steps, src.length - 1) + 1 : inputOffset(steps, at);
+    return syntaxError('sankey', source, offset, detail);
+  };
 
   const fail = (expected: string): never => {
     const t = types[i];
     const got = t === T.STUCK ? TOKEN_NAMES[types[i - 1]] : TOKEN_NAMES[t];
-    throw syntaxError('sankey', src, starts[i], `Expecting ${expected}, got '${got}'`);
+    throw error(starts[i], `Expecting ${expected}, got '${got}'`);
   };
 
   const expect = (type: number, also = ''): void => {
@@ -63,7 +83,7 @@ export function parseSankey(src: string, db: SankeyDb): void {
     const text = field().trim().replaceAll('""', '"');
     // Entity codes can encode characters excluded by the lexer.
     if (RE_INVALID_XML.test(decodeEntities(text))) {
-      throw syntaxError('sankey', src, start, 'Invalid XML character in node name');
+      throw error(start, 'Invalid XML character in node name');
     }
     return text;
   };
@@ -78,7 +98,7 @@ export function parseSankey(src: string, db: SankeyDb): void {
     const start = starts[i];
     // Keep Mermaid's numeric prefixes, but reject non-finite values.
     const value = parseFloat(field());
-    if (!Number.isFinite(value)) throw syntaxError('sankey', src, start, 'Expecting a number');
+    if (!Number.isFinite(value)) throw error(start, 'Expecting a number');
     const source = db.findOrCreateNode(from);
     const target = db.findOrCreateNode(to);
     db.addLink(source, target, value);
