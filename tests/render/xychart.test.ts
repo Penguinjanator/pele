@@ -131,6 +131,13 @@ describe('XY chart rendering', () => {
     for (const tick of ['1', '2', '3', '4']) expect(texts(auto)).toContain(tick);
   });
 
+  it('falls back to the data range when written y bounds clamp to the same value', () => {
+    const big = (e: number): string => '1' + '0'.repeat(e);
+    for (const range of [`${big(301)} --> ${big(302)}`, `-${big(302)} --> -${big(301)}`]) {
+      expect(render(`xychart\n x-axis [a, b]\n y-axis ${range}\n bar [3, 4]`, options).svg, range).not.toContain('NaN');
+    }
+  });
+
   it('leaves out values beyond the categories and categories without a value', () => {
     expect(tags(render('xychart\n x-axis [a, b]\n bar [1, 2, 3, 4]', options).svg, 'rect')).toHaveLength(2);
     const short = render('xychart\n x-axis [a, b, c, d]\n bar [1, 2]\n line [1, 2]', options).svg;
