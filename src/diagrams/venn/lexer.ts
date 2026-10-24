@@ -189,7 +189,10 @@ export class VennLexer {
           }
           if (end > i + 6) return this.token(T.TITLE, end);
         }
-        for (const [word, type] of KEYWORDS) if (this.keyword(i, word)) return this.token(type, i + word.length);
+        for (const [word, type] of KEYWORDS) {
+          // A hyphen continues a name, as in `set-theory`.
+          if (this.keyword(i, word) && src.charCodeAt(i + word.length) !== 45) return this.token(type, i + word.length);
+        }
         if (this.word(i, 'rgb')) {
           const alpha = (src.charCodeAt(i + 3) | 32) === 97;
           const open = i + (alpha ? 4 : 3);

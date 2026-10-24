@@ -269,6 +269,16 @@ describe('venn diagram rendering', () => {
     expect(model.subsets.map((s) => s.sets)).toEqual([['A'], ['title'], ['B']]);
   });
 
+  it('reads a name that starts with a keyword and a hyphen', () => {
+    const model = parse(
+      'venn-beta\nset set-theory\nset union-x\nunion set-theory,union-x["both"]\n  text-5\ntext set-theory text-books\nstyle set-theory fill:red,x:style-y'
+    );
+    if (model.type !== 'venn') throw new Error('wrong type');
+    expect(model.subsets.map((s) => s.sets)).toEqual([['set-theory'], ['union-x'], ['set-theory', 'union-x']]);
+    expect(model.textNodes.map((t) => t.id)).toEqual(['-5', 'text-books']);
+    expect(model.styles[0].styles.get('x')).toBe('style-y');
+  });
+
   it('uses the last statement about a set or an overlap', () => {
     const svg = svgOf('set A["first"]:10\nset B:10\nset A["second"]:40');
     const circles = circlesOf(svg);

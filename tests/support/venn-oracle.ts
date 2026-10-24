@@ -86,3 +86,25 @@ export function peleParse(src: string): Outcome {
     return next.call(this);
   };
 }
+
+// Match Pele: allow hyphenated names, but still strip indented `text`.
+{
+  const lexer = oracle.parser.lexer as unknown as { rules: RegExp[]; next(): unknown; yy: { consumeIndentText?: boolean } };
+  const rules = lexer.rules;
+  const guard = (word: string): number => {
+    const matches = rules.filter((rule) => rule.source === `^(?:${word}\\b)`);
+    if (matches.length !== 1) throw new Error(`Expected one Venn ${word} rule`);
+    const index = rules.indexOf(matches[0]);
+    rules[index] = new RegExp(`^(?:${word}\\b(?!-))`, matches[0].flags);
+    return index;
+  };
+  for (const word of ['venn-beta', 'set', 'union', 'style']) guard(word);
+  const textIndex = rules.findIndex((rule) => rule.source === String.raw`^(?:text\b)`);
+  const text = rules[textIndex];
+  const hyphenText = rules[guard('text')];
+  const next = lexer.next;
+  lexer.next = function (this: typeof lexer) {
+    rules[textIndex] = this.yy.consumeIndentText ? text : hyphenText;
+    return next.call(this);
+  };
+}
