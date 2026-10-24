@@ -59,6 +59,12 @@ function restorePlaceholders(text: string): string {
   return last === 0 ? text : out + text.slice(last);
 }
 
+const RE_PLACEHOLDER = /ﬂ°°?(\w+)¶ß/g;
+
+export function writtenCodes(text: string): string {
+  return text.includes(CLOSE) ? text.replace(RE_PLACEHOLDER, '#$1;') : text;
+}
+
 // Turns Mermaid's `#35;` / `#quot;` codes (as hidden by encodeEntities) and HTML entities into characters.
 export function decodeEntities(text: string): string {
   if (text.includes(CLOSE)) text = restorePlaceholders(text);

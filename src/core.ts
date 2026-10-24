@@ -1,6 +1,6 @@
 import { detectDiagram, type Detected, type DiagramType, type MermaidType } from './detect.js';
 import { PeleError } from './errors.js';
-import { decodeEntities } from './text/entities.js';
+import { decodeEntities, writtenCodes } from './text/entities.js';
 import { withIcons } from './text/icons.js';
 import { withMath } from './text/math.js';
 import { encodeEntities, preprocess, type Config } from './preprocess.js';
@@ -58,6 +58,12 @@ function tagErrors<T>(found: Detected, run: () => T): T {
     if (error instanceof PeleError) {
       error.type ??= found.type;
       error.mermaidType ??= found.mermaidType;
+      const message = writtenCodes(error.message);
+      if (message !== error.message) {
+        error.stack = error.stack?.replace(error.message, () => message);
+        error.message = message;
+      }
+      error.snippet = writtenCodes(error.snippet);
     }
     throw error;
   }
