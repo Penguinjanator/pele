@@ -1,4 +1,4 @@
-import { syntaxError } from '../../errors.js';
+import { inputOffset, replacements, syntaxError } from '../../errors.js';
 import type { AgentflowDb } from './db.js';
 import { tokenize } from './lexer.js';
 import { T, TOKEN_NAMES } from './tokens.js';
@@ -104,8 +104,9 @@ export function parseAgentflow(source: string, db: AgentflowDb, raw = false): vo
 
   const fail = (expected: string): never => {
     const t = types[i];
-    if (t === T.ERROR) throw syntaxError('agentflow', src, starts[i], '', true);
-    throw syntaxError('agentflow', src, starts[i], `Expecting ${expected}, got '${TOKEN_NAMES[t]}'`);
+    const at = src === source ? starts[i] : inputOffset([replacements(source, RE_BRACE_TRAIL, 2)], starts[i]);
+    if (t === T.ERROR) throw syntaxError('agentflow', source, at, '', true);
+    throw syntaxError('agentflow', source, at, `Expecting ${expected}, got '${TOKEN_NAMES[t]}'`);
   };
 
   // The span from the start of token `a` to the end of token `b`.
