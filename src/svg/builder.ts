@@ -9,6 +9,9 @@ const RE_NEEDS_ESC = /[&<>"\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
 const RE_ESC = /[&<>"]|[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]+/g;
 const ESC: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 
+// Removing these characters in esc() can make validated values unsafe.
+export const RE_INVALID_XML = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/;
+
 // Escapes text for XML and drops the control characters XML does not allow.
 export function esc(text: string): string {
   return RE_NEEDS_ESC.test(text) ? text.replace(RE_ESC, (c) => ESC[c] ?? '') : text;

@@ -1,4 +1,4 @@
-import { esc } from './builder.js';
+import { RE_INVALID_XML, esc } from './builder.js';
 
 // Private aliases set once on the root element, so each use is short and the public
 // --pele-* tokens keep their fallbacks. The text color is set as well: an icon is drawn in
@@ -103,7 +103,7 @@ export function resolveStyle(declarations: string[]): ResolvedStyle {
       .slice(at + 1)
       .replace(/!important/gi, '')
       .trim();
-    if (value === '' || RE_UNSAFE.test(value)) continue;
+    if (value === '' || RE_UNSAFE.test(value) || RE_INVALID_XML.test(value)) continue;
     if (SHAPE_PROPS.has(prop)) shape.set(prop, value);
     if (TEXT_PROPS.has(prop)) text.set(prop === 'color' ? 'fill' : prop, value);
   }

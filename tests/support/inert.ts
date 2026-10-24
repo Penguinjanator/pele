@@ -106,6 +106,7 @@ export const PAYLOADS = [
   ']]><script>alert(1)</script>',
   '--><script>alert(1)</script>',
   '\u0000\u0001\u0008\u000b\u001f',
+  'u\u0001rl(//evil.example/x)',
   '__proto__',
   'constructor',
   'toString',
