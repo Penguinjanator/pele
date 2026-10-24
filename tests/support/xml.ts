@@ -1,5 +1,7 @@
 // Checks that a string is well-formed XML: balanced tags, quoted attributes, escaped text.
 export function assertWellFormed(xml: string): void {
+  const bad = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ud800-\udfff\ufffe\uffff]/u.exec(xml);
+  if (bad) throw new Error(`Character U+${bad[0].charCodeAt(0).toString(16).toUpperCase()} near ${JSON.stringify(xml.slice(Math.max(0, bad.index - 20), bad.index + 20))}`);
   const stack: string[] = [];
   const re = /<(\/?)([A-Za-z][\w:.-]*)((?:\s+[\w:.-]+="[^"<]*")*)\s*(\/?)>/y;
   let i = 0;
