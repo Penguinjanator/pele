@@ -1,4 +1,5 @@
 import { PeleError } from '../../errors.js';
+import { decodeEntities } from '../../text/entities.js';
 import type { VennModel, VennStyle, VennSubset, VennText } from './types.js';
 
 // Mermaid takes one pair of quotes off an id, label or style value.
@@ -47,7 +48,7 @@ export class VennDb implements VennModel {
   validateUnionIdentifiers(ids: string[]): void {
     const unknown = ids.map(normalizeText).filter((id) => !this.known.has(id));
     if (unknown.length > 0) {
-      throw new PeleError(`unknown set identifier: ${unknown.join(', ')}`, 'semantic', { type: 'venn' });
+      throw new PeleError(`unknown set identifier: ${unknown.map(decodeEntities).join(', ')}`, 'semantic', { type: 'venn' });
     }
   }
 
