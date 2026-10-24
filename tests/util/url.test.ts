@@ -1,6 +1,6 @@
 import { sanitizeUrl as reference } from '@braintree/sanitize-url';
 import { describe, expect, it } from 'vitest';
-import { sanitizeUrl } from '../../src/util/url.js';
+import { internalLink, sanitizeUrl } from '../../src/util/url.js';
 
 // Mermaid sanitizes click targets with @braintree/sanitize-url; Pele must give the same answers.
 const URLS = [
@@ -42,4 +42,16 @@ describe('url sanitizer', () => {
       expect(sanitizeUrl(url)).toBe(reference(url));
     });
   }
+});
+
+describe('internal links', () => {
+  it('link note names as written', () => {
+    for (const name of ['Note', 'Folder\\note', 'Note%23heading', '👩‍💻', 'Note#heading', '  Note  ']) expect(internalLink(name, {}), name).toBe(true);
+  });
+
+  it('refuse names a browser would read as a script or network address', () => {
+    for (const name of ['javascript:alert(1)', 'java\ufffescript:alert(1)', '\\\\nevil.example', '\t/\\nevil.example', '/\t/evil.example']) {
+      expect(internalLink(name, { linkSchemes: ['about'] }), JSON.stringify(name)).toBe(false);
+    }
+  });
 });

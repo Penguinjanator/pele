@@ -1,4 +1,4 @@
-import { esc } from '../svg/builder.js';
+import { RE_INVALID_XML, esc } from '../svg/builder.js';
 import { decodeEntities } from '../text/entities.js';
 import type { LinkInfo, RenderOptions } from '../types.js';
 
@@ -96,6 +96,17 @@ export function linkUrl(url: string, options: RenderOptions): string | undefined
 
 export function imageUrl(url: string, options: RenderOptions): string | undefined {
   return options.images === false ? undefined : allow(url, options.imageSchemes ?? IMAGE_SCHEMES);
+}
+
+const RE_DROPPED = new RegExp(RE_INVALID_XML.source, 'gu');
+
+// The href keeps the original name, so sanitizing alone is not enough.
+export function internalLink(name: string, options: RenderOptions): boolean {
+  const url = sanitizeUrl(name);
+  if (url === BLANK || linkUrl(url, options) === undefined) return false;
+  // Match character removal by esc() and the browser.
+  const seen = name.replace(RE_DROPPED, '').replace(/[\t\n\r]/g, '').replace(/^[\x00-\x20]+/, '');
+  return linkUrl(seen, options) !== undefined;
 }
 
 export function linked(body: string, url: string, id: string, links: LinkInfo[], options: RenderOptions, attrs = ''): string {

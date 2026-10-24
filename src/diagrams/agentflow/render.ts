@@ -9,7 +9,7 @@ import { classNames, resolveStyle, rounded, seriesColor, type ResolvedStyle } fr
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
-import { linked, linkUrl, relAttr, sanitizeUrl } from '../../util/url.js';
+import { internalLink, linked, relAttr } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { runsAcross, turnToFit } from '../common/fit-width.js';
 import { canonicalShape } from '../flowchart/shapes.js';
@@ -331,7 +331,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
     if (internal && node.label && options.links !== false) {
       // The label is a note name, but it still ends up in an href, so it gets the same check as a URL.
       const name = decodeEntities(node.label);
-      const safe = linkUrl(sanitizeUrl(name), options) !== undefined;
+      const safe = internalLink(name, options);
       const target = esc(name);
       text = `<a class="internal-link"${safe ? ` href="${target}"${relAttr(options)}` : ''} data-href="${target}">${text}</a>`;
       links.push({ id: node.id, href: name, internal: true });

@@ -9,7 +9,7 @@ import { ROUNDED, classNames, resolveStyle, rounded, type ResolvedStyle } from '
 import { hasMath, labelLine, layoutLabel, lineMiddle, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
-import { linkUrl, relAttr, sanitizeUrl } from '../../util/url.js';
+import { internalLink, relAttr } from '../../util/url.js';
 import type { LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { runsAcross, turnToFit } from '../common/fit-width.js';
 import type { ErDb } from './db.js';
@@ -344,7 +344,7 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
     const display = decodeEntities(node.alias || node.label);
     if (/ internal-link(?: |$)/.test(classes + ' ') && name !== '' && options.links !== false) {
       // The name ends up in an href, so it gets the same check as a URL.
-      const safe = linkUrl(sanitizeUrl(display), options) !== undefined;
+      const safe = internalLink(display, options);
       const target = esc(display);
       name = `<a class="internal-link"${safe ? ` href="${target}"${relAttr(options)}` : ''} data-href="${target}">${name}</a>`;
       links.push({ id: node.label, href: display, internal: true });

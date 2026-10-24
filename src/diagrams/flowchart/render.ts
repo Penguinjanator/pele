@@ -11,7 +11,7 @@ import { classNames, resolveStyle, rounded, type ResolvedStyle } from '../../svg
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
-import { imageUrl, linked, linkUrl, relAttr, safeUrl, sanitizeUrl } from '../../util/url.js';
+import { imageUrl, internalLink, linked, relAttr, safeUrl } from '../../util/url.js';
 import type { IconResolver, LinkInfo, RenderOptions, Rendered } from '../../types.js';
 import { runsAcross, tighten, titleRoom, turnToFit } from '../common/fit-width.js';
 import type { FlowDb } from './db.js';
@@ -273,7 +273,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     if (internal && node.label && options.links !== false) {
       // The label is a note name, but it still ends up in an href, so it gets the same check as a URL.
       const name = decodeEntities(node.label);
-      const safe = linkUrl(sanitizeUrl(name), options) !== undefined;
+      const safe = internalLink(name, options);
       const target = esc(name);
       text = `<a class="internal-link"${safe ? ` href="${target}"${relAttr(options)}` : ''} data-href="${target}">${text}</a>`;
       links.push({ id: node.id, href: name, internal: true });

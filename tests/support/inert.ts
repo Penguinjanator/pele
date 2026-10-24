@@ -122,6 +122,8 @@ export const PAYLOADS = [
   'file:///etc/passwd',
   '//evil.example/share',
   '\\\\evil.example\\share',
+  '#92;#92;nevil.example/share',
+  '\t/#92;nevil.example/share',
   'smb://evil.example/share',
   'obsidian://open?vault=x',
   '\\"><script>',

@@ -93,6 +93,10 @@ describe('inert output', () => {
   it('never gives an unsafe href to an internal link', () => {
     const { svg } = render('flowchart TD\n  A["javascript:alert(1)"]:::internal-link', options);
     expect(svg).toContain('<a class="internal-link" data-href="javascript:alert(1)">');
+    for (const type of ['flowchart TD', 'agentflow-beta TB', 'erDiagram']) {
+      const allowed = render(`${type}\n  A["javascript:alert(1)"]:::internal-link`, { ...options, linkSchemes: ['about'] }).svg;
+      expect(allowed).not.toContain(' href=');
+    }
   });
 
   it('does not pollute prototypes', () => {
