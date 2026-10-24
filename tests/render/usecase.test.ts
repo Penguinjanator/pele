@@ -449,6 +449,9 @@ describe('use case diagram rendering', () => {
       "semantic: Note target 'Ghost' is unresolved at line 2, column 10 [22,27)"
     );
     expect(message('usecase-beta\njson P@{"a":}')).toMatch(/^syntax: Invalid JSON: .* \(line 2, column \d+\)$/);
+    expect(() => render('usecase-beta\njson P@{"a":"#35;", "b":}', options)).toThrow(
+      expect.objectContaining({ line: 2, column: 25, message: expect.not.stringMatching(/[ﬂ°¶ß]/) })
+    );
     const located = (() => {
       try {
         render('usecase-beta\nactor A\nA --> B\nstyle Z fill:red', options);
