@@ -1,4 +1,4 @@
-import { syntaxError } from '../../errors.js';
+import { inputOffset, replacements, syntaxError } from '../../errors.js';
 import type { FlowDb } from './db.js';
 import { tokenize } from './lexer.js';
 import { T, TOKEN_NAMES } from './tokens.js';
@@ -89,8 +89,9 @@ export function parseFlowchart(source: string, db: FlowDb): void {
 
   const fail = (expected: string): never => {
     const t = types[i];
-    if (t === T.ERROR) throw syntaxError('flowchart', src, starts[i], '', true);
-    throw syntaxError('flowchart', src, starts[i], `Expecting ${expected}, got '${TOKEN_NAMES[t]}'`);
+    const at = src === source ? starts[i] : inputOffset([replacements(source, RE_BRACE_TRAIL, 2)], starts[i]);
+    if (t === T.ERROR) throw syntaxError('flowchart', source, at, '', true);
+    throw syntaxError('flowchart', source, at, `Expecting ${expected}, got '${TOKEN_NAMES[t]}'`);
   };
 
   const expect = (type: number, also = ''): string => {
