@@ -427,6 +427,15 @@ describe('public api', () => {
     );
   });
 
+  it('reports lines and columns in the source as written', () => {
+    expect(() => render('flowchart TD\nA[a#35;b] --> -->')).toThrow(
+      expect.objectContaining({ line: 2, column: 15, snippet: 'A[a#35;b] --> -->\n--------------^' })
+    );
+    expect(() => render('---\ntitle: T\n---\n\n%% A comment\nflowchart TD\n  A --> B\n  C --> --> D')).toThrow(
+      expect.objectContaining({ line: 8, column: 9, message: expect.stringMatching(/^Parse error on line 8:\n  C --> --> D\n--------\^\n/) })
+    );
+  });
+
   it('parses without rendering', () => {
     const model = parse('flowchart LR\n  A[Start] --> B{Choice}');
     expect(model.type).toBe('flowchart');
