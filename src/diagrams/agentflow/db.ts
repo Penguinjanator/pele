@@ -1,4 +1,4 @@
-import { PeleError } from '../../errors.js';
+import { locate, PeleError } from '../../errors.js';
 import { safeUrl } from '../../util/url.js';
 import { parseYaml, type YamlValue } from '../../util/yaml.js';
 import { isValidShape, resolveShapeAlias } from './shapes.js';
@@ -34,6 +34,8 @@ export interface AgentflowDbOptions {
   direction?: string;
   // Lines of front matter before the text the parser sees, added to every reported line.
   lineOffset?: number;
+  // The text the parser sees, where errors are located.
+  source?: string;
   log?: (severity: 'warning' | 'error', message: string) => void;
 }
 
@@ -257,11 +259,12 @@ export class AgentflowDb implements AgentflowModel {
         }
       }
       if (retried === undefined) {
-        const at = loc ? ` (${loc.first_line + this.lineOffset}:${loc.first_column + 1})` : '';
+        const { line, column } = this.errorAt(loc);
+        const at = loc ? ` (${line}:${column})` : '';
         throw new PeleError(`Metadata of "${id}" is not valid YAML. ${(error as Error).message}${at}`, 'syntax', {
           type: 'agentflow',
-          line: loc ? loc.first_line + this.lineOffset : 0,
-          column: loc ? loc.first_column + 1 : 0,
+          line,
+          column,
         });
       }
       parsed = retried;
@@ -269,12 +272,18 @@ export class AgentflowDb implements AgentflowModel {
     return stripPrototypeKeys(parsed ?? {});
   }
 
+  private errorAt(loc: Loc | undefined): { line: number; column: number } {
+    if (loc === undefined) return { line: 0, column: 0 };
+    const source = this.options.source;
+    if (source === undefined) return { line: loc.first_line + this.lineOffset, column: loc.first_column + 1 };
+    let start = 0;
+    for (let line = 1; line < loc.first_line; line++) start = source.indexOf('\n', start) + 1;
+    const { line, column } = locate(source, start + loc.first_column);
+    return { line, column };
+  }
+
   private shapeError(message: string, loc: Loc | undefined): PeleError {
-    return new PeleError(message, 'semantic', {
-      type: 'agentflow',
-      line: loc ? loc.first_line + this.lineOffset : 0,
-      column: loc ? loc.first_column + 1 : 0,
-    });
+    return new PeleError(message, 'semantic', { type: 'agentflow', ...this.errorAt(loc) });
   }
 
   addVertex(

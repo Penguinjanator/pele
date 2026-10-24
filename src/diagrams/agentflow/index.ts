@@ -14,6 +14,7 @@ export const agentflow: Diagram<AgentflowDb> = {
       inheritDir: flow.inheritDir === true,
       direction: typeof config.direction === 'string' ? config.direction : undefined,
       lineOffset,
+      source,
       maxEdges: limits.maxEdges,
     });
     if (title) db.title = title;
