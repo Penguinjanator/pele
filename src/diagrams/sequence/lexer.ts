@@ -310,10 +310,6 @@ export function tokenize(src: string): Tokens {
       p = eol(p);
       return;
     }
-    if (c !== 125 && src.charCodeAt(p + 1) === 37 && src.charCodeAt(p + 2) === 37) {
-      p = eol(p);
-      return;
-    }
     if ((isDigit(c) || c === 46) && number()) return;
     if (c < 128 && (c | 32) >= 97 && (c | 32) <= 122 && keywords(c)) return;
     if (c === 44) emit(T.COMMA, p, p + 1);

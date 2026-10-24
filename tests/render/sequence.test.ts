@@ -538,6 +538,11 @@ describe('sequence rendering', () => {
     expect(m.messages.map((x) => x.type)).toEqual([LINETYPE.SOLID, LINETYPE.NOTE, LINETYPE.LOOP_START, LINETYPE.SOLID, LINETYPE.LOOP_END]);
   });
 
+  it('keeps the character before a comment', () => {
+    expect(model('sequenceDiagram\n  A->>B:%% comment').messages.map((m) => m.message)).toEqual(['%% comment']);
+    expect(() => model('sequenceDiagram\n  autonumber 5%% comment')).toThrow(PeleError);
+  });
+
   it('throws structured errors', () => {
     const error = (() => {
       try {
