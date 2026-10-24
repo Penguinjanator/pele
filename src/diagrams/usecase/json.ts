@@ -1,4 +1,5 @@
 import { PeleError } from '../../errors.js';
+import { writtenCodes } from '../../text/entities.js';
 import { isDigit } from '../../util/chars.js';
 
 export interface OrderedJson {
@@ -217,17 +218,26 @@ export function parseOrderedJson(text: string, origin: () => [number, number]): 
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    let message = error instanceof Error ? error.message : String(error);
+    // Reparse restored entity codes so error messages and positions match the source.
+    const shown = writtenCodes(text);
+    if (shown !== text) {
+      try {
+        JSON.parse(shown);
+      } catch (again) {
+        if (again instanceof Error) message = again.message;
+      }
+    }
     const [line, column] = origin();
-    let location = locationFromMessage(message, text, line, column);
+    let location = locationFromMessage(message, shown, line, column);
     if (!location) {
       let offset = 0;
       try {
-        propertyOrder(text);
+        propertyOrder(shown);
       } catch (walk) {
         if (walk instanceof WalkError) offset = walk.offset;
       }
-      location = locationAt(text, offset, line, column);
+      location = locationAt(shown, offset, line, column);
     }
     throw jsonError(`Invalid JSON: ${message}`, location[0], location[1]);
   }
