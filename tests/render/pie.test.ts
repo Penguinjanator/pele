@@ -74,6 +74,7 @@ describe('pie rendering', () => {
   });
 
   it('rejects negative values with Mermaid\'s message', () => {
+    expect(() => render('pie\n "#35;x &amp;y" : -1', options)).toThrow('"#x &y" has invalid value: -1.');
     expect(() => render('pie\n "dogs" : -60.67', options)).toThrow(
       '"dogs" has invalid value: -60.67. Negative values are not allowed in pie charts. All slice values must be >= 0.'
     );
