@@ -100,6 +100,7 @@ describe('radar rendering', () => {
     const model = parse('radar-beta\n axis A, B, C\n curve c{ C: 3, A: 1, B: 2 }');
     if (model.type === 'radar') expect(model.curves[0].entries).toEqual([1, 2, 3]);
     expect(() => render('radar-beta\n axis A["Alpha"], B\n curve c{ B: 2 }', options)).toThrow('Missing entry for axis Alpha');
+    expect(() => render('radar-beta\n axis a["#35;x &amp;y"], b\n curve c{ b: 1 }', options)).toThrow('Missing entry for axis #x &y');
     expect(() => render('radar-beta\n curve c{ B: 2 }', options)).toThrow(
       'Axes must be populated before curves for reference entries'
     );
