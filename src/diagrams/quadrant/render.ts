@@ -80,6 +80,8 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
   const taken = [left + tileW, top, left + w - tileW, top + h, left, top + tileH, left + w, top + h - tileH];
   const isClear = (from: number, x0: number, y0: number, x1: number, y1: number): boolean => {
     for (let k = from; k < taken.length; k += 4) {
+      // Empty quadrant labels must not block point labels.
+      if (taken[k] >= taken[k + 2] || taken[k + 1] >= taken[k + 3]) continue;
       if (x0 < taken[k + 2] && x1 > taken[k] && y0 < taken[k + 3] && y1 > taken[k + 1]) return false;
     }
     return true;

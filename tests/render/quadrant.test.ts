@@ -196,6 +196,14 @@ describe('quadrant chart rendering', () => {
     expect(Number(label.get('y'))).toBeLessThan(Number(title.get('y')));
   });
 
+  it('lets point labels sit where an empty quadrant label would be', () => {
+    const { svg } = render('quadrantChart\n  P: [0.25, 0.4375]\n  Q: [0.25, 0.4175]', options);
+    const point = circles(svg).find((attrs) => attrs.get('data-id') === 'P')!;
+    const label = elements(/<text[^>]*>P<\/text>/.exec(svg)![0])[0].attrs;
+    expect(label.get('x')).toBe(point.get('cx'));
+    expect(Number(label.get('y'))).toBeLessThan(Number(point.get('cy')));
+  });
+
   it('reads markdown strings and line breaks in labels', () => {
     const { svg } = render('quadrantChart\n quadrant-1 "`**Bold** text`"\n "two<br>lines": [0.5, 0.5]', options);
     expect(svg).toContain('<tspan x=');
