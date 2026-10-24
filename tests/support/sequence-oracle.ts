@@ -55,3 +55,26 @@ export function peleParse(src: string): Outcome {
   if (comments.length !== 1) throw new Error('Expected one sequence preceding-character comment rule');
   rules[rules.indexOf(comments[0])] = /(?!)/;
 }
+
+// Match Pele: titles stay on one line; bare titles are ignored.
+{
+  const lexer = oracle.parser.lexer as unknown as {
+    rules: RegExp[];
+    performAction: (this: unknown, yy: unknown, yy_: { yytext: string }, rule: number, start: string) => unknown;
+  };
+  const titles: number[] = [];
+  for (const name of ['title', 'title:']) {
+    const source = `^(?:${name}\\s[^#\\n;]+)`;
+    const matches = lexer.rules.filter((rule) => rule.source === source);
+    if (matches.length !== 1) throw new Error(`Expected one sequence ${name} rule`);
+    const index = lexer.rules.indexOf(matches[0]);
+    lexer.rules[index] = new RegExp(`^(?:${name}[^\\S\\r\\n][^#\\n;]+|${name}[^\\S\\n]*(?=\\n|$))`, matches[0].flags);
+    titles.push(index);
+  }
+  const perform = lexer.performAction;
+  lexer.performAction = function (yy, yy_, rule, start) {
+    const rest = (this as { _input: string })._input;
+    if (titles.includes(rule) && /^title:?\s*$/i.test(yy_.yytext) && /^(?:\n|$)/.test(rest)) return undefined;
+    return perform.call(this, yy, yy_, rule, start);
+  };
+}

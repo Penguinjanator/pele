@@ -222,7 +222,14 @@ export function tokenize(src: string): Tokens {
     let q = p + 5;
     const legacy = src.charCodeAt(q) === 58;
     if (legacy) q++;
-    if (!isSpace(src.charCodeAt(q)) || q + 1 >= n || !has(q + 1, C.Line)) return false;
+    let e = q;
+    while (e < n && src.charCodeAt(e) !== 10 && isSpace(src.charCodeAt(e))) e++;
+    if (e === n || src.charCodeAt(e) === 10) {
+      p = e;
+      return true;
+    }
+    const sep = src.charCodeAt(q);
+    if (!isSpace(sep) || sep === 13 || !has(q + 1, C.Line)) return false;
     emit(legacy ? T.legacy_title : T.title, p, lineRun(q + 1));
     return true;
   };

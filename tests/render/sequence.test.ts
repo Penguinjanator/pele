@@ -473,6 +473,15 @@ describe('sequence rendering', () => {
     expect(render('sequenceDiagram\n  title My title\n  A->>B: x', options).height).toBeGreaterThan(render('sequenceDiagram\n  A->>B: x', options).height);
   });
 
+  it('treats a bare title as no title', () => {
+    for (const src of ['sequenceDiagram\ntitle\nA->>B: Hi\nB->>A: Bye', 'sequenceDiagram\ntitle: \nA->>B: Hi\nB->>A: Bye']) {
+      const m = model(src);
+      expect(m.title, src).toBeUndefined();
+      expect(m.messages.map((x) => x.message), src).toEqual(['Hi', 'Bye']);
+    }
+    expect(model('sequenceDiagram\n  title My title\n  A->>B: x').title).toBe('My title');
+  });
+
   it('writes accessible title and description', () => {
     const svg = svgOf('sequenceDiagram\n  accTitle: A title\n  accDescr: A description\n  A->>B: x');
     expect(svg).toContain('<title id="pele-title">A title</title>');
