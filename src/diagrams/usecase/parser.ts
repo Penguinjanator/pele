@@ -11,7 +11,7 @@ import {
   type DraftProperty,
 } from './db.js';
 import { parseOrderedJson } from './json.js';
-import { lineColumn, tokenize } from './lexer.js';
+import { lineColumn, locationText, tokenize } from './lexer.js';
 import { T, TOKEN_NAMES } from './tokens.js';
 import {
   Arrow,
@@ -115,7 +115,7 @@ function span(k: number): Span {
 function fail(detail: string): never {
   const [line, column] = lineColumn(src, starts[p]);
   throw new PeleError(
-    `Error parsing usecase diagram: ${detail} at line ${line}, column ${column} [${starts[p]},${ends[p]})`,
+    `Error parsing usecase diagram: ${detail} at ${locationText(src, starts[p], ends[p])}`,
     'syntax',
     { type: 'usecase', line, column }
   );

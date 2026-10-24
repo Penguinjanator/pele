@@ -1,9 +1,9 @@
 import { detectDiagram, type Detected, type DiagramType, type MermaidType } from './detect.js';
-import { PeleError } from './errors.js';
+import { inputOffset, locatingIn, PeleError, type Edit } from './errors.js';
 import { decodeEntities, writtenCodes } from './text/entities.js';
 import { withIcons } from './text/icons.js';
 import { withMath } from './text/math.js';
-import { encodeEntities, preprocess, type Config } from './preprocess.js';
+import { cleanupComments, encodeEntities, normalizeLineBreaks, preprocess, type Config } from './preprocess.js';
 import type { DiagramModel } from './models.js';
 import { mountWith, type MountOptions, type Mounted } from './mount.js';
 import type { Diagram, RenderOptions, RenderResult } from './types.js';
@@ -98,11 +98,30 @@ function parseSource(
     throw new PeleError(`Diagram type "${found.type}" is not supported yet.`, 'unsupported-diagram', found);
   }
   const config = extra ? { ...extra, ...pre.config } : pre.config;
-  const source = diagram.keepComments ? pre.withComments : pre.text;
+  const keepComments = diagram.keepComments === true;
+  const parsed = encodeEntities(keepComments ? pre.withComments : pre.text) + '\n';
   const model = tagErrors(found, () =>
-    diagram.parse(encodeEntities(source) + '\n', config, pre.title, pre.lineOffset, { maxEdges })
+    locatingIn({ parsed, find: inSource(text, keepComments) }, () =>
+      diagram.parse(parsed, config, pre.title, pre.lineOffset, { maxEdges })
+    )
   );
   return { ...found, diagram, model, config };
+}
+
+// Record preprocessing edits only when a source position is needed.
+function inSource(text: string, keepComments: boolean): (at: number) => [source: string, offset: number] {
+  let steps: Edit[][] | undefined;
+  let source = '';
+  return (at) => {
+    if (steps === undefined) {
+      steps = [];
+      const pre = preprocess(text, steps);
+      encodeEntities(keepComments ? pre.withComments : cleanupComments(pre.withComments, steps), steps);
+      // Match the line break appended for parsing.
+      source = normalizeLineBreaks(text) + '\n';
+    }
+    return [source, inputOffset(steps, at)];
+  };
 }
 
 function parsedFrom(source: string | DiagramModel, options: ParseOptions): Parsed {

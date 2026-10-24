@@ -1,4 +1,4 @@
-import { PeleError } from '../../errors.js';
+import { PeleError, written } from '../../errors.js';
 import { T } from './tokens.js';
 import { isBlank, isDigit, isHex, isLetter } from '../../util/chars.js';
 
@@ -71,6 +71,7 @@ function keywordAt(src: string, at: number, c: number): number {
 }
 
 export function lineColumn(src: string, offset: number): [number, number] {
+  [src, offset] = written(src, offset);
   let line = 1;
   let lineStart = 0;
   for (let i = 0; i < offset; i++) {
@@ -85,7 +86,7 @@ export function lineColumn(src: string, offset: number): [number, number] {
 
 export function locationText(src: string, start: number, end: number): string {
   const [line, column] = lineColumn(src, start);
-  return `line ${line}, column ${column} [${start},${end})`;
+  return `line ${line}, column ${column} [${written(src, start)[1]},${written(src, end)[1]})`;
 }
 
 // The end of a quoted string that opens at `at`, or -1 when the line ends first.
@@ -108,8 +109,9 @@ function startsToken(src: string, at: number): boolean {
 // skipped before one did.
 function lexError(src: string, offset: number, length: number): PeleError {
   const [line, column] = lineColumn(src, offset);
+  const [from, to] = [written(src, offset)[1], written(src, offset + length)[1]];
   return new PeleError(
-    `Error lexing usecase diagram: unexpected character: ->${src.charAt(offset)}<- at offset: ${offset}, skipped ${length} characters. at line ${line}, column ${column} [${offset},${offset + length})`,
+    `Error lexing usecase diagram: unexpected character: ->${src.charAt(offset)}<- at offset: ${from}, skipped ${to - from} characters. at line ${line}, column ${column} [${from},${to})`,
     'syntax',
     { type: 'usecase', line, column }
   );

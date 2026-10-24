@@ -24,7 +24,54 @@ export class PeleError extends Error {
   }
 }
 
+// Input range [from, to) replaced by `length` output characters.
+export type Edit = [from: number, to: number, length: number];
+
+export function replacements(text: string, re: RegExp, length: number): Edit[] {
+  return Array.from(text.matchAll(re), (match): Edit => [match.index, match.index + match[0].length, length]);
+}
+
+function stepInput(edits: Edit[], at: number): number {
+  let shift = 0;
+  for (const [from, to, length] of edits) {
+    const start = from - shift;
+    if (at < start) break;
+    if (at < start + length) return from + Math.min(at - start, to - from - 1);
+    shift += to - from - length;
+  }
+  return at + shift;
+}
+
+export function inputOffset(steps: Edit[][], at: number): number {
+  for (let s = steps.length - 1; s >= 0; s--) at = stepInput(steps[s], at);
+  return at;
+}
+
+interface Origin {
+  parsed: string;
+  find(offset: number): [source: string, offset: number];
+}
+
+let origin: Origin | undefined;
+
+// Report positions in the original source while `run` parses.
+export function locatingIn<T>(next: Origin, run: () => T): T {
+  const outer = origin;
+  origin = next;
+  try {
+    return run();
+  } finally {
+    origin = outer;
+  }
+}
+
+// Maps only when `src` is exactly the text being parsed.
+export function written(src: string, offset: number): [source: string, offset: number] {
+  return origin !== undefined && src === origin.parsed ? origin.find(offset) : [src, offset];
+}
+
 export function locate(src: string, offset: number): { line: number; column: number; snippet: string } {
+  [src, offset] = written(src, offset);
   let line = 1;
   let lineStart = 0;
   for (let i = src.indexOf('\n'); i !== -1 && i < offset; i = src.indexOf('\n', i + 1)) {

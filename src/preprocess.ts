@@ -1,4 +1,4 @@
-import { PeleError } from './errors.js';
+import { PeleError, replacements, type Edit } from './errors.js';
 import { parseYaml, type YamlValue } from './util/yaml.js';
 import { isSpace as isWhitespace } from './util/chars.js';
 
@@ -19,8 +19,20 @@ const RE_HTML_TAG = /<(\w+)([^>]*)>/g;
 const RE_ATTR = /="([^"]*)"/g;
 const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
-export function cleanupComments(text: string): string {
-  return (text.includes('%%') ? text.replace(RE_COMMENT, '') : text).trimStart();
+function removeAll(text: string, re: RegExp, steps: Edit[][] | undefined): string {
+  steps?.push(replacements(text, re, 0));
+  return text.replace(re, '');
+}
+
+export function cleanupComments(text: string, steps?: Edit[][]): string {
+  if (text.includes('%%')) text = removeAll(text, RE_COMMENT, steps);
+  const trimmed = text.trimStart();
+  steps?.push([[0, text.length - trimmed.length, 0]]);
+  return trimmed;
+}
+
+export function normalizeLineBreaks(text: string): string {
+  return text.includes('\r') ? text.replace(/\r\n?/g, '\n') : text;
 }
 
 function isLineBreak(ch: string | undefined): boolean {
@@ -99,7 +111,7 @@ function merge(target: Config, source: Config): Config {
   return target;
 }
 
-function directives(text: string, config: Config): string {
+function directives(text: string, config: Config, steps: Edit[][] | undefined): string {
   if (!text.includes('%%{')) return text;
   const normalized = text.trim().replace(/'/g, '"');
   RE_DIRECTIVE.lastIndex = 0;
@@ -119,11 +131,12 @@ function directives(text: string, config: Config): string {
     }
   }
   RE_DIRECTIVE.lastIndex = 0;
-  return text.replace(RE_DIRECTIVE, '');
+  return removeAll(text, RE_DIRECTIVE, steps);
 }
 
-export function preprocess(source: string): Preprocessed {
-  let text = source.includes('\r') ? source.replace(/\r\n?/g, '\n') : source;
+// `steps` maps normalized source to `withComments`.
+export function preprocess(source: string, steps?: Edit[][]): Preprocessed {
+  let text = normalizeLineBreaks(source);
   // A tag needs a closing bracket, so nothing after the last one can match.
   const lastClose = text.includes('<') ? text.lastIndexOf('>') : -1;
   if (lastClose > 0) {
@@ -162,9 +175,10 @@ export function preprocess(source: string): Preprocessed {
     }
     for (let i = text.indexOf('\n'); i !== -1 && i < front.length; i = text.indexOf('\n', i + 1)) lineOffset++;
     text = text.slice(front.length);
+    steps?.push([[0, front.length, 0]]);
   }
 
-  text = directives(text, config);
+  text = directives(text, config, steps);
   return { text: cleanupComments(text), title, config, withComments: text, lineOffset };
 }
 
@@ -175,7 +189,9 @@ const RE_LINE_BREAK = new RegExp('[\\n\\r' + String.fromCharCode(0x2028, 0x2029)
 // Does what Mermaid's `text.replace(/keyword.*:\S*#.*;/g, drop the last character)` does:
 // on a line where the keyword is followed by a colon, a color-like `#`, and later a semicolon,
 // the last semicolon goes. Mermaid's regex backtracks without bound; this is one pass.
-function dropColorSemicolons(text: string, keyword: string): string {
+function dropColorSemicolons(text: string, keyword: string, steps: Edit[][] | undefined): string {
+  const edits: Edit[] = [];
+  steps?.push(edits);
   let from = text.indexOf(keyword);
   if (from === -1) return text;
   let out = '';
@@ -201,6 +217,7 @@ function dropColorSemicolons(text: string, keyword: string): string {
     if (hash !== -1) {
       const semi = text.lastIndexOf(';', lineEnd - 1);
       if (semi > hash) {
+        edits.push([semi, semi + 1, 0]);
         out += text.slice(last, semi);
         last = semi + 1;
       }
@@ -211,10 +228,15 @@ function dropColorSemicolons(text: string, keyword: string): string {
 }
 
 // Mermaid hides `#name;` entity codes behind placeholder characters so `#` and `;` survive parsing.
-export function encodeEntities(text: string): string {
+export function encodeEntities(text: string, steps?: Edit[][]): string {
   if (!text.includes('#')) return text;
-  return dropColorSemicolons(dropColorSemicolons(text, 'style'), 'classDef').replace(RE_ENTITY, (s) => {
+  text = dropColorSemicolons(dropColorSemicolons(text, 'style', steps), 'classDef', steps);
+  const edits: Edit[] = [];
+  steps?.push(edits);
+  return text.replace(RE_ENTITY, (s, at: number) => {
     const inner = s.substring(1, s.length - 1);
-    return (RE_INT.test(inner) ? 'ﬂ°°' : 'ﬂ°') + inner + '¶ß';
+    const code = (RE_INT.test(inner) ? 'ﬂ°°' : 'ﬂ°') + inner + '¶ß';
+    edits.push([at, at + s.length, code.length]);
+    return code;
   });
 }
