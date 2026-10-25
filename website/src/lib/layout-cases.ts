@@ -136,7 +136,7 @@ const flowchart: LayoutGroup[] = [
       },
       { title: 'Two-way between groups', source: 'flowchart LR\n  subgraph Client\n    UI[Web app]\n    Cache[(Local cache)]\n  end\n  subgraph Services\n    API[API gateway] --> Orders[Order service]\n    API --> Auth[Auth service]\n  end\n  UI --> Cache\n  UI --> API\n  API --> UI\n  Auth -.->|token| UI\n  Orders --> DB[(Orders DB)]\n' },
       { title: 'Nested groups', source: 'flowchart TD\n  subgraph outer [Outer]\n    subgraph inner [Inner]\n      a --> b\n      b --> a\n    end\n    c --> a\n    b --> d\n  end\n  start --> c\n  start --> a\n  d --> finish\n  b --> finish\n  finish --> start\n' },
-      { title: 'Groups with their own direction', source: 'flowchart LR\n  subgraph top [Runs down]\n    direction TB\n    t1 --> t2 --> t3\n  end\n  subgraph side [Runs across]\n    direction LR\n    s1 --> s2 --> s3\n  end\n  outside --> top\n  outside --> s1\n  t3 --> s2\n  s3 --> t1\n' },
+      { title: 'Groups with their own direction', source: 'flowchart LR\n  subgraph top [Runs down]\n    direction TB\n    t1 --> t2 --> t3\n  end\n  subgraph side [Runs across]\n    direction LR\n    s1 --> s2 --> s3\n  end\n  outside --> top\n  outside --> s1\n' },
       { title: 'Group to group, both ways', source: 'flowchart TD\n  subgraph A [First]\n    a1\n    a2\n  end\n  subgraph B [Second]\n    b1\n    b2\n  end\n  A --> B\n  B --> A\n  a1 --> b1\n  b2 --> a2\n' },
     ],
   },
