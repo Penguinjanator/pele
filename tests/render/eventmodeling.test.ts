@@ -124,6 +124,15 @@ describe('eventmodeling rendering', () => {
     expect(render('---\ntitle: Front\n---\neventmodeling\ntf 01 ui A\n', options).svg).toContain('>Front<');
   });
 
+  it('reads entity names that start with title', () => {
+    const model = parse('eventmodeling\ntf 01 ui titles\ntf 02 cmd title_x\nentity titles\n');
+    expect(model.type).toBe('eventmodeling');
+    if (model.type === 'eventmodeling') {
+      expect(model.boxes.map((b) => b.name)).toEqual(['titles', 'title_x']);
+      expect(model.entities).toEqual(['titles']);
+    }
+  });
+
   it('draws an empty model and is deterministic', () => {
     expect(render('eventmodeling', options).svg).toContain('<svg');
     expect(render(BASIC, options).svg).toBe(render(BASIC, options).svg);

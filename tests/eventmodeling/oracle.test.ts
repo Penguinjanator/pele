@@ -11,7 +11,7 @@ const FRAGMENTS = [
   'ui', 'cmd', 'command', 'evt', 'event', 'pcr', 'processor', 'json', 'jsobj', 'figma', 'salt', 'uri', 'md', 'html', 'text', '`json`', '`md`',
   '`', '.', '->>', ' ->> 01', '->', '>>', '[[', ']]', '[[D]]', '{', '}', '{ a: 1 }', '{}', '{\n', '\n}', '\n}\n', '"', "'", '"q"', "'s'", '0', '01', '123',
   '1234', ' title T', ' accTitle: T', ' accDescr: D', ' accDescr {', 'title', 'accTitle', '\n', '\r\n', '\r', ' ', '\t', ' ', '%%', '%% c',
-  '%%{init: {}}%%', '---', '---\n', '/*', '*/', '/* c */', '//', '// c', 'x', 'A', '_a', 'é', ':', ';', ',', '#35;', 'tfx', 'eventx', 'evt2',
+  '%%{init: {}}%%', '---', '---\n', '/*', '*/', '/* c */', '//', '// c', 'x', 'A', '_a', 'é', ':', ';', ',', '#35;', 'tfx', 'eventx', 'evt2', 'titles', ' titles', 'title_', 'title1',
 ];
 
 // Seeds written for this test, checked against the reference below so each keeps covering what it is meant to.
@@ -28,11 +28,13 @@ const VALID = [
   'eventmodeling\ntf 123 evt _a1.b_2 { { nested } } \ntf 4 evt B { a } [[x]] { b }\n',
   '---\ntitle: x\n---\neventmodeling\ntf 01 ui A\n',
   'eventmodeling%%c\ntf 01 ui tfx\ntf 02 ui eventx\n',
+  'eventmodeling title T\ntf 01 ui titles\ntf 02 cmd title_x ->> 01 [[titleData]]\nentity titles.title2\ndata titleData {\n x\n}\ngwt 02 given evt titles then rmo title_x\n',
 ];
 
 const INVALID = [
   'eventmodeling\ntitle Foo\n',
   'eventmodeling\ntf 01 evt data\n',
+  'eventmodeling\ntf 01 evt title\n',
   'eventmodeling\ntf 1234 evt A\n',
   'eventmodeling\ntf 01 evt A {\n',
   'eventmodeling\ngwt 01 given then evt A\n',

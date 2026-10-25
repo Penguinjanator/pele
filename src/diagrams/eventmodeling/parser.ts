@@ -1,5 +1,5 @@
 import { accDescr } from '../common/accDescr.js';
-import { ACC_TITLE, DIRECTIVE, Reader, SINGLE_LINE_COMMENT, TITLE, YAML, keyword, tokenize, type TokenType } from '../common/tokens.js';
+import { ACC_TITLE, DIRECTIVE, Reader, SINGLE_LINE_COMMENT, YAML, keyword, titleBefore, tokenize, type TokenType } from '../common/tokens.js';
 
 const EM_ID: TokenType = { name: 'EM_ID', pattern: /[_a-zA-Z][\w_]*/y };
 
@@ -31,7 +31,7 @@ export const EVENTMODELING_TOKENS: readonly TokenType[] = [
   { name: 'EM_DATA_BLOCK', pattern: /\{[\t ]*\r?\n(?:[\S\s]*?\r?\n)?\}(?:\r?\n|(?!\S))/y },
   accDescr('EM_ACC_DESCR'),
   { ...ACC_TITLE, name: 'EM_ACC_TITLE' },
-  { ...TITLE, name: 'EM_TITLE' },
+  { ...titleBefore(String.raw`\w`), name: 'EM_TITLE' },
   { name: 'EM_WS', pattern: /\s+/y, hidden: true },
   { ...YAML, name: 'EM_YAML' },
   { ...DIRECTIVE, name: 'EM_DIRECTIVE' },

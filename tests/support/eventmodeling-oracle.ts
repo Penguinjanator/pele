@@ -1,5 +1,8 @@
 import * as reference from '@mermaid-js/parser';
 import { PeleError } from '../../src/errors.js';
+import { patchTitle, patchTokens } from './token-patch.js';
+
+patchTokens('EventModelingModule', (tokens) => patchTitle(tokens, String.raw`\w`, 'EM_TITLE'));
 
 // Event modeling trees hold cross-references. Mermaid reads only their text (`$refText`) and
 // never links them, and Langium's reference objects cannot be walked, so a reference is
