@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { ARCHITECTURE_TOKENS, parseArchitecture } from '../../src/diagrams/architecture/parser.js';
 import { loadCorpus, mutator, random } from '../support/corpus.js';
 import { peleAst, peleTokens, referenceAst, referenceTokens } from '../support/langium.js';
+import { patchTitle, patchTokens } from '../support/token-patch.js';
+
+patchTokens('ArchitectureModule', (tokens) => patchTitle(tokens, String.raw`[-\w]*\w`));
 
 const FRAGMENTS = [
   'architecture-beta', 'architecture', 'service ', 'group ', 'junction ', 'align ', 'row ', 'column ', ' in ', 'in', 'title', 'title ',
@@ -10,7 +13,7 @@ const FRAGMENTS = [
   'T', 'B', ':L', 'R:', ':T -- B:', ':R --> L:', ' -[x]- ', '-[', ']-', '(', ')', '(cloud)', '(a:b-c)', '()', '[', ']', '[x]', '[]', '["', '"]',
   "['", "']", '["a b"]', "['a']", '[\\"]', '"', "'", '"t"', '\\', '\\"', "\\'", '\n', '\r\n', ' ', '\t', '%%', '%% c', '%%{init: {}}%%', 'a',
   'b', 'db', 'x-y', 'a-', '-a', '_', '1', 'é', '采', ';', ',', '#35;', 'service a', '\nservice b(server)[B] in g', '\ngroup g(cloud)[G]',
-  '\na:L -- R:b', '\njunction j', '\nalign row a b',
+  '\na:L -- R:b', '\njunction j', '\nalign row a b', 'titles', 'title-x', 'title_', 's', '-s',
 ];
 
 const corpus = [
@@ -25,6 +28,9 @@ const corpus = [
   'architecture-beta\nservice a\nservice b\na:R -- L:b\n---\nskipped: yes\n---\nservice c\nb:B -[x]- T:c\n  ---\n---\n',
   'architecture-beta\nservice a\n  %%{init: {}}%%\nservice b %%{ x }%%\n',
   'architecture-beta\nservice a\nservice b\na:R >--< L:b\na:T >-[x]-< B:b\na{group}:L <-- R:b\na:B --> T:b{group}\na : L - [ y ] - R : b\n',
+  'architecture-beta\ngroup titles(cloud)[G]\nservice title-x(database)[DB] in titles\njunction title1 in titles\ntitle-x:L -- R:title1\nalign row title-x title1\n',
+  'architecture-beta\nservice a\n  title\n  title-\n',
+  'architecture-beta\nservice a\ntitleservice b\n',
   'architecture-beta\ngroup g\ngroup h(a-b:c)["t"] in g\nservice s \'i\'[t] in h\nservice in-x(_)[ ] in g\njunction j in g\nalign column s j in-x\n',
 ];
 

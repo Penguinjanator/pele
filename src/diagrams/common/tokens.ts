@@ -137,6 +137,10 @@ export const TITLE: TokenType = {
   pattern: /[\t ]*title(?:[\t ][^\n\r]*?(?=%%)|[\t ][^\n\r]*|)/y,
   first: '\t t',
 };
+// `rest` matches a name suffix so `title` does not split longer names.
+export function titleBefore(rest: string): TokenType {
+  return { ...TITLE, pattern: new RegExp(String.raw`[\t ]*title(?:[\t ][^\n\r]*?(?=%%)|[\t ][^\n\r]*|(?!${rest}))`, 'y') };
+}
 export const STRING: TokenType = { name: 'STRING', pattern: /"([^"\\]|\\.)*"|'([^'\\]|\\.)*'/y, first: `"'` };
 export const NEWLINE: TokenType = { name: 'NEWLINE', pattern: /\r?\n/y, first: '\r\n' };
 export const WHITESPACE: TokenType = { name: 'WHITESPACE', pattern: /[\t ]+/y, hidden: true, first: '\t ' };

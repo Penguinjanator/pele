@@ -284,6 +284,17 @@ describe('architecture rendering', () => {
     expect(render('architecture-beta\nservice lambda', options).svg).toContain('data-id="lambda"');
   });
 
+  it('reads ids that start with title', () => {
+    const model = parse('architecture-beta\ngroup titles(cloud)[G]\nservice title-db(database)[DB] in titles\nservice title_2 in titles\ntitle-db:R -- L:title_2');
+    expect(model.type).toBe('architecture');
+    if (model.type === 'architecture') {
+      expect(model.title).toBeUndefined();
+      expect([...model.groups.keys()]).toEqual(['titles']);
+      expect([...model.nodes.keys()]).toEqual(['title-db', 'title_2']);
+      expect(model.edges.map((e) => [e.lhsId, e.rhsId])).toEqual([['title-db', 'title_2']]);
+    }
+  });
+
   it('exposes the model', () => {
     const model = parse('architecture-beta\ntitle T\ngroup g(cloud)[G]\nservice a(server)[A] in g\njunction j\na:R -[x]-> L:j\nalign row a j');
     expect(model.type).toBe('architecture');
