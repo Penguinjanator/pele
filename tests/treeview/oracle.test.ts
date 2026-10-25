@@ -3,12 +3,15 @@ import { TREEVIEW_TOKENS, parseTreeView } from '../../src/diagrams/treeview/pars
 import { loadCorpus, mutator, random } from '../support/corpus.js';
 import { peleAst, peleTokens, referenceAst, referenceTokens } from '../support/langium.js';
 import { peleLongerAlts, referenceLongerAlts } from '../support/langium-extra.js';
+import { patchTitle, patchTokens } from '../support/token-patch.js';
+
+patchTokens('TreeViewModule', (tokens) => patchTitle(tokens, String.raw`(?!%%)[^\n\r]`));
 
 const FRAGMENTS = [
   'treeView-beta', 'treeView-beta\n', 'title', 'title ', 'accTitle: ', 'accDescr: ', 'accDescr {', '}', ':::', ' :::', ' :::x',
   ' ::: y', ':::1', 'icon(', ' icon(', ' icon()', ' icon(a:b)', ' icon(a:)', ' icon(none)', ')', '##', ' ##', ' ## d', '#',
   '"', "'", '"a b"', "'c'", '""', '\n', '\r\n', '\r', ' ', '  ', '\t', '    ', '%%', '%% c', '%%{init: {}}%%', '---', '/',
-  'src/', 'a.js', '├── ', '└── ', '│   ', 'x', 'é', ':', '::', '-', '_', ' ', '#35;', 'icon', 'a b', ' \n', '"a" b',
+  'src/', 'a.js', '├── ', '└── ', '│   ', 'x', 'é', ':', '::', '-', '_', ' ', '#35;', 'icon', 'a b', ' \n', '"a" b', 'titles', 'title.md', 'title ', 's', '.s',
 ];
 
 // Seeds written for this test, checked against the reference below so each keeps covering what it is meant to.
@@ -21,11 +24,14 @@ const VALID = [
   'treeView-beta\r\na\r\n  b\r\n',
   'treeView-beta\na:::b icon(c)d ##e\n',
   'treeView-beta\n"a" "b" c\n',
+  'treeView-beta\ntitle%% c\naccTitle: A\nroot\n',
+  'treeView-beta\ntitle T\ntitles\n  title.txt\n  title-page.md ## d\n  title"q"\n  titles :::x\n',
 ];
 
 const INVALID: string[] = [
   'treeView-beta :::x\n',
   'treeView-beta title T\n',
+  'treeView-beta\n  a\n  title\n  b\n',
 ];
 
 const corpus = [...loadCorpus('treeview', /treeView-beta/), ...VALID, ...INVALID];

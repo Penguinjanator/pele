@@ -108,6 +108,20 @@ describe('treeView rendering', () => {
     expect(svg).toContain('>#hash</text>');
   });
 
+  it('reads names that start with title', () => {
+    const model = parse('treeView-beta\ntitles/\n  title.txt\n  title-page.md\n');
+    expect(model.type).toBe('treeView');
+    if (model.type === 'treeView') {
+      const [dir] = model.root.children;
+      expect([dir.name, ...dir.children.map((c) => c.name)]).toEqual(['titles', 'title.txt', 'title-page.md']);
+    }
+    const { svg } = render('treeView-beta\ntitles/\n├── title.txt\n└── title-page.md\n', options);
+    expect(svg).toContain('>title.txt</text>');
+    expect(svg).not.toContain('>.txt</text>');
+    const titled = parse('treeView-beta\ntitle%% c\naccTitle: A\nroot\n');
+    expect(titled.type === 'treeView' && [titled.accTitle, titled.root.children.map((c) => c.name)]).toEqual(['A', ['root']]);
+  });
+
   it('draws titles and accessible names', () => {
     const { svg } = render('---\ntitle: Front\n---\ntreeView-beta\naccTitle: Acc\naccDescr: Described\n  a\n', options);
     expect(svg).toContain('>Front<');
