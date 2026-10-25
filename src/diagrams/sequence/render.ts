@@ -149,6 +149,7 @@ interface View {
   label: Label;
   x: number;
   w: number;
+  room?: number;
 }
 
 interface Frame {
@@ -213,7 +214,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
   return tighten(options, (tight) => draw(db, config, options, tight));
 }
 
-function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean): Rendered {
+function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean, grow = true): Rendered {
   const conf = (config.sequence ?? {}) as Config;
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
@@ -321,7 +322,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean)
         const created = cols[b].createAt === i ? cols[b].size.w / 2 : 0;
         const central = m.centralConnection ? 4 * CENTRAL_R : 0;
         need(Math.min(a, b), Math.max(a, b), (tight ? Math.min(label.width, Math.max(16, wrapW - 16)) : label.width) + 2 * msgPad + ACT_W + badge + created + central);
-        views[i] = { kind: V.Line, a, b, label, x: 0, w: 0 };
+        views[i] = { kind: V.Line, a, b, label, x: 0, w: 0, room: wrapW };
       }
     }
   }
@@ -367,7 +368,6 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean)
     if (run.first > 0) gaps[run.first - 1] += run.grow;
     if (run.last < last) gaps[run.last] += run.grow;
   }
-  place();
 
   let minX = Infinity;
   let maxX = -Infinity;
@@ -375,104 +375,143 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean)
     if (x0 < minX) minX = x0;
     if (x1 > maxX) maxX = x1;
   };
-  for (const col of cols) extend(col.x - col.size.w / 2, col.x + col.size.w / 2);
-  for (const run of runs) {
-    extend(cols[run.first].x - cols[run.first].size.w / 2 - boxPad - run.grow, cols[run.last].x + cols[run.last].size.w / 2 + boxPad + run.grow);
-  }
-
-  // Horizontal extents of every block, from what it holds.
   const frames = new Array<Frame | undefined>(count);
-  const open: Frame[] = [];
-  const spanAll = (): [number, number] => (last < 0 ? [0, 120] : [cols[0].x - framePad, cols[last].x + framePad]);
-  for (let i = 0; i < count; i++) {
-    const m = messages[i];
-    const type = m.type;
-    const frameKind = type === undefined ? undefined : FRAME_KIND.get(type);
-    const view = views[i];
-    if (frameKind !== undefined) {
-      const frame: Frame = {
-        kind: frameKind,
-        x0: Infinity,
-        x1: -Infinity,
-        top: 0,
-        title: NO_LABEL,
-        tabW: 0,
-        fill: frameKind === 'rect' && typeof m.message === 'string' ? m.message : '',
-        dividers: [i],
-        dividerY: [],
-        dividerLabels: [],
-      };
-      frames[i] = frame;
-      open.push(frame);
-    } else if (type === LINETYPE.ALT_ELSE || type === LINETYPE.PAR_AND || type === LINETYPE.CRITICAL_OPTION) {
-      open[open.length - 1]?.dividers.push(i);
-    } else if (
-      type === LINETYPE.LOOP_END ||
-      type === LINETYPE.ALT_END ||
-      type === LINETYPE.OPT_END ||
-      type === LINETYPE.PAR_END ||
-      type === LINETYPE.CRITICAL_END ||
-      type === LINETYPE.BREAK_END ||
-      type === LINETYPE.RECT_END
-    ) {
-      const frame = open.pop();
-      if (!frame) continue;
-      frames[i] = frame;
-      if (frame.x0 > frame.x1) [frame.x0, frame.x1] = spanAll();
-      if (frame.kind !== 'rect') {
-        frame.tabW = measurer.width(frame.kind, tiny, Style.Bold) + 14;
-        // A block grows to the right to give its texts up to FRAME_TEXT of width before they wrap.
-        for (let k = 0; k < frame.dividers.length; k++) {
-          const raw = messages[frame.dividers[k]].message;
-          const tab = k === 0 ? frame.tabW + 8 : 0;
-          const room = frame.x1 - frame.x0 - 16 - tab;
-          const label = raw ? text(`[${raw as string}]`, small, true, Math.max(room, tight ? Math.min(FRAME_TEXT, wrapW) : FRAME_TEXT)) : NO_LABEL;
-          if (label.width > room) frame.x1 += label.width - room;
-          if (k === 0) frame.title = label;
-          else frame.dividerLabels.push(label);
+  const layout = (): void => {
+    place();
+    minX = Infinity;
+    maxX = -Infinity;
+    for (const col of cols) extend(col.x - col.size.w / 2, col.x + col.size.w / 2);
+    for (const run of runs) {
+      extend(cols[run.first].x - cols[run.first].size.w / 2 - boxPad - run.grow, cols[run.last].x + cols[run.last].size.w / 2 + boxPad + run.grow);
+    }
+
+    // Horizontal extents of every block, from what it holds.
+    const open: Frame[] = [];
+    const spanAll = (): [number, number] => (last < 0 ? [0, 120] : [cols[0].x - framePad, cols[last].x + framePad]);
+    for (let i = 0; i < count; i++) {
+      const m = messages[i];
+      const type = m.type;
+      const frameKind = type === undefined ? undefined : FRAME_KIND.get(type);
+      const view = views[i];
+      if (frameKind !== undefined) {
+        const frame: Frame = {
+          kind: frameKind,
+          x0: Infinity,
+          x1: -Infinity,
+          top: 0,
+          title: NO_LABEL,
+          tabW: 0,
+          fill: frameKind === 'rect' && typeof m.message === 'string' ? m.message : '',
+          dividers: [i],
+          dividerY: [],
+          dividerLabels: [],
+        };
+        frames[i] = frame;
+        open.push(frame);
+      } else if (type === LINETYPE.ALT_ELSE || type === LINETYPE.PAR_AND || type === LINETYPE.CRITICAL_OPTION) {
+        open[open.length - 1]?.dividers.push(i);
+      } else if (
+        type === LINETYPE.LOOP_END ||
+        type === LINETYPE.ALT_END ||
+        type === LINETYPE.OPT_END ||
+        type === LINETYPE.PAR_END ||
+        type === LINETYPE.CRITICAL_END ||
+        type === LINETYPE.BREAK_END ||
+        type === LINETYPE.RECT_END
+      ) {
+        const frame = open.pop();
+        if (!frame) continue;
+        frames[i] = frame;
+        if (frame.x0 > frame.x1) [frame.x0, frame.x1] = spanAll();
+        if (frame.kind !== 'rect') {
+          frame.tabW = measurer.width(frame.kind, tiny, Style.Bold) + 14;
+          // A block grows to the right to give its texts up to FRAME_TEXT of width before they wrap.
+          for (let k = 0; k < frame.dividers.length; k++) {
+            const raw = messages[frame.dividers[k]].message;
+            const tab = k === 0 ? frame.tabW + 8 : 0;
+            const room = frame.x1 - frame.x0 - 16 - tab;
+            const label = raw ? text(`[${raw as string}]`, small, true, Math.max(room, tight ? Math.min(FRAME_TEXT, wrapW) : FRAME_TEXT)) : NO_LABEL;
+            if (label.width > room) frame.x1 += label.width - room;
+            if (k === 0) frame.title = label;
+            else frame.dividerLabels.push(label);
+          }
+        }
+        extend(frame.x0, frame.x1);
+        const parent = open[open.length - 1];
+        if (parent) {
+          parent.x0 = Math.min(parent.x0, frame.x0 - frameNest);
+          parent.x1 = Math.max(parent.x1, frame.x1 + frameNest);
+        }
+      } else if (view) {
+        const a = cols[view.a];
+        const b = cols[view.b];
+        let x0: number;
+        let x1: number;
+        if (view.kind === V.Note) {
+          if (m.placement === PLACEMENT.LEFTOF) view.x = a.x - NOTE_GAP - view.w;
+          else if (m.placement === PLACEMENT.RIGHTOF) view.x = a.x + NOTE_GAP;
+          else if (view.a === view.b) view.x = a.x - view.w / 2;
+          else {
+            const lo = Math.min(a.x, b.x) - noteOver;
+            const hi = Math.max(a.x, b.x) + noteOver;
+            if (tight || m.wrap) view.label = text(m.message as string, small, true, Math.max(wrapW, hi - lo - 2 * notePad));
+            view.w = Math.max(hi - lo, view.label.width + 2 * notePad);
+            view.x = (lo + hi - view.w) / 2;
+          }
+          x0 = view.x;
+          x1 = view.x + view.w;
+        } else if (view.kind === V.Self) {
+          x0 = a.x;
+          x1 = a.x + ACT_W + SELF_W + 8 + view.label.width + badgeWidth(i);
+        } else {
+          x0 = Math.min(a.x, b.x);
+          x1 = Math.max(a.x, b.x);
+          const room = Math.max(wrapW, x1 - x0 - 2 * msgPad - ACT_W);
+          if ((tight || m.wrap) && room !== view.room) {
+            view.label = text(m.message as string, small, true, room);
+            view.room = room;
+          }
+          if (b.createAt === i) {
+            if (b.x > a.x) x1 += b.size.w / 2;
+            else x0 -= b.size.w / 2;
+          }
+        }
+        extend(x0, x1);
+        const frame = open[open.length - 1];
+        if (frame) {
+          frame.x0 = Math.min(frame.x0, x0 - framePad);
+          frame.x1 = Math.max(frame.x1, x1 + framePad);
         }
       }
-      extend(frame.x0, frame.x1);
-      const parent = open[open.length - 1];
-      if (parent) {
-        parent.x0 = Math.min(parent.x0, frame.x0 - frameNest);
-        parent.x1 = Math.max(parent.x1, frame.x1 + frameNest);
+    }
+  };
+  layout();
+
+  // Spend unused width on gaps crossed by wrapped messages before placing their rows.
+  let grown = false;
+  if (tight && grow && options.maxWidth !== undefined) {
+    const spare = Math.floor(options.maxWidth - (maxX - minX + 2 * pad));
+    if (spare > 0) {
+      const stretch = new Int32Array(cols.length);
+      for (let i = 0; i < views.length; i++) {
+        const view = views[i];
+        if (view?.kind !== V.Line || view.label.lines.length < 2) continue;
+        if (view.label.lines.length <= text(messages[i].message as string, small, false, Infinity).lines.length) continue;
+        stretch[Math.min(view.a, view.b)]++;
+        stretch[Math.max(view.a, view.b)]--;
       }
-    } else if (view) {
-      const a = cols[view.a];
-      const b = cols[view.b];
-      let x0: number;
-      let x1: number;
-      if (view.kind === V.Note) {
-        if (m.placement === PLACEMENT.LEFTOF) view.x = a.x - NOTE_GAP - view.w;
-        else if (m.placement === PLACEMENT.RIGHTOF) view.x = a.x + NOTE_GAP;
-        else if (view.a === view.b) view.x = a.x - view.w / 2;
-        else {
-          const lo = Math.min(a.x, b.x) - noteOver;
-          const hi = Math.max(a.x, b.x) + noteOver;
-          if (tight || m.wrap) view.label = text(m.message as string, small, true, Math.max(wrapW, hi - lo - 2 * notePad));
-          view.w = Math.max(hi - lo, view.label.width + 2 * notePad);
-          view.x = (lo + hi - view.w) / 2;
-        }
-        x0 = view.x;
-        x1 = view.x + view.w;
-      } else if (view.kind === V.Self) {
-        x0 = a.x;
-        x1 = a.x + ACT_W + SELF_W + 8 + view.label.width + badgeWidth(i);
-      } else {
-        x0 = Math.min(a.x, b.x);
-        x1 = Math.max(a.x, b.x);
-        if (tight || m.wrap) view.label = text(m.message as string, small, true, Math.max(wrapW, x1 - x0 - 2 * msgPad - ACT_W));
-        if (b.createAt === i) {
-          if (b.x > a.x) x1 += b.size.w / 2;
-          else x0 -= b.size.w / 2;
-        }
+      let active = 0;
+      let count = 0;
+      for (let i = 0; i < gaps.length; i++) {
+        active += stretch[i];
+        stretch[i] = active > 0 ? 1 : 0;
+        count += stretch[i];
       }
-      extend(x0, x1);
-      const frame = open[open.length - 1];
-      if (frame) {
-        frame.x0 = Math.min(frame.x0, x0 - framePad);
-        frame.x1 = Math.max(frame.x1, x1 + framePad);
+      if (count > 0) {
+        const extra = spare / count;
+        for (let i = 0; i < gaps.length; i++) gaps[i] += stretch[i] * extra;
+        layout();
+        grown = true;
       }
     }
   }
@@ -800,6 +839,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean)
   }
 
   const width = Math.ceil(maxX - minX + 2 * pad);
+  if (grown && width > options.maxWidth!) return draw(db, config, options, tight, false);
   const height = Math.ceil(bottom - minY + 2 * pad);
   const svg = svgDocument(
     'sequence',

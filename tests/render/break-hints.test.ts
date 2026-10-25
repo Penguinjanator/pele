@@ -65,7 +65,7 @@ describe('break hints', () => {
   it('splits a hinted sequence message at the hints on a narrow screen', () => {
     const source = `sequenceDiagram\n  participant UE\n  participant gNB\n  participant AMF\n  gNB->>UE: RRCConnection${ZWSP}Reconfiguration${ZWSP}Complete\n  UE->>gNB: ok`;
     const svg = render(source, { maxWidth: 360, measurer: metricsMeasurer }).svg;
-    const label = [...svg.matchAll(/<tspan\b[^>]*>([^<]*)<\/tspan>/g)].map(m => m[1].replace(ZWSP, ''));
-    expect(label).toEqual(['RRCConnection', 'Reconfiguration', 'Complete']);
+    const label = [...svg.matchAll(/<tspan\b[^>]*>([^<]*)<\/tspan>/g)].map(m => m[1].replaceAll(ZWSP, ''));
+    expect(label).toEqual(['RRCConnectionReconfiguration', 'Complete']);
   });
 });
