@@ -5,6 +5,16 @@ import { EBNF_TOKENS, parseEbnf } from '../../src/diagrams/railroad/ebnf.js';
 import { IR_TOKENS, parseIr } from '../../src/diagrams/railroad/ir.js';
 import { PEG_TOKENS, parsePeg } from '../../src/diagrams/railroad/peg.js';
 import { loadCorpus } from './corpus.js';
+import { patchTitle, patchTokens } from './token-patch.js';
+
+for (const [module, rest] of [
+  ['RailroadModule', String.raw`[\w-]`],
+  ['RailroadEbnfModule', String.raw`[\w-]`],
+  ['RailroadAbnfModule', '[A-Za-z0-9-]'],
+  ['RailroadPegModule', String.raw`[\w-]`],
+]) {
+  patchTokens(module, (tokens) => patchTitle(tokens, rest, 'TITLE', String.raw`title(?:[\t ][^\n\r]*?(?=%%)|[\t ][^\n\r]*|)`));
+}
 
 // The four railroad grammars, each with what the differential tests need: Mermaid's services and
 // parser name, Pele's token table and parser, and three sources of test input.
@@ -37,8 +47,7 @@ function several(rnd: Rnd, max: number, make: () => string, joints: readonly str
 }
 
 const STRINGS = ['"a"', "'b'", '"x y"', '"\\n"', '"\\""', '"q\\\\"', '""', '"+"', '"é"', "'it\\'s'", '"a  b"', '"?"', '";"', '"(*"'];
-// `title` at the start of a name is a title statement, which ends the rules. It is kept rare.
-const NAMES = ['r', 'rule', 'my_rule', 'a-b', 'A1', 'terminals', 'x_', 'choice2', 'accTitles', 'digit', 'Expr', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'titles'];
+const NAMES = ['r', 'rule', 'my_rule', 'a-b', 'A1', 'terminals', 'x_', 'choice2', 'accTitles', 'digit', 'Expr', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'titles', 'title-x'];
 
 function irExpression(rnd: Rnd, depth: number): string {
   const r = rnd();
@@ -89,7 +98,7 @@ function pegChoice(rnd: Rnd, depth: number): string {
 const COMMON = [
   'title', 'title ', 'title "T"', "title 'T'", 'title "a\\"b"', 'title "', 'accTitle: ', 'accTitle', 'accDescr: ', 'accDescr {', 'accDescr{x}', '}',
   '\n', '\r\n', ' ', '\t', '%%', '%% c', '%%{init: {}}%%', '---', '---\n', '---\nx: 1\n---\n', '\\', '\\"', "\\'", '\\n', '"', "'", '"a"', "'b'",
-  '""', '"a b"', '"\\t\\\\"', ';', ' ;', ';\n', '=', '(', ')', ',', 'x', 'é', '#35;', '-', '_', '0', '9', 'a-b', 'A_1', '/*', '*/', '/* c */',
+  '""', '"a b"', '"\\t\\\\"', ';', ' ;', ';\n', '=', '(', ')', ',', 'x', 'é', '#35;', '-', '_', '0', '9', 'a-b', 'A_1', '/*', '*/', '/* c */', 'titles', 'title-x', 'title_',
 ];
 
 export const NOTATIONS: Notation[] = [

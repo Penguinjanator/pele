@@ -47,7 +47,10 @@ function accDescrScanner(): Scanner {
 
 export const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 
-export const TITLE: TokenType = { name: 'TITLE', pattern: /title(?:[\t ][^\n\r]*?(?=%%)|[\t ][^\n\r]*|)/y, first: 't' };
+// `rest` matches a name suffix so `title` does not split longer names.
+export function title(rest: string): TokenType {
+  return { name: 'TITLE', pattern: new RegExp(String.raw`title(?:[\t ][^\n\r]*?(?=%%)|[\t ][^\n\r]*|(?!${rest}))`, 'y'), first: 't' };
+}
 export const ACC_TITLE: TokenType = { name: 'ACC_TITLE', pattern: /accTitle[\t ]*:(?:[^\n\r]*?(?=%%)|[^\n\r]*)/y, first: 'a' };
 export const ACC_DESCR: TokenType = {
   name: 'ACC_DESCR',

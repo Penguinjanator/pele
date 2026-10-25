@@ -192,6 +192,20 @@ describe('railroad rendering', () => {
     expect(svg).toContain('>fa:fa-user</text>');
   });
 
+  it('reads rule names that start with title in each notation', () => {
+    for (const src of [
+      'railroad-beta\ntitles = nonterminal("title-x") ;\ntitle-x = terminal("a") ;',
+      'railroad-ebnf-beta\ntitles = title-x ;\ntitle-x = "a" ;',
+      'railroad-abnf-beta\ntitles = title-x ;\ntitle-x = "a" ;',
+      'railroad-peg-beta\ntitles <- title-x ;\ntitle-x <- "a" ;',
+    ]) {
+      const model = parse(src);
+      expect(model.type, src).toBe('railroad');
+      if (model.type === 'railroad') expect(model.rules.map((r) => r.name), src).toEqual(['titles', 'title-x']);
+      expect(render(src, options).svg, src).toContain('data-id="title-x"');
+    }
+  });
+
   it('takes the title from the diagram, or else from front matter', () => {
     expect(ebnf('title "Quoted \\"title\\""\nr = a ;').svg).toContain('class="pele-title" font-weight="var(--_tw)"');
     expect(ebnf('title "Quoted \\"title\\""\nr = a ;').svg).toContain('>Quoted &quot;title&quot;<');

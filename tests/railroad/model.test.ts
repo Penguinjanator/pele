@@ -138,8 +138,8 @@ describe('railroad model', () => {
     expect(model('---\ntitle: Front\n---\nrailroad-ebnf-beta\ntitle\nr = a ;').title).toBe('Front');
   });
 
-  it('takes `title` at the start of a name for a title statement, as Mermaid does', () => {
-    expect(model('railroad-ebnf-beta\ntitles = a ;')).toMatchObject({ title: undefined, rules: [{ name: 's', definition: n('a') }] });
+  it('reads names that start with title, but no title after the first rule', () => {
+    expect(model('railroad-ebnf-beta\ntitles = a ;')).toMatchObject({ title: undefined, rules: [{ name: 'titles', definition: n('a') }] });
     expect(() => parse('railroad-ebnf-beta\nr = a ;\ntitle Late')).toThrow(PeleError);
     expect(() => parse('railroad-ebnf-beta\nr = title ;')).toThrow(PeleError);
   });
