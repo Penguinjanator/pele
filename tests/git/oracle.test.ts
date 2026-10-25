@@ -3,6 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { GIT_TOKENS, parseGit } from '../../src/diagrams/git/parser.js';
 import { loadCorpus, mutator, random } from '../support/corpus.js';
 import { peleAst, peleTokens, referenceAst, referenceTokens } from '../support/langium.js';
+import { patchTitle, patchTokens } from '../support/token-patch.js';
+
+patchTokens('GitGraphModule', (tokens) => patchTitle(tokens, String.raw`[-./\w]*[-\w]`));
 
 const FRAGMENTS = [
   'gitGraph', 'gitGraph:', 'gitGraph ', ' LR:', ' TB:', ' BT:', 'LR', 'TB', 'BT', ':', ' : ',
@@ -12,6 +15,7 @@ const FRAGMENTS = [
   'title', 'title ', ' title x', 'accTitle: ', 'accDescr: ', 'accDescr {', '}', '{',
   '"', "'", '"a"', "'b'", '""', '"x y"', '0', '1', '12', '01', '1.', '1.5', '-1',
   '\n', '\r\n', ' ', '\t', '%%', '%% c', '%%{init: {}}%%', '---', '---\n',
+  'titles', 'title-', 'title.x', 'title/x', 'title.', 's', '/s', '.s',
   '\\', '\\"', 'x', 'é', ';', ',', '.', '-', '/', '#35;', ' id:"a"', ' tag:"t"', '\ncommit', '\nbranch x', '\nmerge x', '\ncheckout main',
 ];
 
@@ -29,13 +33,16 @@ const corpus = [
   '---\ntitle: x\n---\ngitGraph\ncommit',
   '%%{init: {"theme":"dark"}}%%\ngitGraph %% c\ncommit %% d\n',
   'gitGraph\ncommit\nbranch commits\ncheckout TBD\nmerge LRU\nbranch title1',
+  'gitGraph\ncommit\nbranch titles\ncheckout titles\ncommit\nbranch title/x order: 2\nswitch title/x\nmerge titles\nbranch title.v2\nbranch title-\n',
+  'gitGraph\ncommit\nbranch title.\n',
+  'gitGraph\ncommit\n  title\ntitlecommit\n',
 ];
 
 // Random sequences of whole tokens reach parser states that character edits to real diagrams rarely do.
 const WORDS = [
   'gitGraph', 'gitGraph:', 'LR', 'TB', 'BT', ':', 'commit', 'branch', 'merge', 'checkout', 'switch', 'cherry-pick',
   'id:', 'msg:', 'tag:', 'type:', 'parent:', 'order:', 'NORMAL', 'REVERSE', 'HIGHLIGHT', '"s"', "'t'", '""', 'name', 'a/b.c-d',
-  '0', '7', '12', '\n', '\n', '\n', 'title x', 'accTitle: a', 'accDescr: d', 'accDescr { x\n y }', '%% c',
+  '0', '7', '12', '\n', '\n', '\n', 'titles', 'title x', 'accTitle: a', 'accDescr: d', 'accDescr { x\n y }', '%% c',
 ];
 const HEADERS = ['gitGraph', 'gitGraph:', 'gitGraph :', 'gitGraph LR:', 'gitGraph TB :', 'gitGraph BT:', 'gitGraph\n', 'gitGraph:\n', 'gitGraph TB:\n', ''];
 
@@ -45,7 +52,7 @@ const CLAUSES = [
 ];
 const STATEMENTS: [string, string[]][] = [
   ['commit', ['id:"a"', 'msg:"m"', '"m"', 'tag:"t"', 'type:NORMAL', 'type: REVERSE']],
-  ['branch', ['name', '"quoted name"', 'order: 1', 'order:20']],
+  ['branch', ['name', '"quoted name"', 'order: 1', 'order:20', 'titles', 'title/x']],
   ['merge', ['name', 'main', 'id:"a"', 'tag:"t"', 'type:HIGHLIGHT']],
   ['checkout', ['name', 'main']],
   ['switch', ['name', '"quoted name"']],

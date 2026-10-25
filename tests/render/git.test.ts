@@ -171,6 +171,15 @@ describe('git graph rendering', () => {
     expect(render('%%{init: {"gitGraph": {"mainBranchName": "dev"}}}%%\ngitGraph\n commit', options).svg).toContain('>dev<');
   });
 
+  it('reads branch names that start with title', () => {
+    const model = parse('gitGraph\n commit\n branch titles\n commit\n branch title/x\n commit\n checkout main\n merge titles\n branch title-2.0\n');
+    expect(model.type).toBe('gitGraph');
+    if (model.type !== 'gitGraph') return;
+    expect(model.lanes).toEqual(['main', 'titles', 'title/x', 'title-2.0']);
+    expect(model.title).toBeUndefined();
+    expect(() => parse('gitGraph\n commit\n branch title.v2\n checkout title.v2')).not.toThrow();
+  });
+
   it('takes the title from front matter unless the graph sets one', () => {
     expect(render('---\ntitle: From front matter\n---\ngitGraph\n commit', options).svg).toContain('From front matter');
     const own = render('---\ntitle: From front matter\n---\ngitGraph\n title Own\n commit', options).svg;
