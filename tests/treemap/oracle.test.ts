@@ -4,12 +4,15 @@ import { tokenize } from '../../src/diagrams/common/tokens.js';
 import { loadCorpus, mutator, random } from '../support/corpus.js';
 import { peleAst, peleTokens, referenceAst, referenceTokens } from '../support/langium.js';
 import { loadTestStrings, peleLexer, peleLongerAlts, referenceLexer, referenceLongerAlts } from '../support/langium-extra.js';
+import { patchTitle, patchTokens } from '../support/token-patch.js';
+
+patchTokens('TreemapModule', (tokens) => patchTitle(tokens, String.raw`\w`));
 
 const FRAGMENTS = [
   'treemap', 'treemap-beta', 'title', 'title ', 'accTitle: ', 'accDescr: ', 'accDescr {', 'accDescr {}', '}', ':', ' : ', '::', ':::', ':::c1',
   ',', ' , ', '"', "'", '"a"', "'b'", '"a": 1', '"s"\n', '1', '0', '1.5', '1,000', '_', '.', '1e3', '-1', '\n', '\r\n', '\r',
   ' ', '  ', '    ', '\t', '%%', '%% c', '%%{init: {}}%%', '---', 'x', 'ab', 'é', ';', '#35;', 'classDef', 'classDef ',
-  'classDef c1 fill:red', 'classDef c1 fill:red,stroke:blue;', 'class', '\n  "b": 2', '\n    "c":3:::c1',
+  'classDef c1 fill:red', 'classDef c1 fill:red,stroke:blue;', 'class', 'titles', ':::titles', 'title1', '\n  "b": 2', '\n    "c":3:::c1',
 ];
 
 const corpus = [
@@ -67,6 +70,9 @@ const corpus = [
   'treemap\n"A": 5:::c d',
   'treemap\n"A"\n classDef ab x\n classDef cd',
   'treemap\nclassDef ab x;;',
+  'treemap\nclassDef titles fill:red\nclassDef title_2 fill:blue\n"A":::titles\n  "B": 1:::title_2\n',
+  'treemap\n"A":::title\n',
+  'treemap\n"A"\n  titles\n',
 ];
 
 const referenceLex = referenceLexer('createTreemapServices', 'Treemap');

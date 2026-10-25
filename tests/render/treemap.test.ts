@@ -180,6 +180,12 @@ describe('treemap rendering', () => {
     expect(svg).toContain('class="pele-node pele-section frame"');
   });
 
+  it('reads class names that start with title', () => {
+    const { svg } = render('treemap\n"S":::titles\n  "a": 1:::title_2\nclassDef title_2 fill:red', options);
+    expect(svg).toContain('class="pele-node pele-section titles"');
+    expect(svg).toContain('class="pele-node pele-leaf title_2" data-id="a"');
+  });
+
   it('honours showValues, padding, nodeWidth, nodeHeight, diagramPadding and valueFormat', () => {
     const base = render(BASIC, options);
     const bare = render(config('    showValues: false', BASIC), options).svg;
