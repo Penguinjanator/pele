@@ -48,6 +48,13 @@ function paths(svg: string): string[] {
   return [...svg.matchAll(/class="pele-edge" data-id="[^"]*"><path d="([^"]*)"/g)].map((m) => m[1]);
 }
 
+function labelBoxes(svg: string): Box[] {
+  return [...svg.matchAll(/class="pele-edge-label" data-id="[^"]*"><rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"/g)].map((m) => {
+    const [x, y, w, h] = m.slice(1).map(Number);
+    return { x: x + w / 2, y: y + h / 2, w, h };
+  });
+}
+
 function expectSeparateLabels(src: string, count: number): void {
   const result = render(src, options);
   const model = parse(src);
@@ -343,6 +350,46 @@ describe('block rendering', () => {
       'block\n  columns 1\n  a["A"]\n  space:2\n  b["B"]\n  a -- "7 production policy" --> b\n  a -- "7 test policy" --> b\n  a -- "7 production exception" --> b\n  b -- "7 production deviation" --> a',
       4
     );
+  });
+
+  it('keeps parallel edges straight while it stacks their labels', () => {
+    const src = 'block\n  columns 3\n  l a r\n  space:3\n  m b n\n  a -- "production conforming" --> b\n  b -- "production deviation" --> a';
+    expectSeparateLabels(src, 2);
+    for (const path of paths(render(src, options).svg)) expect(path).toMatch(/^M[\d.,]+L[\d.,]+$/);
+  });
+
+  it('leaves parallel labels in place when stacking them would cover another block', () => {
+    const expectClear = (src: string, ids: string[]): void => {
+      const { svg } = render(src, options);
+      const all = boxes(svg);
+      for (const id of ids) {
+        const b = all.get(id)!;
+        for (const l of labelBoxes(svg)) expect(Math.abs(l.x - b.x) >= (l.w + b.w) / 2 || Math.abs(l.y - b.y) >= (l.h + b.h) / 2).toBe(true);
+      }
+    };
+    expectClear('block\n  columns 1\n  a\n  space\n  c["Middle"]\n  space\n  b\n  a -- "forward label" --> b\n  a -- "second label" --> b', ['c']);
+    expectClear('block\n  columns 1\n  a c d e b\n  a -- "one<br>two<br>three<br>four" --> b\n  a -- "one<br>two<br>three<br>four" --> b', ['c', 'e']);
+  });
+
+  it('leaves parallel labels in place when stacking them would cover a composite title', () => {
+    const { svg } = render('block\n  columns 1\n  b\n  space\n  block:g["Group"]\n    x\n  end\n  a\n  a -- "a long label" --> b\n  a -- "a long label" --> b\n  a -- "a long label" --> b', options);
+    const [, x, baseline] = /class="pele-cluster-label"[^>]* x="([\d.]+)" y="([\d.]+)"/.exec(svg)!.map(Number);
+    for (const l of labelBoxes(svg)) expect(Math.abs(l.x - x) >= l.w / 2 || Math.abs(l.y - (baseline - 6)) >= l.h / 2).toBe(true);
+  });
+
+  it('leaves parallel labels in place when stacking them would cover an arrowhead', () => {
+    const { svg } = render('block\n  columns 1\n  a\n  space\n  b\n  a -- "first label" --> b\n  a -- "second label" --> b\n  b -- "third label" --> a', options);
+    const tips = [...svg.matchAll(/class="pele-marker" d="([^"]*)"/g)].flatMap((m) => [...m[1].matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((p) => [Number(p[1]), Number(p[2])]));
+    expect(tips.length).toBeGreaterThan(0);
+    for (const l of labelBoxes(svg)) {
+      for (const [x, y] of tips) expect(Math.abs(x - l.x) >= l.w / 2 || Math.abs(y - l.y) >= l.h / 2).toBe(true);
+    }
+  });
+
+  it('stacks parallel labels without widening the drawing past maxWidth', () => {
+    const src = 'block\n  columns 1\n  a\n  space:2\n  b\n  a -- "a fairly long forward label" --> b\n  b -- "a fairly long backward label" --> a';
+    expectSeparateLabels(src, 2);
+    expect(render(src, { ...options, maxWidth: 240 }).width).toBeLessThanOrEqual(240);
   });
 
   it('draws a self-loop as an arc', () => {
