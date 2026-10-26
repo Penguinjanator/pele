@@ -2,7 +2,7 @@ import { tighten, titleRoom } from '../common/fit-width.js';
 import { PeleError } from '../../errors.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
-import { ARROW, casingsSvg, edgeCasing, marker, markerTrim, runsInside } from '../../svg/edges.js';
+import { ARROW, casingsSvg, edgeCasing, marker, markerTrim, overFills, type Fill } from '../../svg/edges.js';
 import { inkFill, paints } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape } from '../../svg/shapes.js';
@@ -117,9 +117,11 @@ function draw(db: C4Db, _config: Config, options: RenderOptions, tight: boolean,
   let casings = '';
   let edgesOut = '';
   const trim = markerTrim('arrow_point');
-  const filled: number[] = [];
+  const fills: Fill[] = [];
   for (const group of order) {
-    if (group !== root && paints(userStyle(group.boundary.bgColor, undefined, undefined).shape)) filled.push(group.x, group.y, group.x + group.w, group.y + group.h);
+    if (group === root) continue;
+    const shape = userStyle(group.boundary.bgColor, undefined, undefined).shape;
+    if (paints(shape)) fills.push({ box: [group.x, group.y, group.x + group.w, group.y + group.h], shape });
   }
   const lanes = new Lanes();
   for (const group of order) if (group !== root) lanes.frame(group);
@@ -127,7 +129,6 @@ function draw(db: C4Db, _config: Config, options: RenderOptions, tight: boolean,
     const a = ends[index * 2];
     const b = ends[index * 2 + 1];
     const style = userStyle(undefined, rel.lineColor, undefined);
-    const color = style.stroke ? esc(style.stroke) : 'var(--_l)';
     const startArrow = rel.type === 'birel' || rel.type === 'rel_b';
     const endArrow = rel.type !== 'rel_b';
     const reverse = a !== b && pairs.get(b)?.has(a) === true;
@@ -135,9 +136,11 @@ function draw(db: C4Db, _config: Config, options: RenderOptions, tight: boolean,
     grow(Math.min(r.x0, r.x1), Math.min(r.y0, r.y1), Math.max(r.x0, r.x1), Math.max(r.y0, r.y1));
     if (startArrow && careful) taken.push(r.sx - ARROW, r.sy - ARROW, r.sx + ARROW, r.sy + ARROW);
     if (endArrow && careful) taken.push(r.ex - ARROW, r.ey - ARROW, r.ex + ARROW, r.ey + ARROW);
-    if (runsInside(r.d, filled)) casings += edgeCasing(r, startArrow ? 'arrow_point' : 'none', endArrow ? 'arrow_point' : 'none', style.line);
+    const over = overFills(r.d, [r.sx, r.sy, r.ex, r.ey], fills, style.line);
+    const color = over || (style.stroke ? esc(style.stroke) : 'var(--_l)');
+    if (over === '') casings += edgeCasing(r, startArrow ? 'arrow_point' : 'none', endArrow ? 'arrow_point' : 'none', style.line);
     edgesOut +=
-      `<g class="pele-edge" data-id="${escText(rel.from + '-' + rel.to)}"${style.line}><path d="${r.d}"/>` +
+      `<g class="pele-edge" data-id="${escText(rel.from + '-' + rel.to)}"${over ? ` stroke="${over}"` : ''}${style.line}><path d="${r.d}"/>` +
       (startArrow ? marker('arrow_point', r.sx, r.sy, r.sdx, r.sdy, color) : '') +
       (endArrow ? marker('arrow_point', r.ex, r.ey, r.edx, r.edy, color) : '') +
       '</g>';

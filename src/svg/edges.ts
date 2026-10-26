@@ -307,14 +307,6 @@ function enters(points: number[], l: number, t: number, r: number, b: number): b
   return false;
 }
 
-// Whether a path runs inside any of the boxes, each given as left, top, right, bottom.
-export function runsInside(d: string, boxes: number[]): boolean {
-  if (boxes.length === 0) return false;
-  const points = pathPoints(d);
-  for (let b = 0; b < boxes.length; b += 4) if (enters(points, boxes[b] + 0.5, boxes[b + 1] + 0.5, boxes[b + 2] - 0.5, boxes[b + 3] - 0.5)) return true;
-  return false;
-}
-
 // Fill bounds are [left, top, right, bottom].
 export interface Fill {
   box: number[];

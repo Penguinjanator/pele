@@ -434,7 +434,7 @@ UpdateElementStyle(d, $bgColor="navy", $fontColor="#ddd")`);
     expect(group('e')).not.toContain('--pele-fg-on');
   });
 
-  it('cases relations that run over a boundary fill a style sets', () => {
+  it('cases relations that cross a boundary fill a style sets and inks those inside it', () => {
     const src = `C4Context
 Boundary(b, "B") {
   System(x, "X")
@@ -449,12 +449,14 @@ UpdateElementStyle(b, $bgColor="lightyellow")`;
     const { svg } = draw(src);
     const casings = /<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(svg)![1];
     const edge = (id: string): string => new RegExp(`data-id="${id}"[^>]*><path d="([^"]+)"`).exec(svg)![1];
-    expect(casings).toContain(`<path d="${edge('x-y')}"/>`);
+    // x --> y lies inside the boundary and takes its ink; y --> z crosses out of it.
+    expect(casings).not.toContain(`<path d="${edge('x-y')}"/>`);
+    expect(svg).toMatch(/data-id="x-y" stroke="var\(--pele-fg-on-light,#1f1f1f\)"><path [^>]*\/><path class="pele-marker"[^>]* fill="var\(--pele-fg-on-light,#1f1f1f\)"/);
     expect(casings).toContain(`<path d="${edge('y-z')}"/>`);
     expect(casings).not.toContain(`<path d="${edge('z-w')}"/>`);
-    expect(draw(src.replace('UpdateElementStyle(b, $bgColor="lightyellow")', '')).svg).not.toContain('pele-casings');
+    expect(draw(src.replace('UpdateElementStyle(b, $bgColor="lightyellow")', '')).svg).not.toMatch(/pele-casings|stroke="var\(--pele-fg-on/);
     const loop = draw('C4Context\nBoundary(S, "S") {\n  System(A, "A")\n}\nRel(A, A, "self")\nUpdateElementStyle(S, $bgColor="white")').svg;
-    expect(/<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(loop)?.[1]).toContain(`<path d="${/data-id="A-A"[^>]*><path d="([^"]+)"/.exec(loop)![1]}"/>`);
+    expect(loop).toMatch(/data-id="A-A" stroke="var\(--pele-fg-on-light,#1f1f1f\)"/);
   });
 
   it('applies UpdateRelStyle colours and offsets', () => {
