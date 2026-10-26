@@ -234,6 +234,16 @@ describe('class diagram rendering', () => {
     expect(width(mono)).toBeGreaterThan(width(plain));
   });
 
+  it('ignores monospace values that do not list members', () => {
+    const src = 'class A {\n  +title: string\n  +draw()*\n}';
+    const plain = draw(src);
+    for (const monospace of [[], ['member'], ['attributes'], 'members', { members: true }, true, null]) {
+      expect(draw(src, { monospace })).toBe(plain);
+    }
+    expect(draw(src, { config: { class: { monoMembers: true, monospace: ['members'] } } })).toBe(plain);
+    expect(draw(src, { monospace: ['attributes', 'members'] })).toBe(draw(src, { monospace: ['members'] }));
+  });
+
   it('uses the label of a class in place of its name', () => {
     const svg = draw('class A["A class with a label"]\nclass `Animal Class!`\nA --> `Animal Class!`');
     expect(group(svg, 'A')).toContain('>A class with a label<');
