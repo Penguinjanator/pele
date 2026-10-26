@@ -331,6 +331,12 @@ describe('ER diagram rendering', () => {
     expect(b.x).toBeLessThan(inner[0] + inner[2]);
   });
 
+  it('draws a subgraph fill the author sets at full opacity', () => {
+    const { svg } = render('erDiagram\n subgraph g\n  A\n end\n subgraph h\n  B\n end\n style g fill:#fee', options);
+    expect(svg).toMatch(/data-id="g"><rect [^>]*fill="var\(--_a\)" stroke=/);
+    expect(svg).toMatch(/data-id="h"><rect [^>]*fill-opacity="0.5"/);
+  });
+
   it('connects a relationship written before its subgraph to that subgraph', () => {
     const svg = svgOf('erDiagram\n g ||--o{ X : early\n subgraph g\n  A\n end');
     expect(count(svg, '<g class="pele-edge ')).toBe(1);
