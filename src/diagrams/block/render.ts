@@ -4,7 +4,7 @@ import { escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, edgeLabelSvg, marker, markerTrim, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape, shapeInset, shapeSize } from '../../svg/shapes.js';
-import { classNames, resolveStyle, rounded, type ResolvedStyle } from '../../svg/theme.js';
+import { classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
@@ -717,7 +717,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
       const top = v.y - v.h / 2;
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${id}">` +
-        `<rect x="${num(v.x - v.w / 2)}" y="${num(top)}" width="${num(v.w)}" height="${num(v.h)}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${rounded(v.style.shape)}/>` +
+        `<rect x="${num(v.x - v.w / 2)}" y="${num(top)}" width="${num(v.w)}" height="${num(v.h)}" fill="var(--_a)"${setsFill(v.style.shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${rounded(v.style.shape)}/>` +
         labelSvg(v.label, v.x, top + (v.head + gap) / 2 + 2, ` class="pele-cluster-label" fill="var(--_m)"${v.style.text}`, icons) +
         '</g>';
       continue;

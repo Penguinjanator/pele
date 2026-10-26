@@ -463,6 +463,12 @@ describe('block rendering', () => {
     expect(svg).toMatch(/class="pele-cluster" data-id="g"><rect [^>]*style="rx:var\(--_r\);fill:#fee;stroke:#f00;"/);
   });
 
+  it('draws a composite fill the author sets at full opacity', () => {
+    const { svg } = render('block\n  block:g\n    a\n  end\n  block:h\n    b\n  end\n  style g fill:#fee', options);
+    expect(svg).toMatch(/data-id="g"><rect [^>]*fill="var\(--_a\)" stroke=/);
+    expect(svg).toMatch(/data-id="h"><rect [^>]*fill-opacity="0.5"/);
+  });
+
   it('draws the front matter title', () => {
     const plain = render('block\n  a', options);
     const titled = render('---\ntitle: Systems\n---\nblock\n  a', options);
