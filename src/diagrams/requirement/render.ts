@@ -3,6 +3,7 @@ import { titleLabel } from '../../svg/title.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num, sharedStyle, spanStyle, textStyle } from '../../svg/builder.js';
 import { edgeLabelSvg, routePath, type EdgePath } from '../../svg/edges.js';
+import { inkFill } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { classNames, resolveStyle, rounded, type ResolvedStyle } from '../../svg/theme.js';
 import { hasMath, labelLine, layoutLabel, lineMiddle, type Label } from '../../text/label.js';
@@ -267,6 +268,8 @@ function draw(model: RequirementModel, _config: Config, options: RenderOptions, 
   for (let i = 0; i < views.length; i++) {
     const view = views[i];
     const { w, h, style } = view;
+    const color = inkFill(style);
+    const muted = color || ' fill="var(--_m)"';
     const left = -w / 2;
     const top = -h / 2;
     let body =
@@ -275,13 +278,13 @@ function draw(model: RequirementModel, _config: Config, options: RenderOptions, 
         view.kind,
         0,
         top + PAD_Y + view.kind.height / 2,
-        ` class="pele-stereotype" font-size="${view.kind.size}" fill="var(--_m)"${style.text}`
+        ` class="pele-stereotype" font-size="${view.kind.size}"${muted}${style.text}`
       ) +
       labelSvg(
         view.name,
         0,
         top + PAD_Y + view.kind.height + view.name.height / 2,
-        ` class="pele-label" font-size="${view.name.size}" font-weight="var(--_hw)"${style.text}`
+        ` class="pele-label" font-size="${view.name.size}" font-weight="var(--_hw)"${color}${style.text}`
       );
     if (view.rows.length > 0) {
       const divider = top + view.headHeight;
@@ -290,8 +293,8 @@ function draw(model: RequirementModel, _config: Config, options: RenderOptions, 
       let rows = '';
       for (const row of view.rows) {
         rows +=
-          startText(row.key, left + PAD_X, y, ` class="pele-field" fill="var(--_m)"${style.text}`) +
-          startText(row.value, left + PAD_X + view.keyWidth + COLUMN_GAP, y, ` class="pele-value"${style.text}`);
+          startText(row.key, left + PAD_X, y, ` class="pele-field"${muted}${style.text}`) +
+          startText(row.value, left + PAD_X + view.keyWidth + COLUMN_GAP, y, ` class="pele-value"${color}${style.text}`);
         y += row.height + ROW_GAP;
       }
       body += `<g class="pele-fields" font-size="${view.rows[0].key.size}">${rows}</g>`;

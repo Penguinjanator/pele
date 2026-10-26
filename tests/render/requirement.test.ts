@@ -171,6 +171,17 @@ style c stroke:#0a0
     expect(svg).toMatch(/class="pele-divider"[^>]*style="stroke:#333;stroke-width:4px;"/);
   });
 
+  it('picks a contrasting text color on fills a style sets', () => {
+    const { svg } = render('requirementDiagram\nrequirement a {\nid: 1\ntext: words\n}\nelement b {\ntype: t\n}\nelement c {\n}\nstyle a fill:#1f3a5f\nstyle b fill:#1f3a5f,color:#eee\n', options);
+    const node = (id: string): string => new RegExp(`data-id="${id}"[^>]*>(.*?)</g></g>`).exec(svg)![1];
+    for (const part of ['pele-stereotype', 'pele-label', 'pele-field', 'pele-value']) {
+      expect(node('a')).toMatch(new RegExp(`<text class="${part}"[^>]* fill="var\\(--pele-fg-on-dark,#fff\\)"`));
+    }
+    expect(node('b')).toMatch(/<text class="pele-label"[^>]* style="fill:#eee;"/);
+    expect(node('b')).not.toContain('--pele-fg-on');
+    expect(node('c')).toMatch(/<text class="pele-stereotype"[^>]* fill="var\(--_m\)"/);
+  });
+
   it('reads markdown emphasis in names and text', () => {
     const { svg } = render('requirementDiagram\nrequirement "__name__" {\ntext: "*slanted* and **heavy** words"\n}\n', options);
     expect(svg).toContain('data-id="__name__"');
