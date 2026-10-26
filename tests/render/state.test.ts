@@ -161,6 +161,15 @@ describe('state diagram rendering', () => {
     expect(svg.indexOf('data-id="A"')).toBeLessThan(svg.indexOf('data-id="B"'));
   });
 
+  it('draws a composite fill the author sets at full opacity', () => {
+    const src = 'stateDiagram-v2\n  state Busy {\n    a\n  }\n  state Idle {\n    b\n  }\n  classDef warm fill:#FFF9C4\n  class Busy warm';
+    const { svg } = render(src, options);
+    const rects = [...svg.matchAll(/<rect [^>]*fill="var\(--_a\)"[^>]*>/g)].map((m) => m[0]);
+    expect(rects.filter((r) => r.includes('fill:#FFF9C4'))).toHaveLength(1);
+    expect(rects.find((r) => r.includes('fill:#FFF9C4'))).not.toContain('fill-opacity');
+    expect(rects.filter((r) => r.includes('fill-opacity="0.5"'))).toHaveLength(1);
+  });
+
   it('gives each composite its own direction', () => {
     const svg = draw('state A {\n direction LR\n a1 --> a2\n }\n state B {\n b1 --> b2\n }\n A --> B');
     expect(place(svg, 'a1').y).toBe(place(svg, 'a2').y);

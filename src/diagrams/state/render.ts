@@ -5,7 +5,7 @@ import { edgeLabelSvg, marker, markerTrim, routePath, sideReach, type EdgePath }
 import { endSide } from '../../svg/shapes.js';
 import { svgDocument } from '../../svg/root.js';
 import { withTitle } from '../../svg/title.js';
-import { classNames, resolveStyle, type ResolvedStyle } from '../../svg/theme.js';
+import { classNames, resolveStyle, setsFill, type ResolvedStyle } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
@@ -476,7 +476,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
       case K.Composite: {
         const left = x - c.w / 2;
         const top = y - c.h / 2;
-        body = rect(left, top, c.w, c.h, ` rx="${CORNER}" fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${style.shape}`);
+        body = rect(left, top, c.w, c.h, ` rx="${CORNER}" fill="var(--_a)"${setsFill(style.shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${style.shape}`);
         if (view.titleH > 0) {
           body +=
             `<path d="M${num(left)},${num(top + view.titleH)}H${num(left + c.w)}"${RULE}${style.line}/>` +
