@@ -1,7 +1,7 @@
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
-import { ROUNDED, classNames } from '../../svg/theme.js';
+import { FONT_MONO, ROUNDED, classNames } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
 import { literalLabel, leftLabelSvg } from '../common/literal-label.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -55,6 +55,8 @@ function draw(model: TreeViewModel, config: Config, options: RenderOptions, tigh
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const pad = options.padding ?? 8;
   const icons = iconConfig(config);
+  const mono = Array.isArray(options.monospace) && options.monospace.includes('files');
+  const family = mono ? ` font-family="${FONT_MONO}"` : '';
 
   const { paddingX, paddingY, rowIndent, lineThickness } = treeSettings(config);
   let maxDepth = 0;
@@ -90,9 +92,10 @@ function draw(model: TreeViewModel, config: Config, options: RenderOptions, tigh
     const text = decodeEntities(node.name);
     const labelX = x + (slot ? iconSize + ICON_GAP : 0);
     const room = Math.max(40, (options.maxWidth ?? 320) - 2 * pad - 2 * HIGHLIGHT_OVERHANG - labelX);
-    const label = tight ? literalLabel(text, measurer, size, room, node.nodeType === 'directory' ? Style.Bold : 0) : undefined;
+    const style = (node.nodeType === 'directory' ? Style.Bold : 0) | (mono ? Style.Mono : 0);
+    const label = tight ? literalLabel(text, measurer, size, room, style) : undefined;
     const description = tight && node.description ? literalLabel(decodeEntities(node.description), measurer, size, room, Style.Italic) : undefined;
-    const width = label ? label.width : measurer.width(text, size, node.nodeType === 'directory' ? Style.Bold : 0);
+    const width = label ? label.width : measurer.width(text, size, style);
     if (labelX + width > labelRight) labelRight = labelX + width;
     const highlighted = node.cssClass !== undefined && node.cssClass.split(/\s+/).includes('highlight');
     if (highlighted) anyHighlight = true;
@@ -159,11 +162,11 @@ function draw(model: TreeViewModel, config: Config, options: RenderOptions, tigh
       )}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${drawn}</svg>`;
     }
     if (row.label) {
-      inner += leftLabelSvg(row.label, inset + row.labelX, top + row.top + paddingY, ` class="pele-label"${directory ? ' font-weight="var(--_hw)"' : ''}`);
+      inner += leftLabelSvg(row.label, inset + row.labelX, top + row.top + paddingY, ` class="pele-label"${directory ? ' font-weight="var(--_hw)"' : ''}${family}`);
     } else if (row.text !== '') {
       inner += `<text class="pele-label" x="${num(inset + row.labelX)}" y="${num(cy + baseline)}"${
         directory ? ' font-weight="var(--_hw)"' : ''
-      } xml:space="preserve">${esc(row.text)}</text>`;
+      }${family} xml:space="preserve">${esc(row.text)}</text>`;
     }
     if (row.description) {
       inner += leftLabelSvg(row.description, inset + row.labelX, top + row.top + paddingY + (row.label?.height ?? 0), ' class="pele-tree-description" font-style="italic" fill="var(--_m)"');
