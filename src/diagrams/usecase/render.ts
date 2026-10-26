@@ -5,7 +5,7 @@ import { esc, escText, labelSvg, num, type IconResolver } from '../../svg/builde
 import { markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
-import { classNames, resolveStyle, rounded, type ResolvedStyle } from '../../svg/theme.js';
+import { classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
 import { labelLine, layoutLabel, lineMiddle, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
@@ -354,7 +354,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
     if (view.kind === Kind.Boundary) {
       const x = c.x - c.w / 2;
       const y = c.y - c.h / 2;
-      const box = ` fill="var(--_a)" fill-opacity="0.5" stroke="var(--_b)"${shape}`;
+      const box = ` fill="var(--_a)"${setsFill(shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${shape}`;
       const titleAttrs = ` class="pele-cluster-label" fill="var(--_m)"${textAttrs}`;
       let body: string;
       if (node.boundaryType === 'package') {

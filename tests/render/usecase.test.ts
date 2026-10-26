@@ -205,6 +205,13 @@ describe('use case diagram rendering', () => {
     expect(at(svg, 'User').x).toBeLessThan(box.x);
   });
 
+  it('draws a boundary fill the author sets at full opacity', () => {
+    const svg = svgOf('systemBoundary S\n  U\nend\nsystemBoundary T\n  V\nend\nstyle S fill:#fee');
+    const body = (id: string) => svg.slice(svg.indexOf(`data-id="${id}">`)).match(/<rect [^>]*>/g)!.find((r) => r.includes('fill="var(--_a)"'))!;
+    expect(body('S')).not.toContain('fill-opacity');
+    expect(body('T')).toContain('fill-opacity="0.5"');
+  });
+
   it('puts an actor that is pointed at on the far side of the boundary', () => {
     const svg = svgOf('actor User\nactor Bank\nsystemBoundary Shop\n  Pay\nend\nUser --> Pay\nPay --> Bank');
     const [box] = boundary(svg, 'Shop');
