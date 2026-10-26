@@ -2,6 +2,7 @@ import { cnode, compoundLayout, direction, type CEdge, type CNode, type Dir } fr
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { edgeLabelSvg, marker, markerTrim, routePath, sideReach, type EdgePath } from '../../svg/edges.js';
+import { inkFill } from '../../svg/ink.js';
 import { endSide } from '../../svg/shapes.js';
 import { svgDocument } from '../../svg/root.js';
 import { withTitle } from '../../svg/title.js';
@@ -469,7 +470,8 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
     const y = c.y + pad;
     const w = view.w;
     const h = view.h;
-    const labelAttrs = ` class="pele-label"${style.text}`;
+    const ink = inkFill(style);
+    const labelAttrs = ` class="pele-label"${ink}${style.text}`;
     let body: string;
 
     switch (view.kind) {
@@ -484,7 +486,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
               view.label,
               titleX(c, view.label.width, crossings) + pad,
               top + view.titleH / 2,
-              ` class="pele-cluster-label"${style.text}`,
+              ` class="pele-cluster-label"${ink}${style.text}`,
               icons
             );
         }
@@ -525,7 +527,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
         body += `<path d="M${num(-w / 2)},${num(at + 6)}H${num(w / 2)}"${RULE}${style.line}/>` + labelSvg(view.label, 0, at - view.label.height / 2, labelAttrs, icons);
         at += 14;
         for (const line of view.lines) {
-          body += labelSvg(line, 0, at + line.height / 2, ` class="pele-state-description" font-size="${small}"${style.text}`, icons);
+          body += labelSvg(line, 0, at + line.height / 2, ` class="pele-state-description" font-size="${small}"${ink}${style.text}`, icons);
           at += line.height;
         }
       }

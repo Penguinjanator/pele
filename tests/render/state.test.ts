@@ -170,6 +170,19 @@ describe('state diagram rendering', () => {
     expect(rects.filter((r) => r.includes('fill-opacity="0.5"'))).toHaveLength(1);
   });
 
+  it('picks a contrasting label color on fills a style sets', () => {
+    const svg = draw(
+      'direction TB\n classDef notMoving fill:white\n classDef badBadEvent fill:#f00,color:white,font-weight:bold\n [*] --> Still\n Still --> Moving\n Moving --> Crash\n class Still notMoving\n class Crash badBadEvent\n' +
+        ' state "Described" as d : first line\n style d fill:#14201a\n state Busy {\n b\n }\n style Busy fill:#FFF9C4'
+    );
+    expect(svg).toMatch(/data-id="Still"[^>]*><rect[^>]*\/><text class="pele-label" fill="var\(--pele-fg-on-light,#1f1f1f\)"/);
+    expect(svg).toMatch(/data-id="Crash"[^>]*><rect[^>]*\/><text class="pele-label" style="fill:white;font-weight:bold;"/);
+    expect(svg).toMatch(/data-id="Moving"[^>]*><rect[^>]*\/><text class="pele-label" x=/);
+    expect(svg).toMatch(/data-id="d"[^>]*><rect[^>]*\/><path[^>]*\/><text class="pele-label" fill="var\(--pele-fg-on-dark,#fff\)"/);
+    expect(svg).toMatch(/<text class="pele-state-description" font-size="\d+" fill="var\(--pele-fg-on-dark,#fff\)"[^>]*>first line</);
+    expect(svg).toMatch(/data-id="Busy">.*?<text class="pele-cluster-label" fill="var\(--pele-fg-on-light,#1f1f1f\)"[^>]*>Busy</);
+  });
+
   it('gives each composite its own direction', () => {
     const svg = draw('state A {\n direction LR\n a1 --> a2\n }\n state B {\n b1 --> b2\n }\n A --> B');
     expect(place(svg, 'a1').y).toBe(place(svg, 'a2').y);
