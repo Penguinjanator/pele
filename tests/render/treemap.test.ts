@@ -262,6 +262,15 @@ describe('treemap rendering', () => {
     expect(svg).not.toContain('<title>other</title>');
   });
 
+  it('names a section drawn without a header in the tooltips of what covers it', () => {
+    const { svg } = render(config('    nodeHeight: 3', 'treemap\n"A & B"\n  "Inner"\n    "Leaf": 1'), options);
+    expect(svg).toContain('<title>A &amp; B › Inner</title>');
+    expect(svg).toContain('<title>A &amp; B › Inner › Leaf</title>');
+    expect(render(BASIC, options).svg).not.toContain('<title>');
+    const unprintable = render(config('    nodeHeight: 3', 'treemap\n"#1;"\n  "Leaf": 1'), options).svg;
+    expect(unprintable).not.toContain('<title>');
+  });
+
   it('draws every node of a large, deep tree', () => {
     let src = 'treemap\n';
     let leaves = 0;

@@ -16,6 +16,8 @@ const HEADER = 28;
 const SIDE = 6;
 const LINE = 1.25;
 
+const titlePart = (raw: string): string => esc(decodeEntities(raw).trim()).trim();
+
 function option(config: Config, key: string, fallback: number, min: number, max: number): number {
   const value = (config.treemap as Config | undefined)?.[key];
   return typeof value === 'number' && value >= min ? Math.min(value, max) : fallback;
@@ -57,7 +59,15 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
     const name = decodeEntities(node.name).trim();
     const value = showValues ? format(b.value) : '';
     const group = `data-id="${escText(node.name)}">`;
-    const tooltip = (drawn: string | undefined): string => (drawn === name || name === '' ? '' : `<title>${esc(name)}</title>`);
+    // Include headerless ancestors in tooltips because their children cover them.
+    const own = titlePart(node.name);
+    const path = own === '' ? [] : [own];
+    for (let p = b.parent; p !== undefined && !p.headed; p = p.parent) {
+      const section = titlePart(p.node.name);
+      if (section !== '') path.unshift(section);
+    }
+    const full = path.join(' › ');
+    const tooltip = (drawn: string | undefined): string => (full === '' || (drawn === name && full === own) ? '' : `<title>${full}</title>`);
     const rect = `<rect x="${num(x)}" y="${num(y)}" width="${num(b.w)}" height="${num(b.h)}" fill="${color}"`;
     // Inline font sizes override SVG attributes, so truncate instead of shrinking.
     const fixed = style.fontSize;
