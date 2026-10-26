@@ -318,6 +318,17 @@ describe('agentflow rendering', () => {
     expect(svg).toMatch(/<g class="pele-edge pele-edge-sequence" data-id="L_a_b_0" style="stroke:#0a0;">/);
   });
 
+  it('picks a contrasting label color on fills a style sets', () => {
+    const svg = svgOf(
+      'agentflow-beta TB\n  flow f["Flow"]\n    a["A"] --> b["B"]\n  end\n  flow p["Packed"]\n    c["C"]\n  end\n  p@{ view: "collapsed" }\n  b --> d["D"]\n  style f fill:#FFF9C4\n  style a fill:#1f3a5f\n  style b fill:#1f3a5f,color:#eee\n  style p fill:navy'
+    );
+    expect(svg).toMatch(/data-id="f">.*?<text class="pele-cluster-label" fill="var\(--pele-fg-on-light,#1f1f1f\)"/);
+    expect(node(svg, 'a').body).toContain('<text class="pele-label" fill="var(--pele-fg-on-dark,#fff)"');
+    expect(node(svg, 'b').body).not.toContain('--pele-fg-on');
+    expect(node(svg, 'p').body).toContain('<text class="pele-label" fill="var(--pele-fg-on-dark,#fff)"');
+    expect(node(svg, 'd').body).not.toContain('--pele-fg-on');
+  });
+
   it('links a clicked node and never writes a callback', () => {
     const { svg, links } = render(
       'agentflow-beta TB\n  a --> b\n  click a href "https://example.com/x" "Open it" _blank\n  click b call doIt()',

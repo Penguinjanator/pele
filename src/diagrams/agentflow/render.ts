@@ -3,8 +3,9 @@ import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
+import { inkFill } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
-import { PAD_X, PAD_Y, drawShape, insetRoute, shapeSize } from '../../svg/shapes.js';
+import { PAD_X, PAD_Y, drawShape, insetRoute, shapeFilled, shapeSize } from '../../svg/shapes.js';
 import { classNames, resolveStyle, rounded, seriesColor, setsFill, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
@@ -294,7 +295,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
         `<rect x="${num(x - c.w / 2)}" y="${num(y - c.h / 2)}" width="${num(c.w)}" height="${num(c.h)}"${rounded(
           tint(node.colorIndex ?? KIND_SLOT.size, '0.06', view.style) + view.style.shape
         )}/>` +
-        labelSvg(view.label, titleX, y - c.h / 2 + 8 + view.label.height / 2, ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`, icons) +
+        labelSvg(view.label, titleX, y - c.h / 2 + 8 + view.label.height / 2, ` class="pele-cluster-label"${inkFill(view.style, 'var(--_m)')}${view.style.text}`, icons) +
         '</g>';
       continue;
     }
@@ -325,7 +326,8 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
       );
     }
 
-    let text = labelSvg(view.label, 0, view.dy, ` class="pele-label"${view.style.text}`, icons);
+    const ink = view.shape === COLLAPSED || shapeFilled(view.shape) ? inkFill(view.style) : '';
+    let text = labelSvg(view.label, 0, view.dy, ` class="pele-label"${ink}${view.style.text}`, icons);
     const internal = / internal-link(?: |$)/.test(classes + ' ');
     if (internal && node.label && options.links !== false) {
       // The label is a note name, but it still ends up in an href, so it gets the same check as a URL.
