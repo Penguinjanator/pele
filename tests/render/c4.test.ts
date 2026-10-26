@@ -416,6 +416,24 @@ UpdateElementStyle(nobody, "red")`);
     expect(svg).toMatch(/class="pele-cluster-label"[^>]*style="fill:green;"/);
   });
 
+  it('picks a contrasting text color on fills a style sets', () => {
+    const { svg } = draw(`C4Context
+Boundary(b, "B", "Kind") {
+  System(c, "C", "about c")
+}
+System(d, "D", "about d")
+System(e, "E")
+UpdateElementStyle(b, $bgColor="lightyellow")
+UpdateElementStyle(c, $bgColor="navy")
+UpdateElementStyle(d, $bgColor="navy", $fontColor="#ddd")`);
+    const group = (id: string): string => new RegExp(`data-id="${id}"[^>]*>(.*?)</g>`).exec(svg)![1];
+    expect(count(group('c'), 'fill="var(--pele-fg-on-dark,#fff)"')).toBe(3);
+    expect(group('b')).toContain('<text class="pele-cluster-label" font-weight="var(--_hw)" fill="var(--pele-fg-on-light,#1f1f1f)"');
+    expect(group('b')).toMatch(/class="pele-c4-type"[^>]* fill="var\(--pele-fg-on-light,#1f1f1f\)"/);
+    expect(group('d')).not.toContain('--pele-fg-on');
+    expect(group('e')).not.toContain('--pele-fg-on');
+  });
+
   it('applies UpdateRelStyle colours and offsets', () => {
     const base = 'C4Context\nUpdateLayoutConfig("1", "1")\nSystem(a, "A")\nSystem(b, "B")\nRel(a, b, "x")\n';
     const plain = draw(base).svg;

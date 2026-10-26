@@ -3,6 +3,7 @@ import { PeleError } from '../../errors.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, marker, markerTrim } from '../../svg/edges.js';
+import { inkFill } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape } from '../../svg/shapes.js';
 import { resolveStyle, rounded, type ResolvedStyle } from '../../svg/theme.js';
@@ -224,11 +225,13 @@ function draw(db: C4Db, _config: Config, options: RenderOptions, tight: boolean,
       const style = userStyle(boundary.bgColor, boundary.borderColor, boundary.fontColor);
       const x = group.x + group.headX;
       let y = group.y + HEAD_TOP;
-      let text = leftLabelSvg(group.labels[0], x, y, ` class="pele-cluster-label" font-weight="var(--_hw)"${style.text}`);
+      const color = inkFill(style) + style.text;
+      const muted = inkFill(style, 'var(--_m)') + style.text;
+      let text = leftLabelSvg(group.labels[0], x, y, ` class="pele-cluster-label" font-weight="var(--_hw)"${color}`);
       y += group.labels[0].height;
-      text += leftLabelSvg(group.labels[1], x, y, ` class="pele-c4-type" font-size="${small}" fill="var(--_m)"${style.text}`);
+      text += leftLabelSvg(group.labels[1], x, y, ` class="pele-c4-type" font-size="${small}"${muted}`);
       y += group.labels[1].height;
-      text += leftLabelSvg(group.labels[2], x, y, ` class="pele-c4-descr" font-size="${small}" fill="var(--_m)"${style.text}`);
+      text += leftLabelSvg(group.labels[2], x, y, ` class="pele-c4-descr" font-size="${small}"${muted}`);
       clusters +=
         `<g class="pele-cluster pele-c4-${boundary.nodeType ? 'node' : 'boundary'}" data-id="${escText(boundary.alias)}">` +
         `<rect x="${num(group.x)}" y="${num(group.y)}" width="${num(group.w)}" height="${num(group.h)}" fill="none" stroke="var(--_b)"${
@@ -245,15 +248,16 @@ function draw(db: C4Db, _config: Config, options: RenderOptions, tight: boolean,
       const { w, h, form, labels } = node;
       const dx = form === 'h-cyl' ? -queueRx(h) / 2 : 0;
       const dy = form === 'person' ? HEAD / 2 : form === 'cyl' ? cylRy(w) / 2 : 0;
-      const muted = ` fill="var(--_m)"${style.text}`;
+      const color = inkFill(style) + style.text;
+      const muted = inkFill(style, 'var(--_m)') + style.text;
       let y = dy - node.textH / 2;
       let text = labelSvg(labels[0], dx, y + labels[0].height / 2, ` class="pele-c4-type" font-size="${small - 1}"${muted}`);
       y += labels[0].height;
-      text += labelSvg(labels[1], dx, y + labels[1].height / 2, ` class="pele-label" font-weight="var(--_hw)"${style.text}`);
+      text += labelSvg(labels[1], dx, y + labels[1].height / 2, ` class="pele-label" font-weight="var(--_hw)"${color}`);
       y += labels[1].height;
       text += labelSvg(labels[2], dx, y + labels[2].height / 2, ` class="pele-c4-techn" font-size="${small}"${muted}`);
       y += labels[2].height + 4;
-      text += labelSvg(labels[3], dx, y + labels[3].height / 2, ` class="pele-c4-descr" font-size="${small}"${style.text}`);
+      text += labelSvg(labels[3], dx, y + labels[3].height / 2, ` class="pele-c4-descr" font-size="${small}"${color}`);
       nodesOut +=
         `<g class="pele-node pele-shape-${form} pele-c4-${shape.kind}${external ? ' pele-c4-external' : ''}" data-id="${escText(
           shape.alias
