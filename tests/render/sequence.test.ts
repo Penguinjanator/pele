@@ -355,6 +355,32 @@ describe('sequence rendering', () => {
     expect(svg).toMatch(/fill="var\(--_bg\)" stroke="none"\/><text x=[^>]*>crossing two of the lifelines</);
   });
 
+  it('draws arrows on a rect or box fill in their label color', () => {
+    const svg = svgOf(
+      'sequenceDiagram\n  box black Group\n  participant A\n  participant B\n  end\n  participant C\n  A->>B: boxed\n  B->>C: open\n  rect rgb(191, 223, 255)\n  A-->>C: light\n  C-xC: self\n  A-|\\B: solid\n  A-\\\\B: stick\n  end'
+    );
+    const message = (text: string): string => {
+      const id = new RegExp(`data-id="(i\\d+)">(?:<rect[^>]*/>)?<text[^>]*>${text}<`).exec(svg)![1];
+      return new RegExp(`<g class="pele-edge pele-message" data-id="${id}"[^>]*>.*?</g>`).exec(svg)![0];
+    };
+    expect(message('boxed')).toMatch(/^<g [^>]* stroke="var\(--pele-fg-on-dark,#fff\)">/);
+    expect(message('boxed')).toContain('class="pele-marker"');
+    expect(message('boxed')).toMatch(/class="pele-marker"[^>]* fill="var\(--pele-fg-on-dark,#fff\)"/);
+    expect(message('open')).not.toContain('--pele-fg-on');
+    expect(message('light')).toMatch(/^<g [^>]* stroke="var\(--pele-fg-on-light,#1f1f1f\)"><path [^>]*stroke-dasharray/);
+    expect(message('self')).toMatch(/^<g [^>]* stroke="var\(--pele-fg-on-light,#1f1f1f\)">/);
+    expect(message('self')).not.toContain('var(--_l)');
+    expect(message('solid')).toMatch(/class="pele-marker" d="[^"]+Z" fill="var\(--pele-fg-on-light,#1f1f1f\)"/);
+    expect(message('stick')).toMatch(/^<g [^>]* stroke="var\(--pele-fg-on-light,#1f1f1f\)">/);
+    expect(message('stick')).not.toContain('var(--_l)');
+    expect(svg).not.toMatch(/class="pele-lifeline"[^>]*--pele-fg-on/);
+  });
+
+  it('keeps the theme color for a self-message that reaches past its box', () => {
+    const svg = svgOf('sequenceDiagram\n  autonumber 1000\n  box black\n  participant A\n  end\n  A->>A: x');
+    expect(svg).not.toMatch(/class="pele-edge pele-message"[^>]* stroke=/);
+  });
+
   it('picks a contrasting name color for figures in a box', () => {
     const svg = svgOf('sequenceDiagram\n  box black Group\n  actor A\n  participant B\n  end\n  actor C\n  A->>B: hi\n  B->>C: yo');
     expect(count(svg, '<text class="pele-label" fill="var(--pele-fg-on-dark,#fff)"')).toBe(2);

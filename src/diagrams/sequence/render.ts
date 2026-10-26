@@ -180,27 +180,27 @@ function option(conf: Config, key: string, fallback: number): number {
   return typeof value === 'number' && value >= 0 && value <= 2000 ? value : fallback;
 }
 
-function half(x: number, y: number, dir: number, up: number, stick: boolean): string {
+function half(x: number, y: number, dir: number, up: number, stick: boolean, color: string): string {
   const bx = num(x - dir * ARROW);
   if (stick) return `<path class="pele-marker" d="M${num(x)},${num(y)}L${bx},${num(y + up * 5)}"/>`;
-  return `<path class="pele-marker" d="M${num(x)},${num(y)}L${bx},${num(y + up * 4.5)}V${num(y)}Z" fill="var(--_l)" stroke="none"/>`;
+  return `<path class="pele-marker" d="M${num(x)},${num(y)}L${bx},${num(y + up * 4.5)}V${num(y)}Z" fill="${color}" stroke="none"/>`;
 }
 
 // Draws the head whose tip is at (x, y) and points along dir. `up` is the side a half head sits on.
-function head(type: Head, x: number, y: number, dir: number, up: number): string {
+function head(type: Head, x: number, y: number, dir: number, up: number, color: string): string {
   switch (type) {
     case Head.Arrow:
-      return marker('arrow_point', x, y, dir, 0, 'var(--_l)');
+      return marker('arrow_point', x, y, dir, 0, color);
     case Head.Cross:
-      return marker('arrow_cross', x, y, dir, 0, 'var(--_l)');
+      return marker('arrow_cross', x, y, dir, 0, color);
     case Head.Open:
       return `<path class="pele-marker" d="M${num(x - dir * ARROW)},${num(y - 4.5)}L${num(x)},${num(y)}L${num(x - dir * ARROW)},${num(
         y + 4.5
       )}" stroke-linejoin="round"/>`;
     case Head.HalfSolid:
-      return half(x, y, dir, up, false);
+      return half(x, y, dir, up, false, color);
     case Head.HalfStick:
-      return half(x, y, dir, up, true);
+      return half(x, y, dir, up, true, color);
     default:
       return '';
   }
@@ -582,22 +582,21 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
     return lo < xs.length && xs[lo] < x1;
   };
   const stack: Frame[] = [];
+  const inkOf = (fill: string | undefined): string | undefined => (fill ? ink(resolveStyle([`fill:${fill}`]).shape) : undefined);
   const inkOn = (fill: string | undefined): string => {
-    const color = fill && ink(resolveStyle([`fill:${fill}`]).shape);
+    const color = inkOf(fill);
     return color ? ` fill="${color}"` : '';
   };
   // Prefer the innermost rect's fill, then a containing box's.
-  const under = (l: number, r: number): string => {
-    let fill: string | undefined;
-    for (let k = stack.length - 1; k >= 0 && fill === undefined; k--) if (stack[k].kind === 'rect') fill = stack[k].fill;
-    if (fill === undefined) {
-      for (const run of runs) {
-        const [x0, x1] = boxEdges(run);
-        if (l >= x0 && r <= x1) fill = run.box.fill;
-      }
+  const fillUnder = (l: number, r: number): string | undefined => {
+    for (let k = stack.length - 1; k >= 0; k--) if (stack[k].kind === 'rect') return stack[k].fill;
+    for (const run of runs) {
+      const [x0, x1] = boxEdges(run);
+      if (l >= x0 && r <= x1) return run.box.fill;
     }
-    return inkOn(fill);
+    return undefined;
   };
+  const under = (l: number, r: number): string => inkOn(fillUnder(l, r));
   const backed = (label: Label, cx: number, cy: number, frame = false): string => {
     if (label.width === 0) return '';
     const l = cx - label.width / 2;
@@ -756,8 +755,10 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
       const cc = m.centralConnection;
       const circleTo = cc === LINETYPE.CENTRAL_CONNECTION || cc === LINETYPE.CENTRAL_CONNECTION_DUAL;
       const circleFrom = cc === LINETYPE.CENTRAL_CONNECTION_REVERSE || cc === LINETYPE.CENTRAL_CONNECTION_DUAL;
+      let line: string | undefined;
+      let color = 'var(--_l)';
       const circle = (cx: number, cy: number): string =>
-        `<circle class="pele-central" cx="${num(cx)}" cy="${num(cy)}" r="${CENTRAL_R}" fill="var(--_l)" stroke="none"/>`;
+        `<circle class="pele-central" cx="${num(cx)}" cy="${num(cy)}" r="${CENTRAL_R}" fill="${color}" stroke="none"/>`;
       const tailAtEnd = st.atStart && !st.atEnd;
       const headTrim = trim(st.head);
       let inner = '';
@@ -769,6 +770,8 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
         let x0 = circleFrom ? a.x + CENTRAL_R : rightEdge(a);
         let x1 = circleTo ? a.x + CENTRAL_R : rightEdge(a, starting);
         const out = Math.max(x0, x1) + SELF_W + bw / 2;
+        line = inkOf(fillUnder(a.x, out));
+        color = line ?? color;
         if (circleFrom) inner += circle(a.x, top);
         if (circleTo) inner += circle(a.x, bottom);
         if (bw > 0) {
@@ -777,7 +780,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
           else x0 += bw / 2;
         }
         // The loop leaves to the right and comes back heading left, which turns a half head over.
-        const heads = (st.atStart ? head(st.head, x0, top, -1, up) : '') + (st.atEnd ? head(st.head, x1, bottom, -1, -up) : '');
+        const heads = (st.atStart ? head(st.head, x0, top, -1, up, color) : '') + (st.atEnd ? head(st.head, x1, bottom, -1, -up, color) : '');
         const from = num(x0 + (st.atStart ? headTrim : 0));
         const to = num(x1 + (st.atEnd ? headTrim : 0));
         const d = rightAngles
@@ -801,6 +804,8 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
       } else {
         const dir = b.x > a.x ? 1 : -1;
         const creating = b.createAt === i;
+        line = inkOf(fillUnder(Math.min(a.x, b.x), Math.max(a.x, b.x)));
+        color = line ?? color;
         lineY = y + msgGap + Math.max(label.height > 0 ? label.height + 2 : 6, creating ? b.size.h / 2 - msgGap + 6 : 0);
         let x0 = dir > 0 ? rightEdge(a) : leftEdge(a);
         let x1 = dir > 0 ? leftEdge(b, starting) : rightEdge(b, starting);
@@ -830,7 +835,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
           }
         }
         const heads =
-          (st.atStart ? head(st.head, x0, lineY, -dir, up * dir) : '') + (st.atEnd ? head(st.head, x1, lineY, dir, up * dir) : '');
+          (st.atStart ? head(st.head, x0, lineY, -dir, up * dir, color) : '') + (st.atEnd ? head(st.head, x1, lineY, dir, up * dir, color) : '');
         const from = x0 + (st.atStart ? dir * headTrim : 0);
         const to = x1 - (st.atEnd ? dir * headTrim : 0);
         inner = `<path d="M${num(from)},${num(lineY)}H${num(to)}"${attrs}/>` + heads + inner;
@@ -843,7 +848,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
         }
         if (creating) y = lineY + b.size.h / 2 - 6;
       }
-      edgesOut += `<g class="pele-edge pele-message" data-id="i${escText(m.id)}">${inner}</g>`;
+      edgesOut += `<g class="pele-edge pele-message" data-id="i${escText(m.id)}"${line ? ` stroke="${line}"` : ''}>${inner}</g>`;
       y = Math.max(y, lineY);
       if (a.destroyAt === i) y = Math.max(y, destroy(a, lineY));
       if (b.destroyAt === i && b !== a) y = Math.max(y, destroy(b, lineY));
