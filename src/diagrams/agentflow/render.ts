@@ -2,8 +2,8 @@ import { cnode, compoundLayout, direction, inheritCrossedDirections, shiftLayout
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
-import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
-import { inkFill } from '../../svg/ink.js';
+import { casingsSvg, edgeCasing, edgeLabelSvg, loopPath, marker, markerTrim, routePath, runsInside, type EdgePath } from '../../svg/edges.js';
+import { inkFill, paints } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { PAD_X, PAD_Y, drawShape, insetRoute, shapeFilled, shapeSize } from '../../svg/shapes.js';
 import { classNames, resolveStyle, rounded, seriesColor, setsFill, type ResolvedStyle } from '../../svg/theme.js';
@@ -280,6 +280,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
 
   let clusters = '';
   let nodesOut = '';
+  const filled: number[] = [];
   for (let i = 0; i < views.length; i++) {
     const view = views[i];
     const c = cnodes[i];
@@ -289,6 +290,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
     const id = escText(node.id);
     if (c.isGroup) {
+      if (paints(view.style.shape)) filled.push(x - c.w / 2, y - c.h / 2, x + c.w / 2, y + c.h / 2);
       const titleX = clusterTitleX(c, view.label.width, crossings, GROUP_PAD);
       clusters +=
         `<g class="pele-cluster pele-flow${classes}" data-id="${id}">` +
@@ -345,6 +347,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
     )},${num(y)})">${body}</g>`;
   }
 
+  let casings = '';
   let edgesOut = '';
   let labelsOut = '';
   const put = (edge: GraphEdge, label: Label, path: EdgePath, x: number, y: number): void => {
@@ -356,6 +359,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
     const color = style?.stroke ? esc(style.stroke) : 'var(--_l)';
     const kind = edge.thickness === 'dotted' ? 'reference' : endType === 'arrow_cross' ? 'failure' : 'sequence';
     const classes = classNames(edge.classes.replace(/edge-thickness-normal|edge-pattern-solid|flowchart-link/g, ''));
+    if (runsInside(path.d, filled)) casings += edgeCasing(path, 'none', endType, style?.line);
     edgesOut +=
       `<g class="pele-edge pele-edge-${kind}${classes}" data-id="${escText(edge.id)}"${style?.line ?? ''}>` +
       `<path d="${path.d}"${edge.thickness === 'dotted' ? ' stroke-dasharray="3 4"' : ''}/>` +
@@ -397,6 +401,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
     db,
     labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
+      casingsSvg(casings) +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${edgeSize}">${labelsOut}</g>` : '') +
       `<g class="pele-nodes">${nodesOut}</g>`

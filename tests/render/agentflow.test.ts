@@ -329,6 +329,16 @@ describe('agentflow rendering', () => {
     expect(node(svg, 'd').body).not.toContain('--pele-fg-on');
   });
 
+  it('cases edges that run over a flow fill a style sets', () => {
+    const src = 'agentflow-beta TB\n  flow f["Flow"]\n    a["A"] --> b["B"]\n  end\n  b --> c["C"]\n  c --> d["D"]\n  style f fill:#FFF9C4';
+    const svg = svgOf(src);
+    const casings = /<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(svg)![1];
+    const edges = [...svg.matchAll(/class="pele-edge [^"]*" data-id="[^"]+"[^>]*><path d="([^"]+)"/g)].map((m) => m[1]);
+    expect(edges).toHaveLength(3);
+    expect(edges.map((d) => casings.includes(`<path d="${d}"/>`))).toEqual([true, true, false]);
+    expect(svgOf(src.replace('\n  style f fill:#FFF9C4', ''))).not.toContain('pele-casings');
+  });
+
   it('links a clicked node and never writes a callback', () => {
     const { svg, links } = render(
       'agentflow-beta TB\n  a --> b\n  click a href "https://example.com/x" "Open it" _blank\n  click b call doIt()',
