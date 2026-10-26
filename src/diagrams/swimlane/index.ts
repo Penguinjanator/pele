@@ -58,10 +58,17 @@ function drawLane(c: CNode, label: Label, style: ResolvedStyle, classes: string,
   );
 }
 
+function laneBand(c: CNode, dir: Dir): number[] {
+  const left = c.x - c.w / 2;
+  const top = c.y - c.h / 2;
+  return dir === 'LR' || dir === 'RL' ? [left, top, left + c.padTop, top + c.h] : [left, top, left + c.w, top + c.padTop];
+}
+
 const variant: FlowVariant = {
   type: 'swimlane', prepare,
   layout: (nodes, edges, dir, options, tight) => laneLayout(nodes, edges, dir, options, tight ? 12 : undefined),
   drawGroup: drawLane,
+  filledBox: laneBand,
 };
 
 // A swimlane diagram is a flowchart whose top-level subgraphs are lanes: same syntax, same model.

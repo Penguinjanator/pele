@@ -185,7 +185,7 @@ export function markerTrim(type: string): number {
 }
 
 // Draws a marker whose tip is at (x, y), pointing along (dx, dy).
-export function marker(type: string, x: number, y: number, dx: number, dy: number, color: string): string {
+export function marker(type: string, x: number, y: number, dx: number, dy: number, color: string, stroke = 'none'): string {
   const nx = -dy;
   const ny = dx;
   if (type === 'arrow_point') {
@@ -194,10 +194,10 @@ export function marker(type: string, x: number, y: number, dx: number, dy: numbe
     const half = ARROW * 0.42;
     return `<path class="pele-marker" d="M${num(x)},${num(y)}L${num(bx + nx * half)},${num(by + ny * half)}L${num(
       bx - nx * half
-    )},${num(by - ny * half)}Z" fill="${color}" stroke="none"/>`;
+    )},${num(by - ny * half)}Z" fill="${color}" stroke="${stroke}"/>`;
   }
   if (type === 'arrow_circle') {
-    return `<circle class="pele-marker" cx="${num(x - dx * 4)}" cy="${num(y - dy * 4)}" r="3.5" fill="${color}" stroke="none"/>`;
+    return `<circle class="pele-marker" cx="${num(x - dx * 4)}" cy="${num(y - dy * 4)}" r="3.5" fill="${color}" stroke="${stroke}"/>`;
   }
   if (type === 'arrow_cross') {
     const cx = x - dx * 4;
@@ -212,6 +212,118 @@ export function marker(type: string, x: number, y: number, dx: number, dy: numbe
     )},${num(cy - vy)}L${num(cx + vx)},${num(cy + vy)}"/>`;
   }
   return '';
+}
+
+// Samples curves and uses arc endpoints; NaN separates subpaths.
+function pathPoints(d: string): number[] {
+  const out: number[] = [];
+  let x = 0;
+  let y = 0;
+  for (const [, cmd, rest] of d.matchAll(/([MLHVCQA])([^MLHVCQA]*)/g)) {
+    const n = (rest.match(/-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi) ?? []).map(Number);
+    if (cmd === 'H' || cmd === 'V') {
+      for (const v of n) {
+        if (cmd === 'H') x = v;
+        else y = v;
+        out.push(x, y);
+      }
+    } else if (cmd === 'C' || cmd === 'Q') {
+      const step = cmd === 'C' ? 6 : 4;
+      for (let k = 0; k + step <= n.length; k += step) {
+        const xs = [x, ...n.slice(k, k + step).filter((_, i) => i % 2 === 0)];
+        const ys = [y, ...n.slice(k, k + step).filter((_, i) => i % 2 === 1)];
+        for (let t = 0.125; t <= 1; t += 0.125) {
+          const px = xs.slice();
+          const py = ys.slice();
+          for (let m = px.length - 1; m > 0; m--) {
+            for (let i = 0; i < m; i++) {
+              px[i] += (px[i + 1] - px[i]) * t;
+              py[i] += (py[i + 1] - py[i]) * t;
+            }
+          }
+          out.push(px[0], py[0]);
+        }
+        x = xs[xs.length - 1];
+        y = ys[ys.length - 1];
+      }
+    } else {
+      const step = cmd === 'A' ? 7 : 2;
+      for (let k = 0; k + step <= n.length; k += step) {
+        if (cmd === 'M' && k === 0 && out.length > 0) out.push(NaN, NaN);
+        x = n[k + step - 2];
+        y = n[k + step - 1];
+        out.push(x, y);
+      }
+    }
+  }
+  return out;
+}
+
+// Boxes are [left, top, right, bottom]; paths along borders do not count.
+export function runsInside(d: string, boxes: number[]): boolean {
+  if (boxes.length === 0) return false;
+  const points = pathPoints(d);
+  for (let b = 0; b < boxes.length; b += 4) {
+    const l = boxes[b] + 0.5;
+    const t = boxes[b + 1] + 0.5;
+    const r = boxes[b + 2] - 0.5;
+    const bottom = boxes[b + 3] - 0.5;
+    for (let k = 0; k + 2 < points.length; k += 2) {
+      const x = points[k];
+      const y = points[k + 1];
+      const dx = points[k + 2] - x;
+      const dy = points[k + 3] - y;
+      let lo = 0;
+      let hi = 1;
+      for (const [p, q] of [[-dx, x - l], [dx, r - x], [-dy, y - t], [dy, bottom - y]]) {
+        if (p === 0) {
+          if (q < 0) hi = -1;
+        } else if (p < 0) lo = Math.max(lo, q / p);
+        else hi = Math.min(hi, q / p);
+      }
+      if (lo < hi) return true;
+    }
+  }
+  return false;
+}
+
+const CASE = 4;
+
+// A wider page-colored stroke under an edge, as faint as it; markers drop their class so marker styles skip it.
+export function casing(d: string, markers: string, line = '', thick = false): string {
+  const decl = (prop: string): string | undefined => new RegExp(`[";]${prop}:([^;"]+);`).exec(line)?.[1].trim();
+  const stroke = decl('stroke');
+  if (stroke === 'none' || stroke === 'transparent') return '';
+  const width = thick ? '2.5' : decl('stroke-width');
+  let attrs = '';
+  let style = '';
+  if (width !== undefined && /^[\d.]+(?:px)?$/.test(width)) {
+    if (parseFloat(width) !== 1) attrs = ` stroke-width="${num(parseFloat(width) + CASE)}"`;
+  } else if (width !== undefined) {
+    style += `stroke-width:calc(${width} + ${CASE}px);`;
+  }
+  for (const prop of ['opacity', 'stroke-opacity']) {
+    const value = decl(prop);
+    if (value !== undefined) style += `${prop}:${value};`;
+  }
+  const body = `<path d="${d}"/>` + markers.replace(/ class="pele-marker"/g, '');
+  return attrs || style ? `<g${attrs}${style ? ` style="${style}"` : ''}>${body}</g>` : body;
+}
+
+export function edgeCasing(path: EdgePath, startType: string, endType: string, line = '', thick = false): string {
+  return casing(
+    path.d,
+    marker(startType, path.sx, path.sy, path.sdx, path.sdy, 'var(--_bg)', 'var(--_bg)') +
+      marker(endType, path.ex, path.ey, path.edx, path.edy, 'var(--_bg)', 'var(--_bg)'),
+    line,
+    thick
+  );
+}
+
+export function casingsSvg(casings: string): string {
+  return casings
+    ? `<g class="pele-casings" fill="none" stroke="var(--_bg)" stroke-width="${1 + CASE}" stroke-linecap="round" stroke-linejoin="round" pointer-events="none">${casings}</g>`
+    : '';
 }
 
 // An edge label on a patch of the background, so the line does not run through the text.

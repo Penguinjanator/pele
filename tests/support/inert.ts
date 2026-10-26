@@ -11,7 +11,7 @@ const ATTRIBUTES = new Set([
   'fill', 'fill-opacity', 'opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin',
   'role', 'aria-roledescription', 'aria-labelledby', 'aria-describedby', 'id', 'data-id', 'data-icon', 'data-href',
   'transform', 'x', 'y', 'rx', 'ry', 'r', 'cx', 'cy', 'd', 'points', 'text-anchor', 'xml:space',
-  'href', 'target', 'rel', 'preserveAspectRatio',
+  'href', 'target', 'rel', 'preserveAspectRatio', 'pointer-events',
 ]);
 const STYLE_PROPERTIES = new Set([
   'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset', 'stroke-linecap',

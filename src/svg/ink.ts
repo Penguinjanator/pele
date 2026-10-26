@@ -93,6 +93,15 @@ export function ink(shape: string, text = ''): string | undefined {
   return found[0] > EVEN ? ON_LIGHT : ON_DARK;
 }
 
+// Unknown fill colors and opacities are treated as opaque.
+export function paints(shape: string): boolean {
+  const fill = RE_FILL.exec(shape)?.[1].trim().toLowerCase();
+  if (!fill || fill === 'none' || fill === 'transparent') return false;
+  const opacity = RE_FILL_OPACITY.exec(shape);
+  const scale = opacity ? amount(opacity[1].trim(), 1) : 1;
+  return (color(fill)?.[1] ?? 1) * (Number.isNaN(scale) ? 1 : scale) > 0;
+}
+
 export function inkFill(style: { shape: string; text: string }, fallback?: string): string {
   const color = ink(style.shape, style.text) ?? fallback;
   return color ? ` fill="${color}"` : '';

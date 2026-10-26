@@ -4,8 +4,8 @@ import type { LayeredOptions } from '../../layout/layered.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, struckTitle, titleCrossed, type Crossings } from '../../svg/cluster.js';
-import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, sideReach, type EdgePath } from '../../svg/edges.js';
-import { inkFill } from '../../svg/ink.js';
+import { casingsSvg, edgeCasing, edgeLabelSvg, loopPath, marker, markerTrim, routePath, runsInside, sideReach, type EdgePath } from '../../svg/edges.js';
+import { inkFill, paints } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape, endSide, insetRoute, shapeFilled, shapeHasLabel, shapeSize, shapeSpan } from '../../svg/shapes.js';
 import { classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
@@ -38,6 +38,8 @@ export interface FlowVariant {
   prepare(graph: FlowGraph): void;
   layout(nodes: CNode[], edges: CEdge[], dir: Dir, opt: LayeredOptions, tight: boolean): CompoundResult;
   drawGroup?(c: CNode, label: Label, style: ResolvedStyle, classes: string, id: string, dir: Dir, icons: IconResolver | undefined): string;
+  // The part of a drawGroup group that takes its fill, as [left, top, right, bottom].
+  filledBox?(c: CNode, dir: Dir): number[];
 }
 
 function assetSize(value: number | undefined, fallback: number): number {
@@ -207,6 +209,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
   let clusters = '';
   let struckTitles = '';
   let nodesOut = '';
+  const filled: number[] = [];
   for (let i = 0; i < views.length; i++) {
     const view = views[i];
     const c = cnodes[i];
@@ -216,10 +219,12 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
     const id = escText(node.id);
     if (c.isGroup && variant?.drawGroup && c.parent < 0) {
+      if (paints(view.style.shape) && variant.filledBox) filled.push(...variant.filledBox(c, rootDir));
       clusters += variant.drawGroup(c, view.label, view.style, classes, id, rootDir, icons);
       continue;
     }
     if (c.isGroup) {
+      if (paints(view.style.shape)) filled.push(x - c.w / 2, y - c.h / 2, x + c.w / 2, y + c.h / 2);
       const titleX = clusterTitleX(c, view.label.width, crossings, groupPad);
       const titleY = y - c.h / 2 + 8 + view.label.height / 2;
       const struck = titleCrossed(c, view.label.width, titleX, crossings);
@@ -299,6 +304,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     reach.add(ce.dst, endSide(ce.route, ce.route.length - 3, cnodes[ce.dst]), drawn[i].arrowTypeEnd);
   }
 
+  let casings = '';
   let edgesOut = '';
   let labelsOut = '';
   const loopSeen = new Map<number, number>();
@@ -329,6 +335,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
       if (edge.thickness === 'thick') attrs += ' stroke-width="2.5"';
       else if (edge.thickness === 'dotted') attrs += ' stroke-dasharray="3 4"';
       const classes = classNames(edge.classes.replace(/edge-thickness-normal|edge-pattern-solid|flowchart-link/g, ''));
+      if (runsInside(path.d, filled)) casings += edgeCasing(path, startType, endType, style?.line, edge.thickness === 'thick');
       edgesOut +=
         `<g class="pele-edge${classes}" data-id="${escText(edge.id)}"${style?.line ?? ''}>` +
         `<path d="${path.d}"${attrs}/>` +
@@ -352,6 +359,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     db,
     labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
+      casingsSvg(casings) +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (struckTitles ? `<g class="pele-cluster-titles">${struckTitles}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${edgeSize}">${labelsOut}</g>` : '') +

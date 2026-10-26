@@ -241,6 +241,12 @@ describe('swimlane rendering', () => {
     expect(svg).toMatch(/data-id="a"[^>]*><rect [^>]*\/><text class="pele-label" x=/);
   });
 
+  it('cases edges that run over a lane band a style fills', () => {
+    const src = 'swimlane-beta TB\nsubgraph S["one<br/>two<br/>three<br/>four<br/>five<br/>six<br/>seven<br/>eight"]\n  A\nend\nS --> S\nstyle S fill:black';
+    expect(svgOf(src)).toContain('class="pele-casings"');
+    expect(svgOf(src.replace('\nstyle S fill:black', ''))).not.toContain('class="pele-casings"');
+  });
+
   it('reads spacing from the swimlane config, then the flowchart config', () => {
     const src = 'swimlane-beta TD\n  subgraph L\n    a --> b\n  end';
     const plain = render(src, options).height;

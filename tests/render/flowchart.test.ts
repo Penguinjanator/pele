@@ -217,6 +217,46 @@ describe('flowchart rendering', () => {
     expect(svg).toMatch(/class="pele-edge-label"[^>]*><rect [^>]*\/><text x=[^>]*>Launch</);
   });
 
+  it('cases edges that run over a subgraph fill a style sets', () => {
+    const src =
+      'flowchart LR\n  subgraph S["Cluster"]\n    A[Start] -- Launch --> B[Worker]\n  end\n  subgraph T\n    D --> E\n  end\n  C[Output]\n  B --> C\n  C ==> D\n  B --> B\n  F --> C\n  style S fill:#BBDEFB\n  style C fill:#BBDEFB';
+    const { svg } = render(src, options);
+    const casings = /<g class="pele-casings" fill="none" stroke="var\(--_bg\)" stroke-width="5"[^>]* pointer-events="none">(.*?)<\/g>/.exec(svg)![1];
+    const edge = (id: string): string => new RegExp(`data-id="${id}"><path d="([^"]+)"`).exec(svg)![1];
+    const cased = [...casings.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
+    expect(cased).toContain(edge('L_A_B_0'));
+    expect(cased).toContain(edge('L_B_C_0'));
+    expect(cased).toContain(edge('L_B_B_0'));
+    expect(cased).not.toContain(edge('L_C_D_0'));
+    expect(cased).not.toContain(edge('L_D_E_0'));
+    // An edge that only ends at a filled node runs under the node, not over its fill.
+    expect(cased).not.toContain(edge('L_F_C_0'));
+    expect(casings).toMatch(/Z" fill="var\(--_bg\)" stroke="var\(--_bg\)"\/>/);
+    expect(casings).not.toContain('pele-marker');
+    expect(svg.indexOf('class="pele-casings"')).toBeLessThan(svg.indexOf('class="pele-edges"'));
+    expect(render(src.replace(/\n  style S fill:#BBDEFB/, ''), options).svg).not.toContain('pele-casings');
+  });
+
+  it('cases an edge whose curve runs into a filled subgraph', () => {
+    const { svg } = render('flowchart LR\nsubgraph S\n  A\n  B\nend\nD\nE --> A\nD --> F\nF --> C\nB --> C\nstyle S fill:white', options);
+    const casings = /<g class="pele-casings"[^>]*>(.*)<\/g><g class="pele-edges"/.exec(svg)![1];
+    const edge = (id: string): string => new RegExp(`data-id="${id}"><path d="([^"]+)"`).exec(svg)![1];
+    expect(casings).toContain(`<path d="${edge('L_F_C_0')}"/>`);
+    expect(casings).not.toContain(`<path d="${edge('L_D_F_0')}"/>`);
+  });
+
+  it('cases an edge as wide and as faint as its line style makes it', () => {
+    const casings = (link: string, fill = 'white'): string =>
+      /<g class="pele-casings"[^>]*>(.*)<\/g><g class="pele-edges"/.exec(render(`flowchart TB\nsubgraph S\n  A --x B\nend\nstyle S fill:${fill}\n${link}`, options).svg)?.[1] ?? '';
+    expect(casings('linkStyle 0 stroke-width:10px')).toMatch(/^<g stroke-width="14"><path [^>]*\/><path d="[^"]+"\/><\/g>$/);
+    expect(casings('linkStyle 0 stroke-width:1em')).toMatch(/^<g style="stroke-width:calc\(1em \+ 4px\);">/);
+    expect(casings('linkStyle 0 opacity:0,stroke-opacity:0.5')).toMatch(/^<g style="opacity:0;stroke-opacity:0.5;">/);
+    expect(casings('linkStyle 0 stroke:none')).toBe('');
+    expect(casings('', 'none')).toBe('');
+    expect(casings('', 'transparent')).toBe('');
+    expect(casings('', '#0000')).toBe('');
+  });
+
   it('drops style values that could load resources or break out of the attribute', () => {
     expect(resolveStyle(['fill:url(http://example.com/x.png)', 'stroke:red']).shape).toBe(' style="stroke:red;"');
     expect(resolveStyle(['fill:red;background:blue', 'color:expression(alert(1))']).shape).toBe('');
