@@ -2,6 +2,7 @@ import type { Config } from '../../preprocess.js';
 import { titleLabel } from '../../svg/title.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, marker } from '../../svg/edges.js';
+import { ink } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { FONT_MONO, ROUNDED, classNames, resolveStyle, rounded } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -388,15 +389,17 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
     if (x0 < minX) minX = x0;
     if (x1 > maxX) maxX = x1;
   };
+  const boxEdges = (run: BoxRun): [number, number] => [
+    cols[run.first].x - cols[run.first].size.w / 2 - boxPad - run.grow,
+    cols[run.last].x + cols[run.last].size.w / 2 + boxPad + run.grow,
+  ];
   const frames = new Array<Frame | undefined>(count);
   const layout = (): void => {
     place();
     minX = Infinity;
     maxX = -Infinity;
     for (const col of cols) extend(col.x - col.size.w / 2, col.x + col.size.w / 2);
-    for (const run of runs) {
-      extend(cols[run.first].x - cols[run.first].size.w / 2 - boxPad - run.grow, cols[run.last].x + cols[run.last].size.w / 2 + boxPad + run.grow);
-    }
+    for (const run of runs) extend(...boxEdges(run));
 
     // Horizontal extents of every block, from what it holds.
     const open: Frame[] = [];
@@ -578,13 +581,32 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
     }
     return lo < xs.length && xs[lo] < x1;
   };
-  const backed = (label: Label, cx: number, cy: number, attrs: string): string => {
+  const stack: Frame[] = [];
+  const inkOn = (fill: string | undefined): string => {
+    const color = fill && ink(resolveStyle([`fill:${fill}`]).shape);
+    return color ? ` fill="${color}"` : '';
+  };
+  // Prefer the innermost rect's fill, then a containing box's.
+  const under = (l: number, r: number): string => {
+    let fill: string | undefined;
+    for (let k = stack.length - 1; k >= 0 && fill === undefined; k--) if (stack[k].kind === 'rect') fill = stack[k].fill;
+    if (fill === undefined) {
+      for (const run of runs) {
+        const [x0, x1] = boxEdges(run);
+        if (l >= x0 && r <= x1) fill = run.box.fill;
+      }
+    }
+    return inkOn(fill);
+  };
+  const backed = (label: Label, cx: number, cy: number, frame = false): string => {
     if (label.width === 0) return '';
     const l = cx - label.width / 2;
-    const back = crosses(l, l + label.width)
+    const plate = crosses(l, l + label.width);
+    const back = plate
       ? `<rect x="${num(l - 3)}" y="${num(cy - label.height / 2 + 2)}" width="${num(label.width + 6)}" height="${num(label.height - 4)}" rx="3" fill="var(--_bg)" stroke="none"/>`
       : '';
-    return back + labelSvg(label, cx, cy, attrs, icons);
+    const fill = plate ? '' : under(l, l + label.width);
+    return back + labelSvg(label, cx, cy, frame ? ` class="pele-frame-label"${fill || ' fill="var(--_m)"'} stroke="none"` : fill, icons);
   };
   const leftEdge = (col: Column, extra = 0): number => (col.activations.length + extra > 0 ? col.x - ACT_W / 2 : col.x);
   const rightEdge = (col: Column, extra = 0): number => {
@@ -630,7 +652,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
       `<g class="pele-node pele-actor pele-actor-${col.kind}${footer ? ' pele-actor-footer' : ''}${
         typeof cls === 'string' ? classNames(cls) : ''
       }" data-id="${escText(col.id)}">` +
-      drawActor(col.kind, col.x, top, col.size, col.label, icons) +
+      drawActor(col.kind, col.x, top, col.size, col.label, icons, isFigure(col.kind) ? inkOn(col.actor.box?.fill) : '') +
       '</g>'
     );
   };
@@ -642,7 +664,6 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
     )}</text></g>`;
 
   let y = headBottom + 6;
-  const stack: Frame[] = [];
   for (let i = 0; i < count; i++) {
     const m = messages[i];
     const type = m.type;
@@ -679,7 +700,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
           const label = frame.dividerLabels[k];
           inner +=
             `<path d="M${x},${num(dy)}H${num(frame.x1)}"${DASH}/>` +
-            backed(label, frame.x0 + 8 + label.width / 2, dy + 2 + label.height / 2, ' class="pele-frame-label" fill="var(--_m)" stroke="none"');
+            backed(label, frame.x0 + 8 + label.width / 2, dy + 2 + label.height / 2, true);
         }
         inner +=
           `<rect x="${x}" y="${num(frame.top)}" width="${num(frame.tabW)}" height="${TAB_H}" fill="var(--_s)"${ROUNDED}/>` +
@@ -690,7 +711,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
             frame.title,
             frame.x0 + frame.tabW + 8 + frame.title.width / 2,
             frame.top + Math.max(TAB_H, frame.title.height) / 2,
-            ' class="pele-frame-label" fill="var(--_m)" stroke="none"'
+            true
           );
         framesOut += `<g class="pele-frame pele-frame-${frame.kind}">${inner}</g>`;
       }
@@ -771,7 +792,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
             label,
             out + 8 + label.width / 2,
             (top + bottom) / 2,
-            '',
+            under(out + 8, out + 8 + label.width),
             icons
           )}</g>`;
         }
@@ -818,7 +839,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
           const r = Math.max(x0, x1);
           const cx = align < 0 ? l + msgPad + label.width / 2 : align > 0 ? r - msgPad - label.width / 2 : (l + r) / 2;
           extend(cx - label.width / 2, cx + label.width / 2);
-          labelsOut += `<g class="pele-edge-label" data-id="i${escText(m.id)}">${backed(label, cx, lineY - 4 - label.height / 2, '')}</g>`;
+          labelsOut += `<g class="pele-edge-label" data-id="i${escText(m.id)}">${backed(label, cx, lineY - 4 - label.height / 2)}</g>`;
         }
         if (creating) y = lineY + b.size.h / 2 - 6;
       }
@@ -852,13 +873,12 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
 
   let boxesOut = '';
   for (const run of runs) {
-    const x0 = cols[run.first].x - cols[run.first].size.w / 2 - boxPad - run.grow;
-    const x1 = cols[run.last].x + cols[run.last].size.w / 2 + boxPad + run.grow;
+    const [x0, x1] = boxEdges(run);
     const fill = run.box.fill === 'transparent' ? '' : resolveStyle([`fill:${run.box.fill}`]).shape;
     boxesOut +=
       `<g class="pele-cluster pele-box"${run.box.name ? ` data-id="${escText(run.box.name)}"` : ''}>` +
       `<rect x="${num(x0)}" y="0" width="${num(x1 - x0)}" height="${num(bottom + boxPad)}" fill="var(--_a)" stroke="var(--_b)"${rounded((fill ? '' : ' fill-opacity="0.5"') + fill)}/>` +
-      labelSvg(run.title, (x0 + x1) / 2, boxPad / 2 + 2 + run.title.height / 2, ' class="pele-cluster-label" fill="var(--_m)"', icons) +
+      labelSvg(run.title, (x0 + x1) / 2, boxPad / 2 + 2 + run.title.height / 2, ` class="pele-cluster-label"${inkOn(run.box.fill) || ' fill="var(--_m)"'}`, icons) +
       '</g>';
   }
   if (runs.length > 0) bottom += boxPad;

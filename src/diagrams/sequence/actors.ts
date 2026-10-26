@@ -80,12 +80,14 @@ export function drawActor(
   top: number,
   size: ActorSize,
   label: Label,
-  icons: IconResolver | undefined
+  icons: IconResolver | undefined,
+  // The fill attribute for a figure's label, which sits on whatever is behind the figure.
+  ink = ''
 ): string {
   const { w, h } = size;
   const text = ' class="pele-label"';
   if (isFigure(kind)) {
-    return figure(kind, cx, top) + labelSvg(label, cx, top + GLYPH + GLYPH_GAP + label.height / 2, text, icons);
+    return figure(kind, cx, top) + labelSvg(label, cx, top + GLYPH + GLYPH_GAP + label.height / 2, text + ink, icons);
   }
   const left = cx - w / 2;
   if (kind === 'collections') {

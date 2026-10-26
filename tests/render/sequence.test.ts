@@ -334,6 +334,35 @@ describe('sequence rendering', () => {
     expect(svg.indexOf('class="pele-rects"')).toBeLessThan(svg.indexOf('class="pele-lifelines"'));
   });
 
+  it('picks a contrasting text color for labels on a rect or box fill', () => {
+    const svg = svgOf(
+      'sequenceDiagram\n  box rgb(34, 56, 0) Group\n  participant A\n  participant B\n  end\n  participant C\n  participant D\n' +
+        '  A->>B: boxed\n  C->>D: open\n  rect rgb(191, 223, 255)\n  C->>D: light\n  C->>C: self\n  loop Often\n  D->>C: looped\n  end\n  rect black\n  C->>D: dark\n  end\n  rect rgba(0, 0, 0, .2)\n  C->>D: faint\n  end\n  A->>D: crossing two of the lifelines\n  end'
+    );
+    const label = (text: string): string => new RegExp(`<text[^>]*>(?:\\[)?${text}(?:\\])?</text>`).exec(svg)![0];
+    const light = 'fill="var(--pele-fg-on-light,#1f1f1f)"';
+    const dark = 'fill="var(--pele-fg-on-dark,#fff)"';
+    expect(label('boxed')).toContain(dark);
+    expect(svg).toContain(`<text class="pele-cluster-label" ${dark}`);
+    expect(label('open')).not.toContain('fill=');
+    expect(label('light')).toContain(light);
+    expect(label('self')).toContain(light);
+    expect(label('Often')).toContain(`class="pele-frame-label" ${light} stroke="none"`);
+    expect(label('looped')).toContain(light);
+    expect(label('dark')).toContain(dark);
+    expect(label('faint')).not.toContain('fill=');
+    // A label across a lifeline sits on a plate in the page color.
+    expect(svg).toMatch(/fill="var\(--_bg\)" stroke="none"\/><text x=[^>]*>crossing two of the lifelines</);
+  });
+
+  it('picks a contrasting name color for figures in a box', () => {
+    const svg = svgOf('sequenceDiagram\n  box black Group\n  actor A\n  participant B\n  end\n  actor C\n  A->>B: hi\n  B->>C: yo');
+    expect(count(svg, '<text class="pele-label" fill="var(--pele-fg-on-dark,#fff)"')).toBe(2);
+    expect(svg).toMatch(/data-id="A">.*?<text class="pele-label" fill="var\(--pele-fg-on-dark,#fff\)"/);
+    expect(svg).toMatch(/data-id="B">.*?<text class="pele-label" x=/);
+    expect(svg).toMatch(/data-id="C">.*?<text class="pele-label" x=/);
+  });
+
   it('groups participants in boxes, with color and title', () => {
     const src = 'sequenceDiagram\n  box Aqua Group One\n  participant A\n  participant B\n  end\n  box Group Two\n  participant C\n  end\n  box rgb(1, 2, 3)\n  participant D\n  end\n  A->>D: x';
     const m = model(src);
