@@ -475,6 +475,20 @@ describe('class diagram rendering', () => {
     expect(group(svg, 'D')).toContain('pele-static" style="fill:#090;text-decoration:underline"');
   });
 
+  it('picks a contrasting text color on fills a style sets', () => {
+    const svg = draw(
+      'class A {\n  <<interface>>\n  +id int\n  +run()\n}\nclass B {\n  +x\n}\nclass C\nclassDef dark fill:#1f3a5f\nclass A:::dark\nstyle B fill:lightyellow,color:#900'
+    );
+    const dark = ' fill="var(--pele-fg-on-dark,#fff)"';
+    expect(group(svg, 'A')).toMatch(/<text class="pele-annotation"[^>]* fill="var\(--pele-fg-on-dark,#fff\)">«interface»</);
+    expect(group(svg, 'A')).toContain(`<text class="pele-label" font-weight="var(--_hw)"${dark}`);
+    expect(group(svg, 'A')).toMatch(/<g class="pele-members" font-size="\d+" fill="var\(--pele-fg-on-dark,#fff\)">/);
+    expect(count(group(svg, 'A'), dark)).toBe(3);
+    expect(group(svg, 'B')).not.toContain('--pele-fg-on');
+    expect(group(svg, 'B')).toContain('<text class="pele-label" font-weight="var(--_hw)" style="fill:#900;"');
+    expect(group(svg, 'C')).not.toContain('--pele-fg-on');
+  });
+
   it('lets the later of a style and a classDef win, as Mermaid does', () => {
     const fill = (body: string): string => /<rect[^>]* style="rx:var\(--_r\);fill:([^;]+);"/.exec(group(draw(body), 'A'))![1];
     expect(fill('class A:::c\nclassDef c fill:#111\nstyle A fill:#222')).toBe('#222');

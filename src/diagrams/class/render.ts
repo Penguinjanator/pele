@@ -4,6 +4,7 @@ import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, struckTitle, titleCrossed, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, routePath, type EdgePath } from '../../svg/edges.js';
+import { inkFill } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { endSide } from '../../svg/shapes.js';
 import { withTitle } from '../../svg/title.js';
@@ -545,6 +546,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
     const memberSize = Math.round(view.fontSize * 0.875);
     const lineHeight = Math.round(memberSize * 1.5);
     let body = `<rect x="${num(left)}" y="${num(top)}" width="${num(w)}" height="${num(h)}" fill="var(--_s)" stroke="var(--_b)"${rounded(style.shape)}/>`;
+    const ink = inkFill(style);
     const first = top + view.titleH;
     const second = first + view.attributesH;
     if (h > view.titleH) {
@@ -554,16 +556,16 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
     let y = top + TITLE_PAD;
     for (const annotation of view.annotations) {
       if (typeof annotation === 'string') {
-        body += `<text class="pele-annotation" x="0" y="${num(y + tinyHeight / 2 + tiny * 0.35)}" text-anchor="middle" font-size="${tiny}" fill="var(--_m)">${esc(annotation)}</text>`;
+        body += `<text class="pele-annotation" x="0" y="${num(y + tinyHeight / 2 + tiny * 0.35)}" text-anchor="middle" font-size="${tiny}"${ink || ' fill="var(--_m)"'}>${esc(annotation)}</text>`;
         y += tinyHeight;
       } else {
         const h = Math.max(tinyHeight, annotation.height);
-        body += labelSvg(annotation, 0, y + h / 2, ` class="pele-annotation" font-size="${tiny}" fill="var(--_m)"`, options.icons);
+        body += labelSvg(annotation, 0, y + h / 2, ` class="pele-annotation" font-size="${tiny}"${ink || ' fill="var(--_m)"'}`, options.icons);
         y += h;
       }
     }
     const titleSize = view.fontSize === size ? '' : ` font-size="${num(view.fontSize)}"`;
-    body += labelSvg(view.label, 0, (y + first - TITLE_PAD) / 2, ` class="pele-label"${titleSize} font-weight="var(--_hw)"${style.text}`, options.icons);
+    body += labelSvg(view.label, 0, (y + first - TITLE_PAD) / 2, ` class="pele-label"${titleSize} font-weight="var(--_hw)"${ink}${style.text}`, options.icons);
     const lines = (list: Line[], kind: string, from: number): string => {
       let out = '';
       let baseline = from + SECTION_PAD + lineHeight / 2 + memberSize * 0.35;
@@ -580,7 +582,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
       return out;
     };
     if (view.attributes.length > 0 || view.methods.length > 0) {
-      body += `<g class="pele-members" font-size="${memberSize}"${mono(style) ? ` font-family="${FONT_MONO}"` : ''}>${lines(view.attributes, 'attribute', first)}${lines(view.methods, 'method', second)}</g>`;
+      body += `<g class="pele-members" font-size="${memberSize}"${ink}${mono(style) ? ` font-family="${FONT_MONO}"` : ''}>${lines(view.attributes, 'attribute', first)}${lines(view.methods, 'method', second)}</g>`;
     }
     if (cls.tooltip) body = `<title>${escText(cls.tooltip)}</title>` + body;
     if (cls.link) body = linked(body, cls.link, cls.id, links, options, cls.linkTarget && TARGETS.has(cls.linkTarget) ? ` target="${cls.linkTarget}"` : '');
