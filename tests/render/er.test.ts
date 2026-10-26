@@ -355,14 +355,20 @@ describe('ER diagram rendering', () => {
     expect(svg).toMatch(/data-id="h"><rect [^>]*fill-opacity="0.5"/);
   });
 
-  it('cases relationships that run over a subgraph fill a style sets', () => {
+  it('cases relationships that cross a subgraph fill a style sets and inks those inside it', () => {
     const src = 'erDiagram\n subgraph g\n  A ||--o{ B : has\n end\n B ||--|| C : is\n C ||--|| D : of\n C ||--o{ C : self\n style g fill:#BBDEFB';
     const { svg } = render(src, options);
     const casings = /<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(svg)![1];
-    const edges = [...svg.matchAll(/class="pele-edge [^"]*" data-id="[^"]+"><path d="([^"]+)"/g)].map((m) => m[1]);
-    expect(edges.map((d) => casings.includes(`<path d="${d}"/>`))).toEqual([true, true, false, false]);
+    const edges = [...svg.matchAll(/class="pele-edge [^"]*" data-id="[^"]+"[^>]*><path d="([^"]+)"/g)].map((m) => m[1]);
+    expect(edges.map((d) => casings.includes(`<path d="${d}"/>`))).toEqual([false, true, false, false]);
+    // A --> B lies inside the subgraph, so it takes the fill's ink instead.
+    expect(svg).toMatch(/class="pele-edge [^"]*" data-id="[^"]+" stroke="var\(--pele-fg-on-light,#1f1f1f\)"><path d="[^"]+"/);
+    expect(svg.match(/stroke="var\(--pele-fg-on/g)).toHaveLength(1);
+    // A hollow ring keeps the fill's color inside it.
+    const ring = svgOf('erDiagram\n subgraph S\n  A ||--o{ B : has\n end\n style S fill:black');
+    expect(ring).toMatch(/<circle class="pele-marker"[^>]* fill="black"\/>/);
     expect(casings).not.toContain('pele-marker');
-    expect(render(src.replace('\n style g fill:#BBDEFB', ''), options).svg).not.toContain('pele-casings');
+    expect(render(src.replace('\n style g fill:#BBDEFB', ''), options).svg).not.toMatch(/pele-casings|stroke="var\(--pele-fg-on/);
   });
 
   it('connects a relationship written before its subgraph to that subgraph', () => {

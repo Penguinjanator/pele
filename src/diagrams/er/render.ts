@@ -3,7 +3,7 @@ import { titleLabel } from '../../svg/title.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num, sharedStyle, spanStyle, textStyle, type IconResolver } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
-import { casing, casingsSvg, edgeLabelSvg, routePath, runsInside } from '../../svg/edges.js';
+import { casing, casingsSvg, edgeInk, edgeLabelSvg, fillUnder, hollowOn, routePath, type Fill } from '../../svg/edges.js';
 import { ON_DARK, ON_LIGHT, ink, inkFill, paints } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { ROUNDED, classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
@@ -319,7 +319,7 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
   }
 
   let clusters = '';
-  const filled: number[] = [];
+  const fills: Fill[] = [];
   let nodesOut = '';
   for (let i = 0; i < views.length; i++) {
     const view = views[i];
@@ -332,7 +332,7 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
       const x = c.x - c.w / 2;
       const y = c.y - c.h / 2;
       const titleX = clusterTitleX(c, view.label.width, crossings, GROUP_PAD);
-      if (paints(view.style.shape)) filled.push(x, y, x + c.w, y + c.h);
+      if (paints(view.style.shape)) fills.push({ box: [x, y, x + c.w, y + c.h], shape: view.style.shape });
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${escText(node.id)}">` +
         `<rect x="${num(x)}" y="${num(y)}" width="${num(c.w)}" height="${num(c.h)}" fill="var(--_a)"${setsFill(view.style.shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${rounded(view.style.shape)}/>` +
@@ -475,10 +475,16 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
       start = erMarker(edge.arrowTypeStart, path.sx, path.sy, path.sdx, path.sdy);
       end = erMarker(edge.arrowTypeEnd, path.ex, path.ey, path.edx, path.edy);
     }
-    if (runsInside(d, filled)) casings += casing(d, start + end);
+    const under = fillUnder(d, [], fills);
+    const over = under ? edgeInk(under) : under;
+    if (over === '') casings += casing(d, start + end);
+    if (under && over) {
+      start = hollowOn(start, under);
+      end = hollowOn(end, under);
+    }
     const dashed = edge.pattern === 'dashed';
     edgesOut +=
-      `<g class="pele-edge pele-er-${dashed ? 'non-identifying' : 'identifying'}" data-id="${escText(edge.id)}">` +
+      `<g class="pele-edge pele-er-${dashed ? 'non-identifying' : 'identifying'}" data-id="${escText(edge.id)}"${over ? ` stroke="${over}"` : ''}>` +
       `<path d="${d}"${dashed ? ' stroke-dasharray="4 3"' : ''}/>` +
       start +
       end +
