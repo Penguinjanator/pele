@@ -114,6 +114,14 @@ describe('treemap layout', () => {
     for (const b of speck.slice(1)) expect(b.w * b.h).toBe(0);
   });
 
+  it('keeps every box inside its area, with a finite size', () => {
+    const wide = layoutTreemap([leaf('big', 397), leaf('thin', 3)], 400, 100, { ...insets, gap: 40 });
+    for (const b of wide) expect(b.x + b.w).toBeLessThanOrEqual(400);
+    const huge = layoutTreemap([leaf('big', 1e20), leaf('small', 1)], 640, 400, insets);
+    expect(huge.map((b) => b.node.name)).toEqual(['big', 'small']);
+    for (const b of huge) for (const n of [b.x, b.y, b.w, b.h]) expect(Number.isFinite(n) && n >= 0).toBe(true);
+  });
+
   it('leaves out what has no positive value', () => {
     const tree: TreemapNode[] = [leaf('a', 1), leaf('zero', 0), leaf('negative', -5), leaf('nan', NaN), { name: 'empty', children: [] }];
     expect(layoutTreemap(tree, 100, 100, insets).map((b) => b.node.name)).toEqual(['a']);
@@ -288,6 +296,20 @@ describe('treemap rendering', () => {
         expect(width, text).toBeLessThanOrEqual(w - 8);
       }
     }
+  });
+
+  it('keeps section names at large font sizes that fit the header', () => {
+    const tree = 'treemap\n"Section"\n  "Leaf": 1';
+    expect(render(tree, { ...options, fontSize: 24 }).svg).toMatch(/<text[^>]*>Section</);
+    expect(render(`${tree}\nclassDef big font-size:20px`.replace('"Section"', '"Section":::big'), options).svg).toMatch(/<text[^>]*>Section</);
+    const tall = render(`${tree}\nclassDef big font-size:32px`.replace('"Section"', '"Section":::big'), options).svg;
+    expect(tall).not.toMatch(/<text[^>]*>Section</);
+    expect(tall).toContain('<title>Section</title>');
+  });
+
+  it('draws a label at a fractional class font size when it fits', () => {
+    const { svg } = render(config('    nodeHeight: 2', 'treemap\n"Label": 1:::frac\nclassDef frac font-size:12.5px'), options);
+    expect(svg).toMatch(/<text[^>]*>Label</);
   });
 
   it('draws the title above, from the diagram or the front matter', () => {

@@ -73,7 +73,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
         const valueWidth = value ? measurer.width(value, valueSize, textStyle) : 0;
         const withValue = valueWidth > 0 && room - valueWidth - 12 >= 3 * labelSize;
         const label =
-          labelSize * LINE <= HEADER - 4
+          labelSize * LINE <= HEADER
             ? fitText(name, withValue ? room - valueWidth - 12 : room, labelSize, labelSize, measurer, textStyle | Style.Bold)
             : undefined;
         const baseline = y + HEADER / 2 + 1;
@@ -81,7 +81,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
         if (label) {
           text += `<text x="${num(x + SIDE + 2)}" y="${num(baseline + labelSize * 0.35)}" font-weight="var(--_hw)"${style.text}>${esc(label.text)}</text>`;
         }
-        if (withValue && valueSize * LINE <= HEADER - 4) {
+        if (withValue && valueSize * LINE <= HEADER) {
           text += `<text class="pele-value" x="${num(x + b.w - SIDE - 2)}" y="${num(baseline + valueSize * 0.35)}" font-size="${tiny}" text-anchor="end" fill="var(--_m)"${style.text}>${esc(value)}</text>`;
         }
       }
@@ -96,7 +96,8 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
     let text = '';
     const room = b.w - 8;
     const smallest = fixed ?? least;
-    const tallest = Math.min(fixed ?? size, Math.floor((b.h - 4) / LINE));
+    const tallest =
+      fixed === undefined ? Math.min(size, Math.floor((b.h - 4) / LINE)) : fixed * LINE <= b.h - 4 ? fixed : 0;
     const label = tallest >= smallest ? fitText(name, room, tallest, smallest, measurer, textStyle) : undefined;
     if (label) {
       const cx = num(x + b.w / 2);

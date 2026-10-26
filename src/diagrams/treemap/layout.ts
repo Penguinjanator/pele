@@ -28,6 +28,8 @@ function box(node: TreemapNode, parent: Box | undefined, series: number): Box {
   return { node, parent, series, value, children: [], headed: false, x: 0, y: 0, w: 0, h: 0 };
 }
 
+const clamp = (v: number, low: number, high: number): number => (v >= low ? Math.min(v, high) : low);
+
 // Lays out boxes[from..to) in the rectangle as one squarified treemap: rows are added along the
 // shorter side, and a row stops growing when another box would make its boxes less square.
 function squarify(boxes: Box[], total: number, x: number, y: number, w: number, h: number, gap: number): void {
@@ -104,14 +106,16 @@ export function layoutTreemap(roots: TreemapNode[], width: number, height: numbe
     let total = 0;
     for (const b of shown) total += b.value;
     if (shown.length === 0 || !Number.isFinite(total)) return;
+    w = Math.max(0, w);
+    h = Math.max(0, h);
     if (w > 0 && h > 0) squarify(shown, total, x - gap / 2, y - gap / 2, w + gap, h + gap, gap);
     for (const b of shown) {
-      if (w <= 0 || h <= 0) {
-        b.x = x;
-        b.y = y;
-        b.w = Math.max(0, w);
-        b.h = Math.max(0, h);
-      }
+      const x0 = clamp(b.x, x, x + w);
+      const y0 = clamp(b.y, y, y + h);
+      b.w = clamp(b.x + b.w, x0, x + w) - x0;
+      b.h = clamp(b.y + b.h, y0, y + h) - y0;
+      b.x = x0;
+      b.y = y0;
       placed.push(b);
     }
   };
