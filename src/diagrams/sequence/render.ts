@@ -213,7 +213,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
   return tighten(options, (tight) => draw(db, config, options, tight));
 }
 
-function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean, hold = 0): Rendered {
+function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean, hold = 0, byNeed = true): Rendered {
   const conf = (config.sequence ?? {}) as Config;
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
@@ -487,18 +487,26 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
 
   // Widen gaps only if it reduces message wrapping.
   let grown = false;
+  let uneven = false;
   if (tight && options.maxWidth !== undefined) {
     const spare = Math.floor(options.maxWidth) - Math.ceil(maxX - minX + 2 * pad) - hold;
     const stretch = new Int32Array(cols.length);
+    const want = new Array<number>(gaps.length).fill(0);
     const wrapped: number[] = [];
     let lines = 0;
     for (let i = 0; spare > 0 && i < views.length; i++) {
       const view = views[i];
-      if (view?.kind !== V.Line || view.label.lines.length <= messageText(messages[i].message as string, false, Infinity).lines.length) continue;
+      if (view?.kind !== V.Line) continue;
+      const natural = messageText(messages[i].message as string, false, Infinity);
+      if (view.label.lines.length <= natural.lines.length) continue;
       wrapped.push(i);
       lines += view.label.lines.length;
-      stretch[Math.min(view.a, view.b)]++;
-      stretch[Math.max(view.a, view.b)]--;
+      const lo = Math.min(view.a, view.b);
+      const hi = Math.max(view.a, view.b);
+      stretch[lo]++;
+      stretch[hi]--;
+      const short = (natural.width - (cols[hi].x - cols[lo].x - 2 * msgPad - ACT_W)) / (hi - lo);
+      for (let g = lo; g < hi; g++) want[g] = Math.max(want[g], short);
     }
     let active = 0;
     let crossed = 0;
@@ -509,10 +517,23 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
     }
     if (crossed > 0) {
       const before = gaps.slice();
-      for (let i = 0; i < gaps.length; i++) gaps[i] += (stretch[i] * spare) / crossed;
-      layout();
-      for (const i of wrapped) lines -= views[i]!.label.lines.length;
-      grown = lines > 0;
+      const spread = (share: (g: number) => number): number[] => {
+        for (let g = 0; g < gaps.length; g++) gaps[g] = before[g] + share(g);
+        layout();
+        return wrapped.map((i) => views[i]!.label.lines.length);
+      };
+      const sum = (counts: number[]): number => counts.reduce((a, b) => a + b, 0);
+      const even = (g: number): number => (stretch[g] * spare) / crossed;
+      let counts = spread(even);
+      const missing = sum(want);
+      if (byNeed && crossed > 1 && missing > 0) {
+        const first = counts;
+        // Allow for rounding error.
+        counts = spread((g) => (want[g] * (spare - 0.01)) / missing);
+        uneven = sum(counts) < sum(first) && counts.every((n, k) => n <= first[k]);
+        if (!uneven) counts = spread(even);
+      }
+      grown = sum(counts) < lines;
       if (!grown) {
         gaps.splice(0, gaps.length, ...before);
         layout();
@@ -843,8 +864,10 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
   }
 
   const width = Math.ceil(maxX - minX + 2 * pad);
-  // Retry with space for activation notes and rounding.
-  if (grown && width > options.maxWidth!) return draw(db, config, options, tight, hold > 0 ? Infinity : width - Math.floor(options.maxWidth!));
+  // Retry with equal shares or room for activation notes and rounding.
+  if (grown && width > options.maxWidth!) {
+    return draw(db, config, options, tight, uneven ? hold : hold > 0 ? Infinity : width - Math.floor(options.maxWidth!), false);
+  }
   const height = Math.ceil(bottom - minY + 2 * pad);
   const svg = svgDocument(
     'sequence',
