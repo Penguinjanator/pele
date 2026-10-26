@@ -355,6 +355,16 @@ describe('ER diagram rendering', () => {
     expect(svg).toMatch(/data-id="h"><rect [^>]*fill-opacity="0.5"/);
   });
 
+  it('cases relationships that run over a subgraph fill a style sets', () => {
+    const src = 'erDiagram\n subgraph g\n  A ||--o{ B : has\n end\n B ||--|| C : is\n C ||--|| D : of\n C ||--o{ C : self\n style g fill:#BBDEFB';
+    const { svg } = render(src, options);
+    const casings = /<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(svg)![1];
+    const edges = [...svg.matchAll(/class="pele-edge [^"]*" data-id="[^"]+"><path d="([^"]+)"/g)].map((m) => m[1]);
+    expect(edges.map((d) => casings.includes(`<path d="${d}"/>`))).toEqual([true, true, false, false]);
+    expect(casings).not.toContain('pele-marker');
+    expect(render(src.replace('\n style g fill:#BBDEFB', ''), options).svg).not.toContain('pele-casings');
+  });
+
   it('connects a relationship written before its subgraph to that subgraph', () => {
     const svg = svgOf('erDiagram\n g ||--o{ X : early\n subgraph g\n  A\n end');
     expect(count(svg, '<g class="pele-edge ')).toBe(1);
