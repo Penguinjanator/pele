@@ -16,6 +16,9 @@ export interface Cell {
   row: number;
   cols: number;
   heights: number[];
+  // Extra space after each row or column.
+  rowGaps: number[];
+  colGaps: number[];
   x: number;
   y: number;
   w: number;
@@ -25,7 +28,7 @@ export interface Cell {
 const MAX_SPAN = 1000;
 
 export function cell(nw: number, nh: number, span = 1): Cell {
-  return { children: [], columns: -1, span, space: false, head: 0, nw, nh, col: 0, row: 0, cols: 0, heights: [], x: 0, y: 0, w: 0, h: 0 };
+  return { children: [], columns: -1, span, space: false, head: 0, nw, nh, col: 0, row: 0, cols: 0, heights: [], rowGaps: [], colGaps: [], x: 0, y: 0, w: 0, h: 0 };
 }
 
 export function calculateBlockPosition(columns: number, position: number): { px: number; py: number } {
@@ -67,23 +70,31 @@ function measure(box: Cell, gap: number, inset: number): void {
     if (width > cw) cw = width;
     if (child.nh > tallest) tallest = child.nh;
   }
-  let height = (heights.length - 1) * gap;
+  let height = (heights.length - 1) * gap + total(box.rowGaps);
   for (let row = 0; row < heights.length; row++) {
     if (heights[row] < 0) heights[row] = tallest;
     height += heights[row];
   }
   box.cols = cols;
   box.heights = heights;
-  box.nw = Math.max(box.nw, cols * cw + (cols - 1) * gap + 2 * inset);
+  box.nw = Math.max(box.nw, cols * cw + (cols - 1) * gap + total(box.colGaps) + 2 * inset);
   box.nh = height + 2 * inset + box.head;
 }
 
 // Gives each child its cell, sharing out any room the container has beyond what it needs.
 function arrange(box: Cell, gap: number, inset: number): void {
-  const { cols, heights } = box;
+  const { cols, heights, rowGaps, colGaps } = box;
   const rows = heights.length;
-  const cw = (box.w - 2 * inset - (cols - 1) * gap) / cols;
-  const room = box.h - 2 * inset - box.head - (rows - 1) * gap;
+  const cw = (box.w - 2 * inset - (cols - 1) * gap - total(colGaps)) / cols;
+  const room = box.h - 2 * inset - box.head - (rows - 1) * gap - total(rowGaps);
+  const offsets: number[] = [];
+  if (colGaps.length > 0) {
+    let sum = 0;
+    for (let col = 0; col < cols; col++) {
+      offsets.push(sum);
+      sum += colGaps[col] ?? 0;
+    }
+  }
   let needed = 0;
   for (const height of heights) needed += height;
   const scale = needed > 0 ? room / needed : 0;
@@ -92,12 +103,19 @@ function arrange(box: Cell, gap: number, inset: number): void {
   let top = box.y - box.h / 2 + inset + box.head;
   let row = 0;
   for (const child of box.children) {
-    for (; row < child.row; row++) top += heights[row] * scale + share + gap;
-    child.w = cw * child.span + gap * (child.span - 1);
+    for (; row < child.row; row++) top += heights[row] * scale + share + gap + (rowGaps[row] ?? 0);
+    const before = offsets[child.col] ?? 0;
+    child.w = cw * child.span + gap * (child.span - 1) + (offsets[child.col + child.span - 1] ?? 0) - before;
     child.h = heights[row] * scale + share;
-    child.x = left + child.col * (cw + gap) + child.w / 2;
+    child.x = left + child.col * (cw + gap) + before + child.w / 2;
     child.y = top + child.h / 2;
   }
+}
+
+function total(gaps: number[]): number {
+  let sum = 0;
+  for (const gap of gaps) sum += gap ?? 0;
+  return sum;
 }
 
 // Lays out a tree of cells in place. The root has no border, so its grid starts at the origin.

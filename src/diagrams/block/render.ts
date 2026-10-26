@@ -21,6 +21,7 @@ const LINE_ATTRS = ' stroke="var(--_b)"';
 const NO_CLASSES: string[] = [];
 const NO_BLOCKS: Block[] = [];
 const NO_HEIGHTS: number[] = [];
+const NO_GAPS: number[] = [];
 const DEFAULT_CLASS = ['default'];
 // Checking every edge against every block is quadratic, so large diagrams route without it.
 const OBSTACLE_BUDGET = 2_000_000;
@@ -334,7 +335,8 @@ function labelSpot(p: number[], at: number, w: number, h: number, s: View, t: Vi
 }
 
 // Stacks overlapping labels along their shared line, if they fit between its markers and cover no other block or title.
-function stackLabels(stack: number[], routes: Route[], legs: number[][], s: View, t: View, obstacles: Box[] | undefined): void {
+// Returns the extra length needed to fit the labels.
+function stackLabels(stack: number[], routes: Route[], legs: number[][], s: View, t: View, obstacles: Box[] | undefined): number {
   const vertical = legs[stack[0]][0] === legs[stack[0]][2];
   let lo = -Infinity;
   let hi = Infinity;
@@ -342,7 +344,7 @@ function stackLabels(stack: number[], routes: Route[], legs: number[][], s: View
   let crowded = false;
   for (let a = 0; a < stack.length; a++) {
     const leg = legs[stack[a]];
-    if (vertical ? leg[0] !== leg[2] : leg[1] !== leg[3]) return;
+    if (vertical ? leg[0] !== leg[2] : leg[1] !== leg[3]) return 0;
     lo = Math.max(lo, vertical ? Math.min(leg[1], leg[3]) : Math.min(leg[0], leg[2]));
     hi = Math.min(hi, vertical ? Math.max(leg[1], leg[3]) : Math.max(leg[0], leg[2]));
     const p = routes[stack[a]];
@@ -352,14 +354,15 @@ function stackLabels(stack: number[], routes: Route[], legs: number[][], s: View
       if (Math.abs(p.lx - q.lx) < (p.label.width + q.label.width) / 2 + 8 && Math.abs(p.ly - q.ly) < (p.label.height + q.label.height) / 2) crowded = true;
     }
   }
-  if (!crowded || need > hi - lo - 2 * ARROW) return;
+  if (!crowded) return 0;
+  if (need > hi - lo - 2 * ARROW) return need - (hi - lo - 2 * ARROW);
   const along: number[] = [];
   let next = (lo + hi - need) / 2;
   for (const i of stack) {
     const { label, lx, ly } = routes[i];
     const size = vertical ? label.height : label.width + 8;
     const at = next + size / 2;
-    if (covers(vertical ? lx : at, vertical ? at : ly, label.width + 8, label.height, s, t, obstacles)) return;
+    if (covers(vertical ? lx : at, vertical ? at : ly, label.width + 8, label.height, s, t, obstacles)) return 0;
     along.push(at);
     next += size + LABEL_GAP;
   }
@@ -367,6 +370,38 @@ function stackLabels(stack: number[], routes: Route[], legs: number[][], s: View
     if (vertical) routes[i].ly = along[k];
     else routes[i].lx = along[k];
   });
+  return 0;
+}
+
+// Widens the gap in the blocks' nearest shared container.
+// `base` keeps the gaps as they were when the labels were measured.
+function widen(parents: View[], s: View, t: View, vertical: boolean, short: number, base: Map<number[], number[]>): boolean {
+  const chain = new Set<View>();
+  for (let v: View | undefined = s; v !== undefined; v = parents[v.index]) chain.add(v);
+  let tb: View | undefined;
+  let box: View | undefined = t;
+  while (box !== undefined && !chain.has(box)) {
+    tb = box;
+    box = parents[box.index];
+  }
+  if (box === undefined || tb === undefined || box === s) return false;
+  let sb = s;
+  while (parents[sb.index] !== box) sb = parents[sb.index];
+  let at: number;
+  if (vertical) {
+    if (sb.row === tb.row) return false;
+    at = Math.max(sb.row, tb.row) - 1;
+    if (box.rowGaps === NO_GAPS) box.rowGaps = [];
+  } else {
+    const [l, r] = sb.col < tb.col ? [sb, tb] : [tb, sb];
+    if (r.col < l.col + l.span) return false;
+    at = r.col - 1;
+    if (box.colGaps === NO_GAPS) box.colGaps = [];
+  }
+  const gaps = vertical ? box.rowGaps : box.colGaps;
+  if (!base.has(gaps)) base.set(gaps, gaps.slice());
+  gaps[at] = Math.max(gaps[at] ?? 0, (base.get(gaps)![at] ?? 0) + short);
+  return true;
 }
 
 export function renderBlock(model: BlockModel, config: Config, options: RenderOptions): Rendered {
@@ -453,6 +488,8 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
       row: 0,
       cols: 0,
       heights: NO_HEIGHTS,
+      rowGaps: NO_GAPS,
+      colGaps: NO_GAPS,
       x: 0,
       y: 0,
       w: 0,
@@ -475,6 +512,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
   root.nw = 0;
   root.nh = 0;
   const order = [root];
+  const parents: View[] = [];
   const byId = new Map<string, View>();
   for (let i = 0; i < order.length; i++) {
     const parent = order[i];
@@ -482,30 +520,39 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
     for (const child of parent.block.children ?? NO_BLOCKS) {
       const v = view(child, order.length);
       parent.children.push(v);
+      parents[v.index] = parent;
       order.push(v);
       if (v.kind !== Kind.Space) byId.set(child.id, v);
     }
   }
 
-  const content = layout(root, gap);
-
   const obstacles: View[] = [];
   const titles: Box[] = [];
-  for (const v of order) {
-    if (v.kind === Kind.Leaf && FIXED.has(v.shape)) {
-      v.bw = v.nw;
-      v.bh = v.nh;
-    } else if (v.kind === Kind.Arrow) {
-      v.bw = v.span > 1 ? v.w : v.nw;
-      v.bh = v.nh;
-    } else {
-      v.bw = v.w;
-      v.bh = v.kind === Kind.Leaf && WIDE.has(v.shape) ? v.nh : v.h;
+  // Layout keeps the widest a container has been, so each run starts from the widths it needs.
+  const widths = order.map((v) => v.nw);
+  const place = (): { width: number; height: number } => {
+    for (const v of order) v.nw = widths[v.index];
+    const content = layout(root, gap);
+    obstacles.length = 0;
+    titles.length = 0;
+    for (const v of order) {
+      if (v.kind === Kind.Leaf && FIXED.has(v.shape)) {
+        v.bw = v.nw;
+        v.bh = v.nh;
+      } else if (v.kind === Kind.Arrow) {
+        v.bw = v.span > 1 ? v.w : v.nw;
+        v.bh = v.nh;
+      } else {
+        v.bw = v.w;
+        v.bh = v.kind === Kind.Leaf && WIDE.has(v.shape) ? v.nh : v.h;
+      }
+      if (v.kind === Kind.Leaf && v.shape === 'cyl') v.dy = Math.min(12, Math.max(6, v.bw / 14)) / 2;
+      if (v.kind === Kind.Leaf || v.kind === Kind.Arrow) obstacles.push(v);
+      else if (v.head > 0) titles.push({ x: v.x, y: v.y - v.h / 2 + (v.head + gap) / 2 + 2, bw: v.label.width, bh: v.label.height });
     }
-    if (v.kind === Kind.Leaf && v.shape === 'cyl') v.dy = Math.min(12, Math.max(6, v.bw / 14)) / 2;
-    if (v.kind === Kind.Leaf || v.kind === Kind.Arrow) obstacles.push(v);
-    else if (v.head > 0) titles.push({ x: v.x, y: v.y - v.h / 2 + (v.head + gap) / 2 + 2, bw: v.label.width, bh: v.label.height });
-  }
+    return content;
+  };
+  let content = place();
 
   // Edges between the same two blocks are spread apart instead of drawn on top of each other.
   const pairs = new Map<number, number>();
@@ -523,61 +570,129 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
     drawn.push(edge);
   }
   const check = drawn.length * obstacles.length <= OBSTACLE_BUDGET ? obstacles : undefined;
-  const seen = new Map<number, number>();
   const routes: Route[] = [];
   const stacks = new Map<number, number[]>();
   const legs: number[][] = [];
+  const route = (): void => {
+    const seen = new Map<number, number>();
+    routes.length = 0;
+    stacks.clear();
+    for (let i = 0; i < drawn.length; i++) {
+      const [s, t] = ends[i];
+      const key = Math.min(s.index, t.index) * order.length + Math.max(s.index, t.index);
+      const total = pairs.get(key) ?? 1;
+      const k = seen.get(key) ?? 0;
+      seen.set(key, k + 1);
+      const label = layoutLabel(drawn[i].label, false, measurer, edgeSize, WRAP);
+      let points: number[];
+      let lx: number;
+      let ly: number;
+      if (s === t) {
+        const [px, py, r] = loopArc(s, k + 1);
+        points = [];
+        lx = px + r + 6 + label.width / 2;
+        ly = py - r / 2;
+      } else {
+        const step = labelled.has(key) ? Math.round(edgeSize * 1.5) + 2 : 14;
+        points = routeEdge(s, t, (k - (total - 1) / 2) * step, check);
+        const n = points.length;
+        // The label goes on the longer leg.
+        const firstLeg = Math.abs(points[2] - points[0]) + Math.abs(points[3] - points[1]);
+        const lastLeg = Math.abs(points[n - 2] - points[n - 4]) + Math.abs(points[n - 1] - points[n - 3]);
+        const at = n === 6 && lastLeg > firstLeg ? 2 : 0;
+        const spot = label.width > 0 ? labelSpot(points, at, label.width + 8, label.height, s, t, check) : 0.5;
+        lx = points[at] + (points[at + 2] - points[at]) * spot;
+        ly = points[at + 1] + (points[at + 3] - points[at + 1]) * spot;
+        if (label.width > 0 && total > 1) {
+          legs[i] = points.slice(at, at + 4);
+          const stack = stacks.get(key);
+          if (stack) stack.push(i);
+          else stacks.set(key, [i]);
+        }
+      }
+      routes.push({ edge: drawn[i], points, loop: s === t ? k + 1 : 0, label, lx, ly });
+    }
+  };
+
+  const settle = (grow: boolean): boolean => {
+    route();
+    const blocked = check && [...check, ...titles];
+    const base = new Map<number[], number[]>();
+    let grown = false;
+    for (const stack of stacks.values()) {
+      if (stack.length < 2) continue;
+      const [s, t] = ends[stack[0]];
+      const short = stackLabels(stack, routes, legs, s, t, blocked);
+      const vertical = legs[stack[0]][0] === legs[stack[0]][2];
+      // Keep columns narrow to fit the host in tight layouts.
+      if (grow && short > 0 && (vertical || !tight) && widen(parents, s, t, vertical, Math.ceil(short), base)) grown = true;
+    }
+    return grown;
+  };
+  const overlap = (): number => {
+    let area = 0;
+    for (let i = 0; i < routes.length; i++) {
+      const p = routes[i];
+      for (let j = i + 1; j < routes.length; j++) {
+        const q = routes[j];
+        const pw = (p.label.width + 8) / 2;
+        const qw = (q.label.width + 8) / 2;
+        const w = Math.min(p.lx + pw, q.lx + qw) - Math.max(p.lx - pw, q.lx - qw);
+        const h = Math.min(p.ly + p.label.height / 2, q.ly + q.label.height / 2) - Math.max(p.ly - p.label.height / 2, q.ly - q.label.height / 2);
+        if (p.label.width > 0 && q.label.width > 0 && w > 0 && h > 0) area += w * h;
+      }
+    }
+    return area;
+  };
   let minX = 0;
   let minY = 0;
-  let maxX = content.width;
-  let maxY = content.height;
+  let maxX = 0;
+  let maxY = 0;
   const grow = (x: number, y: number, w: number, h: number): void => {
     if (x - w / 2 < minX) minX = x - w / 2;
     if (x + w / 2 > maxX) maxX = x + w / 2;
     if (y - h / 2 < minY) minY = y - h / 2;
     if (y + h / 2 > maxY) maxY = y + h / 2;
   };
-  for (let i = 0; i < drawn.length; i++) {
-    const [s, t] = ends[i];
-    const key = Math.min(s.index, t.index) * order.length + Math.max(s.index, t.index);
-    const total = pairs.get(key) ?? 1;
-    const k = seen.get(key) ?? 0;
-    seen.set(key, k + 1);
-    const label = layoutLabel(drawn[i].label, false, measurer, edgeSize, WRAP);
-    let points: number[];
-    let lx: number;
-    let ly: number;
-    if (s === t) {
-      const [px, py, r] = loopArc(s, k + 1);
-      points = [];
-      grow(px, py, 2 * r + 2, 2 * r + 2);
-      lx = px + r + 6 + label.width / 2;
-      ly = py - r / 2;
-    } else {
-      const step = labelled.has(key) ? Math.round(edgeSize * 1.5) + 2 : 14;
-      points = routeEdge(s, t, (k - (total - 1) / 2) * step, check);
-      const n = points.length;
-      // The label goes on the longer leg.
-      const firstLeg = Math.abs(points[2] - points[0]) + Math.abs(points[3] - points[1]);
-      const lastLeg = Math.abs(points[n - 2] - points[n - 4]) + Math.abs(points[n - 1] - points[n - 3]);
-      const at = n === 6 && lastLeg > firstLeg ? 2 : 0;
-      const spot = label.width > 0 ? labelSpot(points, at, label.width + 8, label.height, s, t, check) : 0.5;
-      lx = points[at] + (points[at + 2] - points[at]) * spot;
-      ly = points[at + 1] + (points[at + 3] - points[at + 1]) * spot;
-      if (label.width > 0 && total > 1) {
-        legs[i] = points.slice(at, at + 4);
-        const stack = stacks.get(key);
-        if (stack) stack.push(i);
-        else stacks.set(key, [i]);
+  // Finds the drawing's extent and gives its width.
+  const bound = (): number => {
+    minX = 0;
+    minY = 0;
+    maxX = content.width;
+    maxY = content.height;
+    for (let i = 0; i < routes.length; i++) {
+      const route = routes[i];
+      if (route.loop > 0) {
+        const [px, py, r] = loopArc(ends[i][0], route.loop);
+        grow(px, py, 2 * r + 2, 2 * r + 2);
       }
+      if (route.label.width > 0) grow(route.lx, route.ly, route.label.width + 8, route.label.height);
     }
-    routes.push({ edge: drawn[i], points, loop: s === t ? k + 1 : 0, label, lx, ly });
+    return maxX - minX;
+  };
+  if (settle(drawn.length * drawn.length <= OBSTACLE_BUDGET)) {
+    const before = overlap();
+    const narrow = bound();
+    // A container stretched by its row gives some of a new gap back, so the gap may take a few rounds.
+    let grown = true;
+    for (let round = 0; round < 3 && grown; round++) {
+      content = place();
+      grown = settle(round < 2);
+    }
+    // The drawing only grows if that leaves less of the labels covering each other, and within maxWidth.
+    const wide = bound();
+    const room = options.maxWidth !== undefined && options.maxWidth > 0 ? options.maxWidth : Infinity;
+    if (overlap() > before - 1 || (wide > narrow && Math.ceil(wide + 2 * pad) > room)) {
+      for (const v of order) {
+        v.rowGaps = NO_GAPS;
+        v.colGaps = NO_GAPS;
+      }
+      content = place();
+      settle(false);
+    }
   }
-  const blocked = check && [...check, ...titles];
-  for (const stack of stacks.values()) {
-    if (stack.length > 1) stackLabels(stack, routes, legs, ends[stack[0]][0], ends[stack[0]][1], blocked);
-  }
-  for (const route of routes) if (route.label.width > 0) grow(route.lx, route.ly, route.label.width + 8, route.label.height);
+
+  bound();
 
   const title = titleLabel(model.title, measurer, size, tight ? titleRoom(options) : 4000);
   const titleHeight = title.height > 0 ? title.height + 12 : 0;

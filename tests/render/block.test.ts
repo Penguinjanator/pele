@@ -377,13 +377,37 @@ describe('block rendering', () => {
     for (const l of labelBoxes(svg)) expect(Math.abs(l.x - x) >= l.w / 2 || Math.abs(l.y - (baseline - 6)) >= l.h / 2).toBe(true);
   });
 
-  it('leaves parallel labels in place when stacking them would cover an arrowhead', () => {
+  it('keeps stacked labels clear of arrowheads', () => {
     const { svg } = render('block\n  columns 1\n  a\n  space\n  b\n  a -- "first label" --> b\n  a -- "second label" --> b\n  b -- "third label" --> a', options);
     const tips = [...svg.matchAll(/class="pele-marker" d="([^"]*)"/g)].flatMap((m) => [...m[1].matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map((p) => [Number(p[1]), Number(p[2])]));
     expect(tips.length).toBeGreaterThan(0);
     for (const l of labelBoxes(svg)) {
       for (const [x, y] of tips) expect(Math.abs(x - l.x) >= l.w / 2 || Math.abs(y - l.y) >= l.h / 2).toBe(true);
     }
+  });
+
+  it('widens the gap between blocks whose parallel labels do not fit between them', () => {
+    const rows = 'block\n  columns 1\n  a\n  b\n  a -- "conforming" --> b\n  b -- "deviation" --> a';
+    expectSeparateLabels(rows, 2);
+    const near = layoutOf('block\n  columns 1\n  a\n  b\n  a --> b\n  b --> a');
+    const far = layoutOf(rows);
+    expect(far.get('b')!.y - far.get('a')!.y).toBeGreaterThan(near.get('b')!.y - near.get('a')!.y);
+    expectSeparateLabels('block\n  a["Service"] space b["Database"]\n  a -- "read" --> b\n  a -- "write rows" --> b\n  b -- "notify" --> a', 3);
+    expectSeparateLabels('block\n  columns 1\n  a\n  space\n  b\n  a -- "one" --> b\n  a -- "two" --> b\n  a -- "three" --> b\n  a -- "four" --> b\n  a -- "five" --> b', 5);
+    expectSeparateLabels('block\n  columns 1\n  block:up["Up"]\n    a b\n  end\n  c\n  up -- "hi there" --> c\n  c -- "back again" --> up', 2);
+    for (const path of paths(render(rows, options).svg)) expect(path).toMatch(/^M[\d.,]+L[\d.,]+$/);
+    // The row is stretched by its neighbor, so the first gap it gets falls short.
+    expectSeparateLabels('block\n  columns 2\n  block:g\n    columns 1\n    a{"a"} b\n  end\n  q["Q<br>Q<br>Q<br>Q<br>Q<br>Q"]\n  a -- "long label" --> b\n  a -- "long label" --> b', 2);
+  });
+
+  it('keeps the gap between blocks when widening it leaves labels overlapping', () => {
+    const src = 'block\n  columns 3\n  t1 t2 t3\n  a space b\n  b1 b2 b3\n  a -- "line one<br>line two<br>line three" --> b\n  b -- "back one<br>back two<br>back three" --> a';
+    expect(render(src, options).width).toBe(render(src.replace(/ -- "[^"]*" --> /g, ' --> '), options).width);
+  });
+
+  it('does not widen columns past maxWidth', () => {
+    const src = 'block\n  a["Service"] space b["Database"]\n  a -- "read" --> b\n  a -- "write rows" --> b\n  b -- "notify" --> a';
+    for (const maxWidth of [380, 397.5]) expect(render(src, { ...options, maxWidth }).width).toBeLessThanOrEqual(maxWidth);
   });
 
   it('stacks parallel labels without widening the drawing past maxWidth', () => {
