@@ -1,8 +1,8 @@
 import type { Config } from '../../preprocess.js';
 import { titleLabel } from '../../svg/title.js';
 import { escText, labelSvg, num } from '../../svg/builder.js';
-import { ARROW, edgeLabelSvg, marker, markerTrim, type EdgePath } from '../../svg/edges.js';
-import { inkFill } from '../../svg/ink.js';
+import { ARROW, casingsSvg, edgeCasing, edgeLabelSvg, marker, markerTrim, runsInside, type EdgePath } from '../../svg/edges.js';
+import { inkFill, paints } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape, shapeFilled, shapeInset, shapeSize } from '../../svg/shapes.js';
 import { classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
@@ -709,6 +709,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
 
   let clusters = '';
   let nodes = '';
+  const filled: number[] = [];
   for (let i = 1; i < order.length; i++) {
     const v = order[i];
     if (v.kind === Kind.Space) continue;
@@ -716,6 +717,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
     const id = escText(v.block.id);
     if (v.kind === Kind.Composite) {
       const top = v.y - v.h / 2;
+      if (paints(v.style.shape)) filled.push(v.x - v.w / 2, top, v.x + v.w / 2, top + v.h);
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${id}">` +
         `<rect x="${num(v.x - v.w / 2)}" y="${num(top)}" width="${num(v.w)}" height="${num(v.h)}" fill="var(--_a)"${setsFill(v.style.shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${rounded(v.style.shape)}/>` +
@@ -733,6 +735,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
       '</g>';
   }
 
+  let casings = '';
   let edges = '';
   let labels = '';
   for (let i = 0; i < routes.length; i++) {
@@ -749,6 +752,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
       }
       path = trace(points, markerTrim(startType), markerTrim(endType));
     }
+    if (runsInside(path.d, filled)) casings += edgeCasing(path, startType, endType, '', edge.thickness === 'thick');
     const id = escText(edge.id);
     edges +=
       `<g class="pele-edge" data-id="${id}">` +
@@ -772,6 +776,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
     model,
     labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
+      casingsSvg(casings) +
       (edges ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edges}</g>` : '') +
       `<g class="pele-nodes">${nodes}</g>` +
       (labels ? `<g class="pele-edge-labels" font-size="${edgeSize}">${labels}</g>` : '')

@@ -482,6 +482,17 @@ describe('block rendering', () => {
     expect(svg).toMatch(/data-id="e"[^>]*>.*?<text class="pele-label" fill="var\(--pele-fg-on-dark,#fff\)"[^>]*>Go</);
   });
 
+  it('cases edges that run over a composite fill a style sets', () => {
+    const src = 'block\n  block:g\n    a b\n  end\n  c\n  a --> b\n  b --> c\n  c --> c\n  style g fill:#BBDEFB';
+    const { svg } = render(src, options);
+    const casings = /<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(svg)![1];
+    const cased = [...casings.matchAll(/<path d="([^"]+)"\/>/g)].map((m) => m[1]);
+    const edges = [...svg.matchAll(/class="pele-edge" data-id="([^"]+)"><path d="([^"]+)"/g)].map((m) => [m[1], m[2]]);
+    expect(edges).toHaveLength(3);
+    expect(cased).toEqual(edges.slice(0, 2).map((e) => e[1]));
+    expect(render(src.replace('\n  style g fill:#BBDEFB', ''), options).svg).not.toContain('pele-casings');
+  });
+
   it('draws the front matter title', () => {
     const plain = render('block\n  a', options);
     const titled = render('---\ntitle: Systems\n---\nblock\n  a', options);
