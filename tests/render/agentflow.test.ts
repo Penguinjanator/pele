@@ -329,14 +329,19 @@ describe('agentflow rendering', () => {
     expect(node(svg, 'd').body).not.toContain('--pele-fg-on');
   });
 
-  it('cases edges that run over a flow fill a style sets', () => {
+  it('cases edges that cross a flow fill a style sets and inks those inside it', () => {
     const src = 'agentflow-beta TB\n  flow f["Flow"]\n    a["A"] --> b["B"]\n  end\n  b --> c["C"]\n  c --> d["D"]\n  style f fill:#FFF9C4';
     const svg = svgOf(src);
     const casings = /<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(svg)![1];
-    const edges = [...svg.matchAll(/class="pele-edge [^"]*" data-id="[^"]+"[^>]*><path d="([^"]+)"/g)].map((m) => m[1]);
+    const edges = [...svg.matchAll(/class="pele-edge [^"]*" data-id="[^"]+"([^>]*)><path d="([^"]+)"/g)].map((m) => [m[1], m[2]]);
     expect(edges).toHaveLength(3);
-    expect(edges.map((d) => casings.includes(`<path d="${d}"/>`))).toEqual([true, true, false]);
-    expect(svgOf(src.replace('\n  style f fill:#FFF9C4', ''))).not.toContain('pele-casings');
+    expect(edges.map(([, d]) => casings.includes(`<path d="${d}"/>`))).toEqual([false, true, false]);
+    expect(edges.map(([attrs]) => attrs)).toEqual([' stroke="var(--pele-fg-on-light,#1f1f1f)"', '', '']);
+    expect(svgOf(src.replace('\n  style f fill:#FFF9C4', ''))).not.toMatch(/pele-casings|stroke="var\(--pele-fg-on/);
+    // An edge from a flow to a node inside it starts on the flow's border and stays on its fill.
+    const held = svgOf('agentflow-beta TB\n  flow f[Flow]\n    a[A]\n  end\n  f --> a\n  style f fill:white');
+    expect(held).toMatch(/data-id="L_f_a_0" stroke="var\(--pele-fg-on-light,#1f1f1f\)"/);
+    expect(held).not.toContain('pele-casings');
   });
 
   it('links a clicked node and never writes a callback', () => {

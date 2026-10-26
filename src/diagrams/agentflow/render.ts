@@ -2,7 +2,7 @@ import { cnode, compoundLayout, direction, inheritCrossedDirections, shiftLayout
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
-import { casingsSvg, edgeCasing, edgeLabelSvg, loopPath, marker, markerTrim, routePath, runsInside, type EdgePath } from '../../svg/edges.js';
+import { casingsSvg, edgeCasing, edgeLabelSvg, loopPath, marker, markerTrim, overFills, routePath, type EdgePath, type Fill } from '../../svg/edges.js';
 import { inkFill, paints } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { PAD_X, PAD_Y, drawShape, insetRoute, shapeFilled, shapeSize } from '../../svg/shapes.js';
@@ -280,7 +280,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
 
   let clusters = '';
   let nodesOut = '';
-  const filled: number[] = [];
+  const fills: Fill[] = [];
   for (let i = 0; i < views.length; i++) {
     const view = views[i];
     const c = cnodes[i];
@@ -290,7 +290,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
     const classes = classNames(node.cssClasses.replace(/^default\s?/, ''));
     const id = escText(node.id);
     if (c.isGroup) {
-      if (paints(view.style.shape)) filled.push(x - c.w / 2, y - c.h / 2, x + c.w / 2, y + c.h / 2);
+      if (paints(view.style.shape)) fills.push({ box: [x - c.w / 2, y - c.h / 2, x + c.w / 2, y + c.h / 2], shape: view.style.shape });
       const titleX = clusterTitleX(c, view.label.width, crossings, GROUP_PAD);
       clusters +=
         `<g class="pele-cluster pele-flow${classes}" data-id="${id}">` +
@@ -356,12 +356,13 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
         ? resolveStyle(edge.cssCompiledStyles.concat(edge.style))
         : undefined;
     const endType = edge.arrowTypeEnd;
-    const color = style?.stroke ? esc(style.stroke) : 'var(--_l)';
+    const over = overFills(path.d, [path.ex, path.ey], fills, style?.line);
+    const color = over || (style?.stroke ? esc(style.stroke) : 'var(--_l)');
     const kind = edge.thickness === 'dotted' ? 'reference' : endType === 'arrow_cross' ? 'failure' : 'sequence';
     const classes = classNames(edge.classes.replace(/edge-thickness-normal|edge-pattern-solid|flowchart-link/g, ''));
-    if (runsInside(path.d, filled)) casings += edgeCasing(path, 'none', endType, style?.line);
+    if (over === '') casings += edgeCasing(path, 'none', endType, style?.line);
     edgesOut +=
-      `<g class="pele-edge pele-edge-${kind}${classes}" data-id="${escText(edge.id)}"${style?.line ?? ''}>` +
+      `<g class="pele-edge pele-edge-${kind}${classes}" data-id="${escText(edge.id)}"${over ? ` stroke="${over}"` : ''}${style?.line ?? ''}>` +
       `<path d="${path.d}"${edge.thickness === 'dotted' ? ' stroke-dasharray="3 4"' : ''}/>` +
       marker(endType, path.ex, path.ey, path.edx, path.edy, color) +
       '</g>';
