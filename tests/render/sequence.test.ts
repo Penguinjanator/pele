@@ -220,6 +220,28 @@ describe('sequence rendering', () => {
     }
   });
 
+  it('measures messages in the monospace font when monospace lists them', () => {
+    const src = 'sequenceDiagram\n  A->>B: a message in the monospace font\n  B->>B: a message to itself\n  Note over A,B: a note';
+    const plain = svgOf(src);
+    const mono = svgOf(src, { monospace: ['messages'] });
+    expect(mono).toContain('<g class="pele-edge-labels" font-size="14" font-family="var(--_fm)">');
+    expect(plain).not.toContain('font-family="var(--_fm)"');
+    expect(count(mono, 'font-family="var(--_fm)"')).toBe(1);
+    const gap = (svg: string): number => lifelines(svg).get('B')! - lifelines(svg).get('A')!;
+    expect(gap(mono)).toBeGreaterThan(gap(plain));
+    expect(render(src, { ...options, monospace: ['messages'] }).width - gap(mono)).toBeGreaterThan(render(src, options).width - gap(plain));
+    for (const monospace of [[], ['message'], 'messages', ['members']]) expect(svgOf(src, { monospace })).toBe(plain);
+  });
+
+  it('widens gaps within maxWidth for messages measured in the monospace font', () => {
+    const source =
+      'sequenceDiagram\n  participant UE\n  participant gNB\n  participant AMF\n  gNB->>UE: RRCConnectionReconfigurationComplete\n  UE->>gNB: ok';
+    const mono = render(source, { ...options, maxWidth: 760, monospace: ['messages'] });
+    expect(mono.width).toBeLessThanOrEqual(760);
+    expect(mono.width).toBeGreaterThan(render(source, { ...options, maxWidth: 760 }).width);
+    expect(mono.svg).toContain('>RRCConnectionReconfigurationComplete<');
+  });
+
   it('draws activations, nested ones offset, and ends arrows at their edges', () => {
     const svg = svgOf('sequenceDiagram\n  A->>+B: one\n  A->>+B: two\n  B-->>-A: three\n  B-->>-A: four');
     const x = lifelines(svg);

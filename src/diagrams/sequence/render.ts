@@ -3,9 +3,9 @@ import { titleLabel } from '../../svg/title.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, marker } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
-import { ROUNDED, classNames, resolveStyle, rounded } from '../../svg/theme.js';
+import { FONT_MONO, ROUNDED, classNames, resolveStyle, rounded } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
-import { Style, defaultMeasurer } from '../../text/measurer.js';
+import { Style, defaultMeasurer, type TextMeasurer } from '../../text/measurer.js';
 import type { RenderOptions, Rendered } from '../../types.js';
 import { breakLabel } from '../common/literal-label.js';
 import { tighten, titleRoom } from '../common/fit-width.js';
@@ -219,6 +219,8 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
   const small = Math.round(size * 0.875);
   const tiny = Math.round(size * 0.75);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
+  const monospaced = Array.isArray(options.monospace) && options.monospace.includes('messages');
+  const messageMeasurer: TextMeasurer = monospaced ? { width: (t, s, style) => measurer.width(t, s, style | Style.Mono) } : measurer;
   const icons = options.icons;
   const pad = options.padding ?? 8;
   const mirror = conf.mirrorActors !== false;
@@ -240,10 +242,11 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
   const messages = db.messages;
   const count = messages.length;
   const numbering = numberMessages(messages, conf.showSequenceNumbers === true);
-  const text = (raw: string | undefined, fontSize: number, wrap: boolean, width = wrapW, base = 0): Label => {
-    const label = layoutLabel(raw, false, measurer, fontSize, tight || wrap ? width : Infinity, base);
-    return tight ? breakLabel(label, measurer, Math.max(120, width)) : label;
+  const text = (raw: string | undefined, fontSize: number, wrap: boolean, width = wrapW, by = measurer): Label => {
+    const label = layoutLabel(raw, false, by, fontSize, tight || wrap ? width : Infinity);
+    return tight ? breakLabel(label, by, Math.max(120, width)) : label;
   };
+  const messageText = (raw: string, wrap: boolean, width = wrapW): Label => text(raw, small, wrap, width, messageMeasurer);
 
   let used: Set<string | undefined> | undefined;
   if (conf.hideUnusedParticipants === true) {
@@ -312,7 +315,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
       } else need(Math.min(a, b), Math.max(a, b), w - 2 * noteOver);
       views[i] = { kind: V.Note, a, b, label, x: 0, w };
     } else if (isLineMessage(m.type)) {
-      const label = text(m.message, small, m.wrap);
+      const label = messageText(m.message, m.wrap);
       const badge = badgeWidth(i);
       if (a === b) {
         need(a, a + 1, SELF_W + 8 + label.width + 16 + ACT_W + badge);
@@ -465,7 +468,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
         } else {
           x0 = Math.min(a.x, b.x);
           x1 = Math.max(a.x, b.x);
-          if (tight || m.wrap) view.label = text(m.message as string, small, true, Math.max(wrapW, x1 - x0 - 2 * msgPad - ACT_W));
+          if (tight || m.wrap) view.label = messageText(m.message as string, true, Math.max(wrapW, x1 - x0 - 2 * msgPad - ACT_W));
           if (b.createAt === i) {
             if (b.x > a.x) x1 += b.size.w / 2;
             else x0 -= b.size.w / 2;
@@ -491,7 +494,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
     let lines = 0;
     for (let i = 0; spare > 0 && i < views.length; i++) {
       const view = views[i];
-      if (view?.kind !== V.Line || view.label.lines.length <= text(messages[i].message as string, small, false, Infinity).lines.length) continue;
+      if (view?.kind !== V.Line || view.label.lines.length <= messageText(messages[i].message as string, false, Infinity).lines.length) continue;
       wrapped.push(i);
       lines += view.label.lines.length;
       stretch[Math.min(view.a, view.b)]++;
@@ -861,7 +864,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
       (framesOut ? `<g class="pele-frames" font-size="${small}" stroke="var(--_b)">${framesOut}</g>` : '') +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (crossesOut ? `<g class="pele-destroys" fill="none" stroke="var(--_l)" stroke-width="1.5" stroke-linecap="round">${crossesOut}</g>` : '') +
-      (labelsOut ? `<g class="pele-edge-labels" font-size="${small}">${labelsOut}</g>` : '') +
+      (labelsOut ? `<g class="pele-edge-labels" font-size="${small}"${monospaced ? ` font-family="${FONT_MONO}"` : ''}>${labelsOut}</g>` : '') +
       (notesOut ? `<g class="pele-notes" font-size="${small}" fill="var(--_a)" stroke="var(--_b)">${notesOut}</g>` : '') +
       (actorsOut ? `<g class="pele-nodes">${actorsOut}</g>` : '') +
       '</g>'

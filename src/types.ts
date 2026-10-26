@@ -10,7 +10,7 @@ export type MathMarkup = { svg: string; width: number; height: number } | { html
 // TeX excludes the $$ delimiters; font size is in pixels.
 export type MathResolver = (tex: string, size: number) => MathMarkup | null | undefined;
 
-export type MonospacePart = 'members' | 'attributes' | 'files';
+export type MonospacePart = 'members' | 'attributes' | 'files' | 'messages';
 
 export interface RenderOptions {
   measurer?: TextMeasurer;
