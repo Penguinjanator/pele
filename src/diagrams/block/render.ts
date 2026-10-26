@@ -1,7 +1,7 @@
 import type { Config } from '../../preprocess.js';
 import { titleLabel } from '../../svg/title.js';
 import { escText, labelSvg, num } from '../../svg/builder.js';
-import { edgeLabelSvg, marker, markerTrim, type EdgePath } from '../../svg/edges.js';
+import { ARROW, edgeLabelSvg, marker, markerTrim, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape, shapeInset, shapeSize } from '../../svg/shapes.js';
 import { classNames, resolveStyle, rounded, type ResolvedStyle } from '../../svg/theme.js';
@@ -24,6 +24,7 @@ const NO_HEIGHTS: number[] = [];
 const DEFAULT_CLASS = ['default'];
 // Checking every edge against every block is quadratic, so large diagrams route without it.
 const OBSTACLE_BUDGET = 2_000_000;
+const LABEL_GAP = 4;
 
 const SHAPES = new Map([
   ['square', 'rect'],
@@ -66,6 +67,13 @@ interface View extends Cell {
   dx: number;
   dy: number;
   // Size as drawn, which for a fixed shape is smaller than its cell.
+  bw: number;
+  bh: number;
+}
+
+interface Box {
+  x: number;
+  y: number;
   bw: number;
   bh: number;
 }
@@ -306,22 +314,59 @@ function loopPath(v: View, k: number, startTrim: number, endTrim: number): EdgeP
 
 const SPOTS = [0.5, 0.3, 0.7, 0.15, 0.85];
 
+function covers(x: number, y: number, w: number, h: number, s: View, t: View, obstacles: Box[] | undefined): boolean {
+  if (obstacles === undefined) return false;
+  for (const v of obstacles) {
+    if (v !== s && v !== t && Math.abs(x - v.x) < (w + v.bw) / 2 && Math.abs(y - v.y) < (h + v.bh) / 2) return true;
+  }
+  return false;
+}
+
 // Picks the point on a leg where a label of the given size covers no block other than the two it joins.
 function labelSpot(p: number[], at: number, w: number, h: number, s: View, t: View, obstacles: View[] | undefined): number {
   if (obstacles === undefined) return 0.5;
   for (const spot of SPOTS) {
     const x = p[at] + (p[at + 2] - p[at]) * spot;
     const y = p[at + 1] + (p[at + 3] - p[at + 1]) * spot;
-    let clear = true;
-    for (const v of obstacles) {
-      if (v !== s && v !== t && Math.abs(x - v.x) < (w + v.bw) / 2 && Math.abs(y - v.y) < (h + v.bh) / 2) {
-        clear = false;
-        break;
-      }
-    }
-    if (clear) return spot;
+    if (!covers(x, y, w, h, s, t, obstacles)) return spot;
   }
   return 0.5;
+}
+
+// Stacks overlapping labels along their shared line, if they fit between its markers and cover no other block or title.
+function stackLabels(stack: number[], routes: Route[], legs: number[][], s: View, t: View, obstacles: Box[] | undefined): void {
+  const vertical = legs[stack[0]][0] === legs[stack[0]][2];
+  let lo = -Infinity;
+  let hi = Infinity;
+  let need = -LABEL_GAP;
+  let crowded = false;
+  for (let a = 0; a < stack.length; a++) {
+    const leg = legs[stack[a]];
+    if (vertical ? leg[0] !== leg[2] : leg[1] !== leg[3]) return;
+    lo = Math.max(lo, vertical ? Math.min(leg[1], leg[3]) : Math.min(leg[0], leg[2]));
+    hi = Math.min(hi, vertical ? Math.max(leg[1], leg[3]) : Math.max(leg[0], leg[2]));
+    const p = routes[stack[a]];
+    need += (vertical ? p.label.height : p.label.width + 8) + LABEL_GAP;
+    for (let b = 0; b < a; b++) {
+      const q = routes[stack[b]];
+      if (Math.abs(p.lx - q.lx) < (p.label.width + q.label.width) / 2 + 8 && Math.abs(p.ly - q.ly) < (p.label.height + q.label.height) / 2) crowded = true;
+    }
+  }
+  if (!crowded || need > hi - lo - 2 * ARROW) return;
+  const along: number[] = [];
+  let next = (lo + hi - need) / 2;
+  for (const i of stack) {
+    const { label, lx, ly } = routes[i];
+    const size = vertical ? label.height : label.width + 8;
+    const at = next + size / 2;
+    if (covers(vertical ? lx : at, vertical ? at : ly, label.width + 8, label.height, s, t, obstacles)) return;
+    along.push(at);
+    next += size + LABEL_GAP;
+  }
+  stack.forEach((i, k) => {
+    if (vertical) routes[i].ly = along[k];
+    else routes[i].lx = along[k];
+  });
 }
 
 export function renderBlock(model: BlockModel, config: Config, options: RenderOptions): Rendered {
@@ -445,6 +490,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
   const content = layout(root, gap);
 
   const obstacles: View[] = [];
+  const titles: Box[] = [];
   for (const v of order) {
     if (v.kind === Kind.Leaf && FIXED.has(v.shape)) {
       v.bw = v.nw;
@@ -458,6 +504,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
     }
     if (v.kind === Kind.Leaf && v.shape === 'cyl') v.dy = Math.min(12, Math.max(6, v.bw / 14)) / 2;
     if (v.kind === Kind.Leaf || v.kind === Kind.Arrow) obstacles.push(v);
+    else if (v.head > 0) titles.push({ x: v.x, y: v.y - v.h / 2 + (v.head + gap) / 2 + 2, bw: v.label.width, bh: v.label.height });
   }
 
   // Edges between the same two blocks are spread apart instead of drawn on top of each other.
@@ -478,6 +525,8 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
   const check = drawn.length * obstacles.length <= OBSTACLE_BUDGET ? obstacles : undefined;
   const seen = new Map<number, number>();
   const routes: Route[] = [];
+  const stacks = new Map<number, number[]>();
+  const legs: number[][] = [];
   let minX = 0;
   let minY = 0;
   let maxX = content.width;
@@ -515,10 +564,20 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
       const spot = label.width > 0 ? labelSpot(points, at, label.width + 8, label.height, s, t, check) : 0.5;
       lx = points[at] + (points[at + 2] - points[at]) * spot;
       ly = points[at + 1] + (points[at + 3] - points[at + 1]) * spot;
+      if (label.width > 0 && total > 1) {
+        legs[i] = points.slice(at, at + 4);
+        const stack = stacks.get(key);
+        if (stack) stack.push(i);
+        else stacks.set(key, [i]);
+      }
     }
-    if (label.width > 0) grow(lx, ly, label.width + 8, label.height);
     routes.push({ edge: drawn[i], points, loop: s === t ? k + 1 : 0, label, lx, ly });
   }
+  const blocked = check && [...check, ...titles];
+  for (const stack of stacks.values()) {
+    if (stack.length > 1) stackLabels(stack, routes, legs, ends[stack[0]][0], ends[stack[0]][1], blocked);
+  }
+  for (const route of routes) if (route.label.width > 0) grow(route.lx, route.ly, route.label.width + 8, route.label.height);
 
   const title = titleLabel(model.title, measurer, size, tight ? titleRoom(options) : 4000);
   const titleHeight = title.height > 0 ? title.height + 12 : 0;
