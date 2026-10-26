@@ -3,7 +3,7 @@ import { titleLabel } from '../../svg/title.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num, type IconResolver } from '../../svg/builder.js';
 import { markCrossings, type Crossings } from '../../svg/cluster.js';
-import { casing, casingsSvg, edgeLabelSvg, marker, markerTrim, routePath, runsInside, type EdgePath } from '../../svg/edges.js';
+import { casing, casingsSvg, edgeInk, edgeLabelSvg, fillUnder, hollowOn, marker, markerTrim, routePath, type EdgePath, type Fill } from '../../svg/edges.js';
 import { inkFill, paints } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
@@ -340,7 +340,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
   attachEnds(cedges, cnodes, views);
 
   let clusters = '';
-  const filled: number[] = [];
+  const fills: Fill[] = [];
   let nodesOut = '';
   for (let i = 0; i < views.length; i++) {
     const view = views[i];
@@ -358,7 +358,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
     if (view.kind === Kind.Boundary) {
       const x = c.x - c.w / 2;
       const y = c.y - c.h / 2;
-      if (paints(shape)) filled.push(x, y, x + c.w, y + c.h);
+      if (paints(shape)) fills.push({ box: [x, y, x + c.w, y + c.h], shape });
       const box = ` fill="var(--_a)"${setsFill(shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${shape}`;
       const titleAttrs = ` class="pele-cluster-label"${muted}${textAttrs}`;
       let body: string;
@@ -507,18 +507,20 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
       if (ce.route.length < 6) continue;
       path = routePath(ce.route, undefined, trim(startType), trim(endType));
     }
-    const color = style?.stroke ? esc(style.stroke) : 'var(--_l)';
-    if (runsInside(path.d, filled)) {
+    const under = fillUnder(path.d, [path.sx, path.sy, path.ex, path.ey], fills);
+    const over = under ? edgeInk(under, style?.line) : under;
+    const color = over || (style?.stroke ? esc(style.stroke) : 'var(--_l)');
+    if (over === '') {
       const bg = 'var(--_bg)';
       casings += casing(path.d, mark(startType, path.sx, path.sy, path.sdx, path.sdy, bg, bg) + mark(endType, path.ex, path.ey, path.edx, path.edy, bg, bg), style?.line);
     }
     // Mermaid animates these dashes. A still picture keeps the dashes.
     const dashes = edge.internal ? '2 3' : edge.pattern === 'dotted' ? '5 4' : edge.animate ? '9 5' : '';
+    const marks = mark(startType, path.sx, path.sy, path.sdx, path.sdy, color) + mark(endType, path.ex, path.ey, path.edx, path.edy, color);
     edgesOut +=
-      `<g class="pele-edge pele-${edge.relationshipType}${classNames(edge.classes.replace(/^default relationship relationship-\S+\s?/, ''))}" data-id="${escText(edge.id)}"${style?.line ?? ''}>` +
+      `<g class="pele-edge pele-${edge.relationshipType}${classNames(edge.classes.replace(/^default relationship relationship-\S+\s?/, ''))}" data-id="${escText(edge.id)}"${over ? ` stroke="${over}"` : ''}${style?.line ?? ''}>` +
       `<path d="${path.d}"${dashes ? ` stroke-dasharray="${dashes}"` : ''}/>` +
-      mark(startType, path.sx, path.sy, path.sdx, path.sdy, color) +
-      mark(endType, path.ex, path.ey, path.edx, path.edy, color) +
+      (under && over ? hollowOn(marks, under) : marks) +
       '</g>';
     if (label.width > 0) {
       const x = ce.labelX;

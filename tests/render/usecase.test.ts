@@ -228,14 +228,19 @@ describe('use case diagram rendering', () => {
     expect(node('X')).not.toContain('--pele-fg-on');
   });
 
-  it('cases edges that run over a boundary fill a style sets', () => {
+  it('cases edges that cross a boundary fill a style sets and inks those inside it', () => {
     const src = 'actor User\nsystemBoundary S\n  Pay\n  Ship\nend\nPay --> Ship\nUser --> Pay\nUser --> Other\nstyle S fill:#BBDEFB';
     const svg = svgOf(src);
     const casings = /<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(svg)![1];
-    const edges = [...svg.matchAll(/class="pele-edge [^"]*" data-id="[^"]+"[^>]*><path d="([^"]+)"/g)].map((m) => m[1]);
+    const edges = [...svg.matchAll(/class="pele-edge [^"]*" data-id="[^"]+"([^>]*)><path d="([^"]+)"/g)].map((m) => [m[1], m[2]]);
     expect(edges).toHaveLength(3);
-    expect(edges.map((d) => casings.includes(`<path d="${d}"/>`))).toEqual([true, true, false]);
-    expect(svgOf(src.replace('\nstyle S fill:#BBDEFB', ''))).not.toContain('pele-casings');
+    // Pay --> Ship lies inside the boundary and takes its ink; User --> Pay crosses into it.
+    expect(edges.map(([, d]) => casings.includes(`<path d="${d}"/>`))).toEqual([false, true, false]);
+    expect(edges.map(([attrs]) => attrs)).toEqual([' stroke="var(--pele-fg-on-light,#1f1f1f)"', '', '']);
+    expect(svgOf(src.replace('\nstyle S fill:#BBDEFB', ''))).not.toMatch(/pele-casings|stroke="var\(--pele-fg-on/);
+    // A hollow triangle keeps the fill's color inside it.
+    const hollow = svgOf('systemBoundary S\n  Pay\n  Ship\nend\nPay --|> Ship\nstyle S fill:black');
+    expect(hollow).toMatch(/class="pele-marker"[^>]* fill="black" stroke="var\(--pele-fg-on-dark,#fff\)"/);
   });
 
   it('puts an actor that is pointed at on the far side of the boundary', () => {
