@@ -1,8 +1,8 @@
 import { cnode, compoundLayout, direction, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
-import { edgeLabelSvg, marker, markerTrim, routePath, sideReach, type EdgePath } from '../../svg/edges.js';
-import { inkFill } from '../../svg/ink.js';
+import { casingsSvg, edgeCasing, edgeLabelSvg, marker, markerTrim, routePath, runsInside, sideReach, type EdgePath } from '../../svg/edges.js';
+import { inkFill, paints } from '../../svg/ink.js';
 import { endSide } from '../../svg/shapes.js';
 import { svgDocument } from '../../svg/root.js';
 import { withTitle } from '../../svg/title.js';
@@ -432,6 +432,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
   for (let q = 0; q < order.length; q++) for (const child of children[order[q]]) order.push(child);
 
   let clusters = '';
+  const filled: number[] = [];
   let dividers = '';
   let nodesOut = '';
   let notesOut = '';
@@ -478,6 +479,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
       case K.Composite: {
         const left = x - c.w / 2;
         const top = y - c.h / 2;
+        if (paints(style.shape)) filled.push(left, top, left + c.w, top + c.h);
         body = rect(left, top, c.w, c.h, ` rx="${CORNER}" fill="var(--_a)"${setsFill(style.shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${style.shape}`);
         if (view.titleH > 0) {
           body +=
@@ -577,6 +579,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
     reach.add(ce.dst, endSide(ce.route, ce.route.length - 3, cnodes[ce.dst]), 'arrow_point');
   }
 
+  let casings = '';
   let edgesOut = '';
   let labelsOut = '';
   const loopSeen = new Int32Array(states);
@@ -647,6 +650,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
       }
       path = routePath(route, typeof curve === 'string' ? curve : undefined, 0, markerTrim(endType), leaves, arrives);
     }
+    if (runsInside(path.d, filled)) casings += edgeCasing(path, 'none', endType);
     edgesOut +=
       `<g class="pele-edge ${note ? 'pele-note-edge" stroke="var(--_b)" stroke-dasharray="3 4' : 'pele-transition'}" data-id="${escText(edge.id)}">` +
       `<path d="${path.d}"/>` +
@@ -668,6 +672,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
     height,
     (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
       (dividers ? `<g class="pele-dividers" stroke-dasharray="4 4"${RULE}>${dividers}</g>` : '') +
+      casingsSvg(casings) +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${small}">${labelsOut}</g>` : '') +
       `<g class="pele-nodes">${nodesOut}${notesOut}</g>`

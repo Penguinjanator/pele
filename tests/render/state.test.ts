@@ -183,6 +183,19 @@ describe('state diagram rendering', () => {
     expect(svg).toMatch(/data-id="Busy">.*?<text class="pele-cluster-label" fill="var\(--pele-fg-on-light,#1f1f1f\)"[^>]*>Busy</);
   });
 
+  it('cases transitions that run over a composite fill a style sets', () => {
+    const src = 'state Busy {\n  a --> b\n}\nstate Idle {\n  c --> d\n}\nb --> e\ne --> c\nstyle Busy fill:#FFF9C4';
+    const svg = draw(src);
+    const casings = /<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(svg)![1];
+    const cased = [...casings.matchAll(/<path d="([^"]+)"\/>/g)].map((m) => m[1]);
+    const edge = (id: string): string => new RegExp(`data-id="${id}"><path d="([^"]+)"`).exec(svg)![1];
+    expect(cased).toHaveLength(2);
+    // a --> b, then b --> e out of the composite.
+    expect(cased).toContain(edge('edge0'));
+    expect(cased).toContain(edge('edge2'));
+    expect(draw(src.replace('\nstyle Busy fill:#FFF9C4', ''))).not.toContain('pele-casings');
+  });
+
   it('gives each composite its own direction', () => {
     const svg = draw('state A {\n direction LR\n a1 --> a2\n }\n state B {\n b1 --> b2\n }\n A --> B');
     expect(place(svg, 'a1').y).toBe(place(svg, 'a2').y);
