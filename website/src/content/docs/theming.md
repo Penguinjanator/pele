@@ -157,6 +157,4 @@ flowchart LR
 
 Colors set this way are fixed. They do not change with the theme.
 
-When the source sets a fill, labels on it use `--pele-fg-on-light` or `--pele-fg-on-dark`, whichever contrasts more with the fill, so they stay readable in light and dark themes. An edge or arrow that stays on one fill set in the source, such as inside a filled subgraph or a sequence diagram's colored `rect` or `box`, uses the same color as the labels on that fill. An edge that crosses from that fill onto the page or into another fill gets an outline in `--pele-bg` so the line stands out from both.
-
-Fills less than half opaque keep the theme's colors. A `color` set in the source still wins.
+A diagram can define fill colors with `style`, `classDef`, or a sequence `rect` or `box`. Labels on a fill automatically use whichever of `--pele-fg-on-light` and `--pele-fg-on-dark` contrasts more with it.
