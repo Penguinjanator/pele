@@ -195,6 +195,13 @@ describe('flowchart rendering', () => {
     expect(svg).toContain('fill="#f00"');
   });
 
+  it('draws a subgraph fill the author sets at full opacity', () => {
+    const src = 'flowchart LR\n  subgraph S\n    A\n  end\n  subgraph T\n    B\n  end\n  style S fill:#BBDEFB';
+    const { svg } = render(src, options);
+    expect(svg).toMatch(/data-id="S"><rect [^>]*fill="var\(--_a\)" stroke="var\(--_b\)" style="[^"]*fill:#BBDEFB;/);
+    expect(svg).toMatch(/data-id="T"><rect [^>]*fill="var\(--_a\)" fill-opacity="0.5"/);
+  });
+
   it('drops style values that could load resources or break out of the attribute', () => {
     expect(resolveStyle(['fill:url(http://example.com/x.png)', 'stroke:red']).shape).toBe(' style="stroke:red;"');
     expect(resolveStyle(['fill:red;background:blue', 'color:expression(alert(1))']).shape).toBe('');

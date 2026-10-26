@@ -5,7 +5,7 @@ import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.
 import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
 import { PAD_X, PAD_Y, drawShape, insetRoute, shapeSize } from '../../svg/shapes.js';
-import { classNames, resolveStyle, rounded, seriesColor, type ResolvedStyle } from '../../svg/theme.js';
+import { classNames, resolveStyle, rounded, seriesColor, setsFill, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
 import { decodeEntities } from '../../text/entities.js';
@@ -48,13 +48,11 @@ function numberOption(config: Config, key: string, fallback: number): number {
   return typeof value === 'number' && value > 0 ? Math.min(value, 2000) : fallback;
 }
 
-const RE_FILL = /[";]fill:/;
-
 // A palette color as an outline with a light wash of the same color inside.
 // A fill the author set replaces the wash and stays opaque.
 function tint(slot: number, wash: string, style: ResolvedStyle): string {
   const color = seriesColor(slot);
-  return ` fill="${color}"${RE_FILL.test(style.shape) ? '' : ` fill-opacity="${wash}"`} stroke="${color}"`;
+  return ` fill="${color}"${setsFill(style.shape) ? '' : ` fill-opacity="${wash}"`} stroke="${color}"`;
 }
 
 interface NodeView {

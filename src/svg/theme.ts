@@ -15,6 +15,11 @@ export const RADIUS = 'var(--pele-radius,4px)';
 // diagram styles can override it.
 export const ROUNDED = ' style="rx:var(--_r)"';
 
+const RE_FILL = /[";]fill:/;
+
+// Expects a shape style from resolveStyle().
+export const setsFill = (shape: string): boolean => RE_FILL.test(shape);
+
 export function rounded(attrs: string): string {
   const at = attrs.indexOf(' style="');
   return at < 0 ? attrs + ROUNDED : `${attrs.slice(0, at + 8)}rx:var(--_r);${attrs.slice(at + 8)}`;
