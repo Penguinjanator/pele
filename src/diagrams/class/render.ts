@@ -93,6 +93,8 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
   const graph = buildClassGraph(db, conf.hierarchicalNamespaces !== false);
   const hideEmpty = conf.hideEmptyMembersBox === true;
   const monospaced = Array.isArray(options.monospace) && options.monospace.includes('members');
+  // Explicit class fonts override monospace.
+  const mono = (style: ResolvedStyle): boolean => monospaced && !/[";]font-family:/.test(style.text);
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
   const tiny = Math.round(size * 0.8);
@@ -217,8 +219,8 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
     const generic = cls.type ? '&lt;' + parseGenericTypes(cls.type).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '&gt;' : '';
     const label = layoutLabel(cls.label + generic, false, measurer, fontSize, 4000, Style.Bold | (style.italic ? Style.Italic : 0));
     const annotations = cls.annotations.length > 0 ? cls.annotations.map((a) => mathText(`«${a.trim()}»`, tiny) ?? `«${decodeEntities(a).trim()}»`) : NO_TEXT;
-    const attributes = cls.members.length > 0 ? cls.members.map((m) => memberLine(m, measurer, memberSize, monospaced)) : NO_LINES;
-    const methods = cls.methods.length > 0 ? cls.methods.map((m) => memberLine(m, measurer, memberSize, monospaced)) : NO_LINES;
+    const attributes = cls.members.length > 0 ? cls.members.map((m) => memberLine(m, measurer, memberSize, mono(style))) : NO_LINES;
+    const methods = cls.methods.length > 0 ? cls.methods.map((m) => memberLine(m, measurer, memberSize, mono(style))) : NO_LINES;
     let inner = label.width;
     let annotationsH = 0;
     for (const a of annotations) {
@@ -578,7 +580,7 @@ function draw(db: ClassDb, config: Config, options: RenderOptions, turned: boole
       return out;
     };
     if (view.attributes.length > 0 || view.methods.length > 0) {
-      body += `<g class="pele-members" font-size="${memberSize}"${monospaced ? ` font-family="${FONT_MONO}"` : ''}>${lines(view.attributes, 'attribute', first)}${lines(view.methods, 'method', second)}</g>`;
+      body += `<g class="pele-members" font-size="${memberSize}"${mono(style) ? ` font-family="${FONT_MONO}"` : ''}>${lines(view.attributes, 'attribute', first)}${lines(view.methods, 'method', second)}</g>`;
     }
     if (cls.tooltip) body = `<title>${escText(cls.tooltip)}</title>` + body;
     if (cls.link) body = linked(body, cls.link, cls.id, links, options, cls.linkTarget && TARGETS.has(cls.linkTarget) ? ` target="${cls.linkTarget}"` : '');

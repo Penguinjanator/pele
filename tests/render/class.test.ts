@@ -244,6 +244,16 @@ describe('class diagram rendering', () => {
     expect(draw(src, { monospace: ['attributes', 'members'] })).toBe(draw(src, { monospace: ['members'] }));
   });
 
+  it("keeps a class's own font-family on its members when monospace lists them", () => {
+    for (const rule of ['style A color:black,font-family:serif', 'classDef serif color:black,font-family:serif\nclass A:::serif']) {
+      const src = `class A {\n  +title: string\n}\nclass B {\n  +title: string\n}\n${rule}`;
+      const svg = draw(src, { monospace: ['members'] });
+      const members = (out: string): string => /<g class="pele-members".*?<\/g>/.exec(group(out, 'A'))![0];
+      expect(members(svg)).toBe(members(draw(src)));
+      expect(group(svg, 'B')).toContain('font-family="var(--_fm)"');
+    }
+  });
+
   it('uses the label of a class in place of its name', () => {
     const svg = draw('class A["A class with a label"]\nclass `Animal Class!`\nA --> `Animal Class!`');
     expect(group(svg, 'A')).toContain('>A class with a label<');
