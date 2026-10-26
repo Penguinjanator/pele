@@ -48,6 +48,48 @@ function paths(svg: string): string[] {
   return [...svg.matchAll(/class="pele-edge" data-id="[^"]*"><path d="([^"]*)"/g)].map((m) => m[1]);
 }
 
+function expectSeparateLabels(src: string, count: number): void {
+  const result = render(src, options);
+  const model = parse(src);
+  if (model.type !== 'block') throw new Error('not a block model');
+  const el = elements(result.svg);
+  const labels = el.flatMap((element, index) => {
+    if (element.attrs.get('class') !== 'pele-edge-label') return [];
+    const rect = el[index + 1];
+    expect(rect.name).toBe('rect');
+    const w = Number(rect.attrs.get('width'));
+    const h = Number(rect.attrs.get('height'));
+    return [{
+      id: element.attrs.get('data-id'),
+      x: Number(rect.attrs.get('x')) + w / 2,
+      y: Number(rect.attrs.get('y')) + h / 2,
+      w,
+      h,
+    }];
+  });
+  expect(labels).toHaveLength(count);
+  expect(labels.map((label) => label.id)).toEqual(model.edges.filter((edge) => edge.label).map((edge) => edge.id));
+  expect(paths(result.svg)).toHaveLength(model.edges.length);
+  for (let i = 0; i < labels.length; i++) {
+    const a = labels[i];
+    expect(a.w).toBeGreaterThan(0);
+    expect(a.h).toBeGreaterThan(0);
+    expect(a.x - a.w / 2).toBeGreaterThanOrEqual(0);
+    expect(a.y - a.h / 2).toBeGreaterThanOrEqual(0);
+    expect(a.x + a.w / 2).toBeLessThanOrEqual(result.width);
+    expect(a.y + a.h / 2).toBeLessThanOrEqual(result.height);
+    for (const b of labels.slice(i + 1)) {
+      const overlapX = (a.w + b.w) / 2 - Math.abs(a.x - b.x);
+      const overlapY = (a.h + b.h) / 2 - Math.abs(a.y - b.y);
+      expect(Math.min(overlapX, overlapY), `${a.id} overlaps ${b.id}`).toBeLessThanOrEqual(0.01);
+    }
+    // Labels paint last, so a label's center must belong to that label alone.
+    const hits = labels.filter((b) => Math.abs(a.x - b.x) < b.w / 2 && Math.abs(a.y - b.y) < b.h / 2);
+    expect(hits.map((b) => b.id)).toEqual([a.id]);
+  }
+  expect(render(src, options).svg).toBe(result.svg);
+}
+
 describe('block rendering', () => {
   it('renders every corpus input that parses, as well-formed and inert SVG', () => {
     let rendered = 0;
@@ -265,6 +307,42 @@ describe('block rendering', () => {
     const [first, second] = paths(render('block\n  a space b\n  a --> b\n  b --> a', options).svg);
     const y = (d: string): string => /^M[\d.]+,([\d.]+)/.exec(d)![1];
     expect(y(first)).not.toBe(y(second));
+  });
+
+  it('separates labels on opposite vertical edges', () => {
+    expectSeparateLabels(
+      'block\n  columns 1\n  a["Upper layer"]\n  space:3\n  b["Lower layer"]\n  a -- "12 production conforming" --> b\n  b -- "12 production deviation" --> a',
+      2
+    );
+  });
+
+  it('separates labels on opposite horizontal edges', () => {
+    expectSeparateLabels(
+      'block\n  a["Left layer"] space:3 b["Right layer"]\n  a -- "12 production<br>conforming" --> b\n  b -- "12 production<br>deviation" --> a',
+      2
+    );
+  });
+
+  it('keeps disjoint labels on their original straight parallel routes', () => {
+    const src = 'block\n  a space:3 b\n  a -- "forward" --> b\n  b -- "reverse" --> a';
+    expectSeparateLabels(src, 2);
+    for (const path of paths(render(src, options).svg)) {
+      expect(path).toMatch(/^M[\d.,]+L[\d.,]+$/);
+    }
+  });
+
+  it('separates wide labels when narrow endpoints clamp the parallel routes', () => {
+    expectSeparateLabels(
+      'block\n  columns 1\n  a["A"]\n  space\n  b["B"]\n  a -- "144 production conforming" --> b\n  b -- "144 production deviation" --> a',
+      2
+    );
+  });
+
+  it('keeps every label for several edges between the same blocks', () => {
+    expectSeparateLabels(
+      'block\n  columns 1\n  a["A"]\n  space:2\n  b["B"]\n  a -- "7 production policy" --> b\n  a -- "7 test policy" --> b\n  a -- "7 production exception" --> b\n  b -- "7 production deviation" --> a',
+      4
+    );
   });
 
   it('draws a self-loop as an arc', () => {
