@@ -316,9 +316,12 @@ export function zoomWith(element: HTMLElement, options: ZoomOptions, observe: bo
     return { distance: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   };
 
-  const onPointerDown = (event: PointerEvent): void => {
-    // A pinch may not fire a click.
+  // A pinch may not fire a click; reset before the page can stop pointerdown.
+  const onPress = (): void => {
     dragged = false;
+  };
+
+  const onPointerDown = (event: PointerEvent): void => {
     if (!zoomable() || ours(event) || (event.pointerType === 'mouse' && event.button !== 0)) return;
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     travelled = 0;
@@ -426,6 +429,7 @@ export function zoomWith(element: HTMLElement, options: ZoomOptions, observe: bo
   };
 
   const listeners: [string, EventListener, AddEventListenerOptions?][] = [
+    ['pointerdown', onPress, { capture: true }],
     ['pointerdown', onPointerDown as EventListener],
     ['pointermove', onPointerMove as EventListener],
     ['pointerup', onPointerUp as EventListener],

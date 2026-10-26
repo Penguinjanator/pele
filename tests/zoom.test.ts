@@ -47,7 +47,7 @@ describe('zoom frame', () => {
 
 const drawingIn = (shown: number) => {
   const listening = new Map<string, number>();
-  const handlers = new Map<string, (event: unknown) => void>();
+  const handlers = new Map<string, ((event: unknown) => void)[]>();
   const attributes: Record<string, string> = { width: '1200', height: '300' };
   const svg = {
     localName: 'svg',
@@ -67,7 +67,7 @@ const drawingIn = (shown: number) => {
     style: {},
     addEventListener: (type: string, handler: (event: unknown) => void) => {
       count(type, 1);
-      handlers.set(type, handler);
+      handlers.set(type, [...(handlers.get(type) ?? []), handler]);
     },
     removeEventListener: (type: string) => count(type, -1),
   };
@@ -75,7 +75,7 @@ const drawingIn = (shown: number) => {
     element: element as unknown as HTMLElement,
     svg,
     listening: (type: string) => listening.get(type) ?? 0,
-    fire: (type: string, event: unknown) => handlers.get(type)?.(event),
+    fire: (type: string, event: unknown) => handlers.get(type)?.forEach((handler) => handler(event)),
     show: (width: number) => {
       shown = width;
       element.clientWidth = width;
@@ -99,7 +99,7 @@ describe('zoom', () => {
     enableZoom(fits.element, { controls: false });
     expect(fits.listening('wheel')).toBe(0);
     expect(fits.listening('gesturestart')).toBe(0);
-    expect(fits.listening('pointerdown')).toBe(1);
+    expect(fits.listening('pointermove')).toBe(1);
 
     const shrunk = drawingIn(400);
     const zoom = enableZoom(shrunk.element, { controls: false });
