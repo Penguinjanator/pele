@@ -111,6 +111,7 @@ render(source, { monospace: ['members'] });
 | --- | --- |
 | `members` | Attributes and methods in class diagrams, styled by `.pele-member` |
 | `attributes` | Attribute types, names and keys in ER diagrams, styled by `.pele-er-type`, `.pele-er-name` and `.pele-er-keys` |
+| `files` | File and directory names in tree view diagrams, styled by `.pele-label` inside `.pele-tree-file` and `.pele-tree-dir` |
 
 ## Classes
 
