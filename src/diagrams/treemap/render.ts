@@ -1,5 +1,6 @@
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
+import { inkFill } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { classNames, resolveStyle, rounded, seriesColor } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
@@ -93,6 +94,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
     // Inline font sizes override SVG attributes, so truncate instead of shrinking.
     const fixed = style.fontSize;
     const textStyle = (style.bold ? Style.Bold : 0) | (style.italic ? Style.Italic : 0);
+    const ink = inkFill(style);
 
     if (node.children !== undefined) {
       let text = '';
@@ -111,10 +113,10 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
         const baseline = y + b.header / 2 + 1;
         drawn = label?.text;
         if (label) {
-          text += `<text x="${num(x + SIDE + 2)}" y="${num(baseline + labelSize * 0.35)}" font-weight="var(--_hw)"${short ? ` font-size="${labelSize}"` : ''}${style.text}>${esc(label.text)}</text>`;
+          text += `<text x="${num(x + SIDE + 2)}" y="${num(baseline + labelSize * 0.35)}" font-weight="var(--_hw)"${short ? ` font-size="${labelSize}"` : ''}${ink}${style.text}>${esc(label.text)}</text>`;
         }
         if (withValue && valueSize * LINE <= HEADER) {
-          text += `<text class="pele-value" x="${num(x + b.w - SIDE - 2)}" y="${num(baseline + valueSize * 0.35)}" font-size="${tiny}" text-anchor="end" fill="var(--_m)"${style.text}>${esc(value)}</text>`;
+          text += `<text class="pele-value" x="${num(x + b.w - SIDE - 2)}" y="${num(baseline + valueSize * 0.35)}" font-size="${tiny}" text-anchor="end"${ink || ' fill="var(--_m)"'}${style.text}>${esc(value)}</text>`;
         }
       }
       // A section is a tint of its color, unless a class gives it a fill of its own. Headerless
@@ -142,10 +144,10 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
         const first = cy - lines / 2 + (label.size * LINE) / 2;
         const second = cy + lines / 2 - (valueSize * LINE) / 2;
         text =
-          `<text x="${cx}" y="${num(first + label.size * 0.35)}" font-size="${num(label.size)}"${style.text}>${esc(label.text)}</text>` +
-          `<text class="pele-value" x="${cx}" y="${num(second + valueSize * 0.35)}" font-size="${num(valueSize)}"${style.text}>${esc(value)}</text>`;
+          `<text x="${cx}" y="${num(first + label.size * 0.35)}" font-size="${num(label.size)}"${ink}${style.text}>${esc(label.text)}</text>` +
+          `<text class="pele-value" x="${cx}" y="${num(second + valueSize * 0.35)}" font-size="${num(valueSize)}"${ink}${style.text}>${esc(value)}</text>`;
       } else {
-        text = `<text x="${cx}" y="${num(cy + label.size * 0.35)}" font-size="${num(label.size)}"${style.text}>${esc(label.text)}</text>`;
+        text = `<text x="${cx}" y="${num(cy + label.size * 0.35)}" font-size="${num(label.size)}"${ink}${style.text}>${esc(label.text)}</text>`;
       }
     }
     leaves += `<g class="pele-node pele-leaf${classNames(node.classSelector ?? '')}" ${group}${tooltip(label?.text)}${rect}${corners(style.shape, b)}/>${text}</g>`;

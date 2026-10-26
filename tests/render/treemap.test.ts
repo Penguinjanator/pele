@@ -244,6 +244,19 @@ describe('treemap rendering', () => {
     expect(svg).toContain('class="pele-node pele-section frame"');
   });
 
+  it('picks a contrasting text color on fills a style sets', () => {
+    const { svg } = render(
+      'treemap\n"Section":::frame\n  "a": 10:::dark\n  "b": 20:::own\n  "c": 30\nclassDef frame fill:#FFF9C4\nclassDef dark fill:navy\nclassDef own fill:navy,color:#ddd',
+      { ...options, config: { treemap: { showValues: true } } }
+    );
+    const group = (id: string): string => new RegExp(`data-id="${id}">(.*?)</g>`).exec(svg)![1];
+    expect(group('Section')).toMatch(/<text[^>]* font-weight="var\(--_hw\)" fill="var\(--pele-fg-on-light,#1f1f1f\)">Section</);
+    expect(group('Section')).toMatch(/<text class="pele-value"[^>]* fill="var\(--pele-fg-on-light,#1f1f1f\)">/);
+    expect(group('a')).toMatch(/<text[^>]* fill="var\(--pele-fg-on-dark,#fff\)">a</);
+    expect(group('b')).not.toContain('--pele-fg-on');
+    expect(group('c')).not.toContain('--pele-fg-on');
+  });
+
   it('reads class names that start with title', () => {
     const { svg } = render('treemap\n"S":::titles\n  "a": 1:::title_2\nclassDef title_2 fill:red', options);
     expect(svg).toContain('class="pele-node pele-section titles"');
