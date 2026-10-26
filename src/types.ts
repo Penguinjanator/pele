@@ -10,12 +10,15 @@ export type MathMarkup = { svg: string; width: number; height: number } | { html
 // TeX excludes the $$ delimiters; font size is in pixels.
 export type MathResolver = (tex: string, size: number) => MathMarkup | null | undefined;
 
+export type MonospacePart = 'members';
+
 export interface RenderOptions {
   measurer?: TextMeasurer;
   // The fonts labels are measured in, and drawn in where the page sets no --pele-font or
   // --pele-font-mono.
   fontFamily?: string;
   fontFamilyMono?: string;
+  monospace?: readonly MonospacePart[];
   fontSize?: number;
   idPrefix?: string;
   responsive?: boolean;

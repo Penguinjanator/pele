@@ -12,7 +12,7 @@ export { PeleError } from './errors.js';
 export type { PeleErrorCode } from './errors.js';
 export type { DiagramType, MermaidType } from './detect.js';
 export type { TextMeasurer } from './text/measurer.js';
-export type { IconResolver, LinkInfo, MathMarkup, MathResolver, RenderOptions, RenderResult } from './types.js';
+export type { IconResolver, LinkInfo, MathMarkup, MathResolver, MonospacePart, RenderOptions, RenderResult } from './types.js';
 export type { Diagram } from './types.js';
 export type { MountOptions, Mounted } from './mount.js';
 export { forgetTextWidths } from './text/measurer.js';

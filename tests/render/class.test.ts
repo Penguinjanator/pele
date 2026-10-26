@@ -225,6 +225,15 @@ describe('class diagram rendering', () => {
     expect(draw('class A', { config: { class: { hideEmptyMembersBox: true } } })).not.toContain('pele-divider');
   });
 
+  it('measures members in the monospace font when monospace lists them', () => {
+    const width = (svg: string): number => Number(/<rect[^>]* width="([\d.]+)"/.exec(group(svg, 'A'))![1]);
+    const plain = draw('class A {\n  +title: string\n}');
+    const mono = draw('class A {\n  +title: string\n}', { monospace: ['members'] });
+    expect(mono).toContain('<g class="pele-members" font-size="14" font-family="var(--_fm)">');
+    expect(plain).not.toContain('font-family="var(--_fm)"');
+    expect(width(mono)).toBeGreaterThan(width(plain));
+  });
+
   it('uses the label of a class in place of its name', () => {
     const svg = draw('class A["A class with a label"]\nclass `Animal Class!`\nA --> `Animal Class!`');
     expect(group(svg, 'A')).toContain('>A class with a label<');
