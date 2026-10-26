@@ -1,7 +1,7 @@
 import { cnode, compoundLayout, direction, type CEdge, type CNode, type Dir } from '../../layout/compound.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
-import { casingsSvg, edgeCasing, edgeLabelSvg, marker, markerTrim, routePath, runsInside, sideReach, type EdgePath } from '../../svg/edges.js';
+import { casingsSvg, edgeCasing, edgeLabelSvg, marker, markerTrim, overFills, routePath, sideReach, type EdgePath, type Fill } from '../../svg/edges.js';
 import { inkFill, paints } from '../../svg/ink.js';
 import { endSide } from '../../svg/shapes.js';
 import { svgDocument } from '../../svg/root.js';
@@ -432,7 +432,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
   for (let q = 0; q < order.length; q++) for (const child of children[order[q]]) order.push(child);
 
   let clusters = '';
-  const filled: number[] = [];
+  const fills: Fill[] = [];
   let dividers = '';
   let nodesOut = '';
   let notesOut = '';
@@ -479,7 +479,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
       case K.Composite: {
         const left = x - c.w / 2;
         const top = y - c.h / 2;
-        if (paints(style.shape)) filled.push(left, top, left + c.w, top + c.h);
+        if (paints(style.shape)) fills.push({ box: [left, top, left + c.w, top + c.h], shape: style.shape });
         body = rect(left, top, c.w, c.h, ` rx="${CORNER}" fill="var(--_a)"${setsFill(style.shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${style.shape}`);
         if (view.titleH > 0) {
           body +=
@@ -650,11 +650,13 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
       }
       path = routePath(route, typeof curve === 'string' ? curve : undefined, 0, markerTrim(endType), leaves, arrives);
     }
-    if (runsInside(path.d, filled)) casings += edgeCasing(path, 'none', endType);
+    const over = overFills(path.d, [path.ex, path.ey], fills);
+    if (over === '') casings += edgeCasing(path, 'none', endType);
+    const kind = note ? `pele-note-edge" stroke="${over || 'var(--_b)'}" stroke-dasharray="3 4` : over ? `pele-transition" stroke="${over}` : 'pele-transition';
     edgesOut +=
-      `<g class="pele-edge ${note ? 'pele-note-edge" stroke="var(--_b)" stroke-dasharray="3 4' : 'pele-transition'}" data-id="${escText(edge.id)}">` +
+      `<g class="pele-edge ${kind}" data-id="${escText(edge.id)}">` +
       `<path d="${path.d}"/>` +
-      marker(endType, path.ex, path.ey, path.edx, path.edy, 'var(--_l)') +
+      marker(endType, path.ex, path.ey, path.edx, path.edy, over || 'var(--_l)') +
       '</g>';
     if (label.width > 0) {
       const x = ce.labelX + pad;
