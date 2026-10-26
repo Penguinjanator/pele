@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PeleError, detectType, parse, render, supports } from '../../src/index.js';
+import { overFills } from '../../src/svg/edges.js';
 import { resolveStyle } from '../../src/svg/theme.js';
 import { metricsMeasurer } from '../../src/text/measurer.js';
 import { loadCorpus } from '../support/corpus.js';
@@ -217,24 +218,47 @@ describe('flowchart rendering', () => {
     expect(svg).toMatch(/class="pele-edge-label"[^>]*><rect [^>]*\/><text x=[^>]*>Launch</);
   });
 
-  it('cases edges that run over a subgraph fill a style sets', () => {
+  it('cases edges that cross into a subgraph fill a style sets and inks edges inside it', () => {
     const src =
-      'flowchart LR\n  subgraph S["Cluster"]\n    A[Start] -- Launch --> B[Worker]\n  end\n  subgraph T\n    D --> E\n  end\n  C[Output]\n  B --> C\n  C ==> D\n  B --> B\n  F --> C\n  style S fill:#BBDEFB\n  style C fill:#BBDEFB';
+      'flowchart LR\n  subgraph S["Cluster"]\n    A[Start] -- Launch --> B[Worker]\n    subgraph N\n      G --> H\n    end\n  end\n  subgraph T\n    D --> E\n  end\n  C[Output]\n  B --> C\n  C ==> D\n  B --> B\n  F --> C\n  B --> G\n  A --> H\n  style S fill:#BBDEFB\n  style N fill:navy\n  style C fill:#BBDEFB';
     const { svg } = render(src, options);
     const casings = /<g class="pele-casings" fill="none" stroke="var\(--_bg\)" stroke-width="5"[^>]* pointer-events="none">(.*?)<\/g>/.exec(svg)![1];
-    const edge = (id: string): string => new RegExp(`data-id="${id}"><path d="([^"]+)"`).exec(svg)![1];
-    const cased = [...casings.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
-    expect(cased).toContain(edge('L_A_B_0'));
-    expect(cased).toContain(edge('L_B_C_0'));
-    expect(cased).toContain(edge('L_B_B_0'));
-    expect(cased).not.toContain(edge('L_C_D_0'));
-    expect(cased).not.toContain(edge('L_D_E_0'));
-    // An edge that only ends at a filled node runs under the node, not over its fill.
-    expect(cased).not.toContain(edge('L_F_C_0'));
+    const group = (id: string): string => new RegExp(`<g class="pele-edge[^"]*" data-id="${id}"[^>]*>.*?</g>`).exec(svg)![0];
+    const edge = (id: string): string => new RegExp(`data-id="${id}"[^>]*><path d="([^"]+)"`).exec(svg)![1];
+    const cased = (id: string): boolean => casings.includes(`<path d="${edge(id)}"/>`);
+    const light = 'var(--pele-fg-on-light,#1f1f1f)';
+    // Inside one fill: that fill's ink, on the line and its arrowhead.
+    for (const id of ['L_A_B_0', 'L_B_B_0']) {
+      expect(cased(id)).toBe(false);
+      expect(group(id)).toContain(` stroke="${light}"`);
+      expect(group(id)).toContain(`class="pele-marker"`);
+      expect(group(id)).toMatch(new RegExp(`class="pele-marker"[^>]* fill="${light.replace(/[()]/g, '\\$&')}"`));
+    }
+    expect(group('L_G_H_0')).toContain(' stroke="var(--pele-fg-on-dark,#fff)"');
+    // Across a fill's border, including into a nested fill: a casing and the theme's line.
+    for (const id of ['L_B_C_0', 'L_B_G_0', 'L_A_H_0']) {
+      expect(cased(id)).toBe(true);
+      expect(group(id)).not.toContain('--pele-fg-on');
+    }
+    for (const id of ['L_C_D_0', 'L_D_E_0', 'L_F_C_0']) {
+      expect(cased(id)).toBe(false);
+      expect(group(id)).not.toContain('--pele-fg-on');
+    }
     expect(casings).toMatch(/Z" fill="var\(--_bg\)" stroke="var\(--_bg\)"\/>/);
     expect(casings).not.toContain('pele-marker');
     expect(svg.indexOf('class="pele-casings"')).toBeLessThan(svg.indexOf('class="pele-edges"'));
-    expect(render(src.replace(/\n  style S fill:#BBDEFB/, ''), options).svg).not.toContain('pele-casings');
+    expect(render(src.replace(/\n  style [SN] fill:\S+/g, ''), options).svg).not.toMatch(/pele-casings|--pele-fg-on-[a-z]+,#[0-9a-f]+\)" stroke|class="pele-edge[^>]*--pele-fg-on/);
+  });
+
+  it('cases an edge whose marker alone reaches into a nested fill', () => {
+    const fills = [
+      { box: [-20, -20, 100, 100], shape: ' style="fill:white;"' },
+      { box: [10, 0, 50, 50], shape: ' style="fill:navy;"' },
+    ];
+    expect(overFills('M0,10L8,10', [15, 10], fills)).toBe('');
+    expect(overFills('M0,10L8,10', [9, 10], fills)).toBe('var(--pele-fg-on-light,#1f1f1f)');
+    // A path that starts on a border and stays inside is held by that fill.
+    expect(overFills('M-20,10L8,10', [9, 10], fills)).toBe('var(--pele-fg-on-light,#1f1f1f)');
   });
 
   it('cases an edge whose curve runs into a filled subgraph', () => {
@@ -247,7 +271,7 @@ describe('flowchart rendering', () => {
 
   it('cases an edge as wide and as faint as its line style makes it', () => {
     const casings = (link: string, fill = 'white'): string =>
-      /<g class="pele-casings"[^>]*>(.*)<\/g><g class="pele-edges"/.exec(render(`flowchart TB\nsubgraph S\n  A --x B\nend\nstyle S fill:${fill}\n${link}`, options).svg)?.[1] ?? '';
+      /<g class="pele-casings"[^>]*>(.*)<\/g><g class="pele-edges"/.exec(render(`flowchart TB\nsubgraph S\n  A\nend\nA --x B\nstyle S fill:${fill}\n${link}`, options).svg)?.[1] ?? '';
     expect(casings('linkStyle 0 stroke-width:10px')).toMatch(/^<g stroke-width="14"><path [^>]*\/><path d="[^"]+"\/><\/g>$/);
     expect(casings('linkStyle 0 stroke-width:1em')).toMatch(/^<g style="stroke-width:calc\(1em \+ 4px\);">/);
     expect(casings('linkStyle 0 opacity:0,stroke-opacity:0.5')).toMatch(/^<g style="opacity:0;stroke-opacity:0.5;">/);

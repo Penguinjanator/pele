@@ -2,6 +2,7 @@ import { ease } from '../layout/layered.js';
 import type { Label } from '../text/label.js';
 import type { IconResolver } from '../types.js';
 import { escText, labelSvg, num } from './builder.js';
+import { ink } from './ink.js';
 
 export const ARROW = 8;
 
@@ -214,7 +215,7 @@ export function marker(type: string, x: number, y: number, dx: number, dy: numbe
   return '';
 }
 
-// Samples curves and uses arc endpoints; NaN separates subpaths.
+// Samples curves and arcs; NaN separates subpaths.
 function pathPoints(d: string): number[] {
   const out: number[] = [];
   let x = 0;
@@ -246,12 +247,17 @@ function pathPoints(d: string): number[] {
         x = xs[xs.length - 1];
         y = ys[ys.length - 1];
       }
+    } else if (cmd === 'A') {
+      for (let k = 0; k + 7 <= n.length; k += 7) {
+        arc(out, x, y, n[k], n[k + 1], n[k + 3], n[k + 4], n[k + 5], n[k + 6]);
+        x = n[k + 5];
+        y = n[k + 6];
+      }
     } else {
-      const step = cmd === 'A' ? 7 : 2;
-      for (let k = 0; k + step <= n.length; k += step) {
+      for (let k = 0; k + 2 <= n.length; k += 2) {
         if (cmd === 'M' && k === 0 && out.length > 0) out.push(NaN, NaN);
-        x = n[k + step - 2];
-        y = n[k + step - 1];
+        x = n[k];
+        y = n[k + 1];
         out.push(x, y);
       }
     }
@@ -259,32 +265,101 @@ function pathPoints(d: string): number[] {
   return out;
 }
 
-// Boxes are [left, top, right, bottom]; paths along borders do not count.
+// Samples an unrotated arc from (x1, y1), after SVG's conversion from end points to a center.
+function arc(out: number[], x1: number, y1: number, rx: number, ry: number, large: number, sweep: number, x2: number, y2: number): void {
+  const hx = (x1 - x2) / 2;
+  const hy = (y1 - y2) / 2;
+  if (rx === 0 || ry === 0 || (hx === 0 && hy === 0)) {
+    out.push(x2, y2);
+    return;
+  }
+  const scale = Math.max(1, Math.sqrt((hx * hx) / (rx * rx) + (hy * hy) / (ry * ry)));
+  rx *= scale;
+  ry *= scale;
+  const k =
+    (large === sweep ? -1 : 1) *
+    Math.sqrt(Math.max(0, (rx * rx * ry * ry - rx * rx * hy * hy - ry * ry * hx * hx) / (rx * rx * hy * hy + ry * ry * hx * hx)));
+  const cx = (k * rx * hy) / ry + (x1 + x2) / 2;
+  const cy = (-k * ry * hx) / rx + (y1 + y2) / 2;
+  const from = Math.atan2((y1 - cy) / ry, (x1 - cx) / rx);
+  let turn = Math.atan2((y2 - cy) / ry, (x2 - cx) / rx) - from;
+  if (sweep && turn < 0) turn += 2 * Math.PI;
+  else if (!sweep && turn > 0) turn -= 2 * Math.PI;
+  for (let i = 1; i <= 8; i++) out.push(cx + rx * Math.cos(from + (turn * i) / 8), cy + ry * Math.sin(from + (turn * i) / 8));
+}
+
+function enters(points: number[], l: number, t: number, r: number, b: number): boolean {
+  for (let k = 0; k + 2 < points.length; k += 2) {
+    const x = points[k];
+    const y = points[k + 1];
+    const dx = points[k + 2] - x;
+    const dy = points[k + 3] - y;
+    let lo = 0;
+    let hi = 1;
+    for (const [p, q] of [[-dx, x - l], [dx, r - x], [-dy, y - t], [dy, b - y]]) {
+      if (p === 0) {
+        if (q < 0) hi = -1;
+      } else if (p < 0) lo = Math.max(lo, q / p);
+      else hi = Math.min(hi, q / p);
+    }
+    if (lo < hi) return true;
+  }
+  return false;
+}
+
+// Whether a path runs inside any of the boxes, each given as left, top, right, bottom.
 export function runsInside(d: string, boxes: number[]): boolean {
   if (boxes.length === 0) return false;
   const points = pathPoints(d);
-  for (let b = 0; b < boxes.length; b += 4) {
-    const l = boxes[b] + 0.5;
-    const t = boxes[b + 1] + 0.5;
-    const r = boxes[b + 2] - 0.5;
-    const bottom = boxes[b + 3] - 0.5;
-    for (let k = 0; k + 2 < points.length; k += 2) {
-      const x = points[k];
-      const y = points[k + 1];
-      const dx = points[k + 2] - x;
-      const dy = points[k + 3] - y;
-      let lo = 0;
-      let hi = 1;
-      for (const [p, q] of [[-dx, x - l], [dx, r - x], [-dy, y - t], [dy, bottom - y]]) {
-        if (p === 0) {
-          if (q < 0) hi = -1;
-        } else if (p < 0) lo = Math.max(lo, q / p);
-        else hi = Math.min(hi, q / p);
-      }
-      if (lo < hi) return true;
+  for (let b = 0; b < boxes.length; b += 4) if (enters(points, boxes[b] + 0.5, boxes[b + 1] + 0.5, boxes[b + 2] - 0.5, boxes[b + 3] - 0.5)) return true;
+  return false;
+}
+
+// Fill bounds are [left, top, right, bottom].
+export interface Fill {
+  box: number[];
+  shape: string;
+}
+
+// The innermost fill holding the whole edge and its marker tips, '' when it crosses a border, or undefined off fills.
+export function fillUnder(d: string, tips: number[], fills: Fill[]): Fill | '' | undefined {
+  if (fills.length === 0) return undefined;
+  const points = pathPoints(d);
+  let holder: Fill | undefined;
+  let least = Infinity;
+  for (const fill of fills) {
+    const [l, t, r, b] = fill.box;
+    let touched = enters(points, l + 0.5, t + 0.5, r - 0.5, b - 0.5);
+    for (let k = 0; k < tips.length && !touched; k += 2) touched = tips[k] > l + 0.5 && tips[k] < r - 0.5 && tips[k + 1] > t + 0.5 && tips[k + 1] < b - 0.5;
+    if (!touched) continue;
+    const all = points.concat(tips);
+    for (let k = 0; k < all.length; k += 2) {
+      if (!Number.isNaN(all[k]) && !(all[k] >= l && all[k] <= r && all[k + 1] >= t && all[k + 1] <= b)) return '';
+    }
+    const area = (r - l) * (b - t);
+    if (area < least) {
+      least = area;
+      holder = fill;
     }
   }
-  return false;
+  return holder;
+}
+
+// The fill's ink for an edge on it, or '' for a casing when unknown or when the line style sets a stroke.
+export function edgeInk(fill: Fill, line = ''): string {
+  return (/[";]stroke:/.test(line) ? undefined : ink(fill.shape)) ?? '';
+}
+
+// Markers with the page color inside them, with the fill's color there instead.
+export function hollowOn(markers: string, fill: Fill): string {
+  const color = /[";]fill:([^;"]*)/.exec(fill.shape)?.[1].trim();
+  return color ? markers.replace(/ fill="var\(--_bg\)"/g, ` fill="${color}"`) : markers;
+}
+
+// The ink of the innermost fill that holds the whole edge, '' for a casing where it crosses a border, or undefined off fills.
+export function overFills(d: string, tips: number[], fills: Fill[], line = ''): string | undefined {
+  const fill = fillUnder(d, tips, fills);
+  return fill ? edgeInk(fill, line) : fill;
 }
 
 const CASE = 4;
