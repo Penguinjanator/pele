@@ -233,6 +233,14 @@ describe('swimlane rendering', () => {
     expect(render('swimlane-beta LR\n  a\n  click a "https://example.com"', options).links).toEqual([{ id: 'a', href: 'https://example.com/', internal: false }]);
   });
 
+  it('picks a contrasting lane title color on a fill a style sets', () => {
+    const svg = svgOf('swimlane-beta LR\n  subgraph L[Light]\n    a\n  end\n  subgraph D[Dark]\n    b\n  end\n  subgraph P[Plain]\n    c\n  end\n  style L fill:#BBDEFB\n  style D fill:#1f3a5f');
+    expect(svg).toContain('<text class="pele-cluster-label" fill="var(--pele-fg-on-light,#1f1f1f)"');
+    expect(svg).toMatch(/data-id="D">.*?<text class="pele-cluster-label" fill="var\(--pele-fg-on-dark,#fff\)"/);
+    expect(svg).toMatch(/data-id="P">.*?<text class="pele-cluster-label" fill="var\(--_m\)"/);
+    expect(svg).toMatch(/data-id="a"[^>]*><rect [^>]*\/><text class="pele-label" x=/);
+  });
+
   it('reads spacing from the swimlane config, then the flowchart config', () => {
     const src = 'swimlane-beta TD\n  subgraph L\n    a --> b\n  end';
     const plain = render(src, options).height;
