@@ -3,8 +3,8 @@ import { titleLabel } from '../../svg/title.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num, type IconResolver } from '../../svg/builder.js';
 import { markCrossings, type Crossings } from '../../svg/cluster.js';
-import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
-import { inkFill } from '../../svg/ink.js';
+import { casing, casingsSvg, edgeLabelSvg, marker, markerTrim, routePath, runsInside, type EdgePath } from '../../svg/edges.js';
+import { inkFill, paints } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
 import { labelLine, layoutLabel, lineMiddle, type Label } from '../../text/label.js';
@@ -161,8 +161,8 @@ function trim(type: string): number {
   return type === 'extension' ? EXTENSION : markerTrim(type);
 }
 
-function mark(type: string, x: number, y: number, dx: number, dy: number, color: string): string {
-  return type === 'extension' ? extension(x, y, dx, dy, color) : marker(type, x, y, dx, dy, color);
+function mark(type: string, x: number, y: number, dx: number, dy: number, color: string, stroke?: string): string {
+  return type === 'extension' ? extension(x, y, dx, dy, color) : marker(type, x, y, dx, dy, color, stroke);
 }
 
 function figure(view: View, icons: IconResolver | undefined): string {
@@ -340,6 +340,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
   attachEnds(cedges, cnodes, views);
 
   let clusters = '';
+  const filled: number[] = [];
   let nodesOut = '';
   for (let i = 0; i < views.length; i++) {
     const view = views[i];
@@ -357,6 +358,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
     if (view.kind === Kind.Boundary) {
       const x = c.x - c.w / 2;
       const y = c.y - c.h / 2;
+      if (paints(shape)) filled.push(x, y, x + c.w, y + c.h);
       const box = ` fill="var(--_a)"${setsFill(shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${shape}`;
       const titleAttrs = ` class="pele-cluster-label"${muted}${textAttrs}`;
       let body: string;
@@ -449,6 +451,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
     nodesOut += `<g class="pele-node ${kind}${classes}" data-id="${id}" transform="translate(${num(c.x)},${num(c.y)})">${body}</g>`;
   }
 
+  let casings = '';
   let edgesOut = '';
   let labelsOut = '';
   const loopSeen = new Map<number, number>();
@@ -505,6 +508,10 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
       path = routePath(ce.route, undefined, trim(startType), trim(endType));
     }
     const color = style?.stroke ? esc(style.stroke) : 'var(--_l)';
+    if (runsInside(path.d, filled)) {
+      const bg = 'var(--_bg)';
+      casings += casing(path.d, mark(startType, path.sx, path.sy, path.sdx, path.sdy, bg, bg) + mark(endType, path.ex, path.ey, path.edx, path.edy, bg, bg), style?.line);
+    }
     // Mermaid animates these dashes. A still picture keeps the dashes.
     const dashes = edge.internal ? '2 3' : edge.pattern === 'dotted' ? '5 4' : edge.animate ? '9 5' : '';
     edgesOut +=
@@ -530,6 +537,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
     model,
     labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
+      casingsSvg(casings) +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${small}">${labelsOut}</g>` : '') +
       `<g class="pele-nodes">${nodesOut}</g>`

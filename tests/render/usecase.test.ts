@@ -228,6 +228,16 @@ describe('use case diagram rendering', () => {
     expect(node('X')).not.toContain('--pele-fg-on');
   });
 
+  it('cases edges that run over a boundary fill a style sets', () => {
+    const src = 'actor User\nsystemBoundary S\n  Pay\n  Ship\nend\nPay --> Ship\nUser --> Pay\nUser --> Other\nstyle S fill:#BBDEFB';
+    const svg = svgOf(src);
+    const casings = /<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(svg)![1];
+    const edges = [...svg.matchAll(/class="pele-edge [^"]*" data-id="[^"]+"[^>]*><path d="([^"]+)"/g)].map((m) => m[1]);
+    expect(edges).toHaveLength(3);
+    expect(edges.map((d) => casings.includes(`<path d="${d}"/>`))).toEqual([true, true, false]);
+    expect(svgOf(src.replace('\nstyle S fill:#BBDEFB', ''))).not.toContain('pele-casings');
+  });
+
   it('puts an actor that is pointed at on the far side of the boundary', () => {
     const svg = svgOf('actor User\nactor Bank\nsystemBoundary Shop\n  Pay\nend\nUser --> Pay\nPay --> Bank');
     const [box] = boundary(svg, 'Shop');
