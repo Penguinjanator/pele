@@ -29,6 +29,8 @@ interface ShapeDef {
   inset?: Inset;
   span?: Span;
   noLabel?: boolean;
+  // Ignores style fills.
+  bare?: boolean;
 }
 
 // Kept clear at each end of a straight side, for the corner.
@@ -233,6 +235,7 @@ const SHAPES: Record<string, ShapeDef> = {
     },
   },
   text: {
+    bare: true,
     span: flat,
     size: (tw, th) => ({ w: tw + 8, h: th + 8, dy: 0 }),
     draw: (w, h) => rect(w, h, ' fill="none" stroke="none"'),
@@ -497,14 +500,17 @@ const SHAPES: Record<string, ShapeDef> = {
     },
   },
   brace: {
+    bare: true,
     size: (tw, th) => ({ w: tw + 2 * PAD_X + 12, h: th + 2 * PAD_Y, dy: 0 }),
     draw: (w, h, _a, line) => rect(w, h, ' fill="none" stroke="none"') + brace(-w / 2 + 12, h, -1, line),
   },
   'brace-r': {
+    bare: true,
     size: (tw, th) => ({ w: tw + 2 * PAD_X + 12, h: th + 2 * PAD_Y, dy: 0 }),
     draw: (w, h, _a, line) => rect(w, h, ' fill="none" stroke="none"') + brace(w / 2 - 12, h, 1, line),
   },
   braces: {
+    bare: true,
     size: (tw, th) => ({ w: tw + 2 * PAD_X + 24, h: th + 2 * PAD_Y, dy: 0 }),
     draw: (w, h, _a, line) =>
       rect(w, h, ' fill="none" stroke="none"') + brace(-w / 2 + 12, h, -1, line) + brace(w / 2 - 12, h, 1, line),
@@ -654,6 +660,10 @@ export function shapeSpan(shape: string, w: number, h: number, sideways: boolean
 
 export function shapeHasLabel(shape: string): boolean {
   return BY_NAME.get(shape)?.noLabel !== true;
+}
+
+export function shapeFilled(shape: string): boolean {
+  return (BY_NAME.get(shape) ?? FALLBACK).bare !== true;
 }
 
 // The side of a node's layout box that a route end lies on: 0 top, 1 right, 2 bottom, 3 left, or -1 for none.

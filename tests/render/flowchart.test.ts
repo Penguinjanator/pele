@@ -202,6 +202,21 @@ describe('flowchart rendering', () => {
     expect(svg).toMatch(/data-id="T"><rect [^>]*fill="var\(--_a\)" fill-opacity="0.5"/);
   });
 
+  it('picks a contrasting label color on fills a style sets', () => {
+    const src =
+      'flowchart LR\n  subgraph S["Cluster"]\n    A[Start] -- Launch --> B[Worker]\n  end\n  C[Output]\n  D[Dark]\n  E[Own]\n  F[Plain]\n  G[Words]\n  B --> C\n' +
+      '  style S fill:#BBDEFB\n  style C fill:#BBDEFB\n  classDef dark fill:navy\n  class D dark\n  style E fill:#BBDEFB,color:#333\n  style G fill:#000\n  G@{ shape: text }';
+    const { svg } = render(src, options);
+    expect(svg).toMatch(/data-id="S">.*?<text class="pele-cluster-label" fill="var\(--pele-fg-on-light,#1f1f1f\)"[^>]*>Cluster</);
+    expect(svg).toMatch(/data-id="C"[^>]*>.*?<text class="pele-label" fill="var\(--pele-fg-on-light,#1f1f1f\)"[^>]*>Output</);
+    expect(svg).toMatch(/data-id="D"[^>]*>.*?<text class="pele-label" fill="var\(--pele-fg-on-dark,#fff\)"[^>]*>Dark</);
+    expect(svg).toMatch(/data-id="E"[^>]*>.*?<text class="pele-label" style="fill:#333;"[^>]*>Own</);
+    expect(svg).toMatch(/data-id="F"[^>]*>.*?<text class="pele-label" x=[^>]*>Plain</);
+    expect(svg).toMatch(/data-id="G"[^>]*>.*?<text class="pele-label" x=[^>]*>Words</);
+    expect(svg).toMatch(/data-id="A"[^>]*>.*?<text class="pele-label" x=[^>]*>Start</);
+    expect(svg).toMatch(/class="pele-edge-label"[^>]*><rect [^>]*\/><text x=[^>]*>Launch</);
+  });
+
   it('drops style values that could load resources or break out of the attribute', () => {
     expect(resolveStyle(['fill:url(http://example.com/x.png)', 'stroke:red']).shape).toBe(' style="stroke:red;"');
     expect(resolveStyle(['fill:red;background:blue', 'color:expression(alert(1))']).shape).toBe('');

@@ -5,8 +5,9 @@ import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, struckTitle, titleCrossed, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, loopPath, marker, markerTrim, routePath, sideReach, type EdgePath } from '../../svg/edges.js';
+import { inkFill } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
-import { drawShape, endSide, insetRoute, shapeHasLabel, shapeSize, shapeSpan } from '../../svg/shapes.js';
+import { drawShape, endSide, insetRoute, shapeFilled, shapeHasLabel, shapeSize, shapeSpan } from '../../svg/shapes.js';
 import { classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
@@ -221,8 +222,9 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     if (c.isGroup) {
       const titleX = clusterTitleX(c, view.label.width, crossings, groupPad);
       const titleY = y - c.h / 2 + 8 + view.label.height / 2;
-      const titleAttrs = ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`;
       const struck = titleCrossed(c, view.label.width, titleX, crossings);
+      // A title drawn over the edges sits on a halo in the theme's colors.
+      const titleAttrs = ` class="pele-cluster-label"${struck ? ' fill="var(--_m)"' : inkFill(view.style, 'var(--_m)')}${view.style.text}`;
       if (struck) struckTitles += struckTitle(view.label, titleX, titleY, titleAttrs, id, cnodes, i, icons);
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${id}">` +
@@ -235,6 +237,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
     const w = view.w;
     const h = view.h;
     let inner: string;
+    let ink = '';
     if (node.img) {
       const aw = assetSize(node.assetWidth, 80);
       const ah = assetSize(node.assetHeight, 80);
@@ -267,9 +270,10 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
         }</svg>`;
     } else {
       inner = drawShape(view.shape, w, h, SHAPE_ATTRS + view.style.shape, LINE_ATTRS + view.style.line);
+      if (shapeFilled(view.shape)) ink = inkFill(view.style);
     }
 
-    let text = labelSvg(view.label, 0, view.dy, ` class="pele-label"${view.style.text}`, icons);
+    let text = labelSvg(view.label, 0, view.dy, ` class="pele-label"${ink}${view.style.text}`, icons);
     const internal = / internal-link(?: |$)/.test(classes + ' ');
     if (internal && node.label && options.links !== false) {
       // The label is a note name, but it still ends up in an href, so it gets the same check as a URL.
