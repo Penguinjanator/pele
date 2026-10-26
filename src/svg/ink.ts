@@ -6,6 +6,9 @@ const LIGHT = new Set(
   'aliceblue antiquewhite aqua aquamarine azure beige bisque blanchedalmond burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk cyan darkgoldenrod darkgray darkkhaki darkorange darksalmon darkseagreen darkturquoise deeppink deepskyblue dodgerblue floralwhite fuchsia gainsboro ghostwhite gold goldenrod gray greenyellow honeydew hotpink indianred ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightpink lightsalmon lightseagreen lightskyblue lightslategray lightsteelblue lightyellow lime limegreen linen magenta mediumaquamarine mediumorchid mediumpurple mediumseagreen mediumspringgreen mediumturquoise mintcream mistyrose moccasin navajowhite oldlace olivedrab orange orangered orchid palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue red rosybrown salmon sandybrown seashell silver skyblue slategray snow springgreen tan thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen'.split(' ')
 );
 
+export const ON_LIGHT = 'var(--pele-fg-on-light,#1f1f1f)';
+export const ON_DARK = 'var(--pele-fg-on-dark,#fff)';
+
 const RE_FILL = /[";]fill:([^;"]*)/;
 const RE_FILL_OPACITY = /[";]fill-opacity:([^;"]*)/;
 const RE_HEX = /^#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i;
@@ -87,7 +90,7 @@ export function ink(shape: string, text = ''): string | undefined {
   const opacity = RE_FILL_OPACITY.exec(shape);
   // An opacity that isn't a plain number, such as calc() or var(), may still be low.
   if (!(found[1] * (opacity ? amount(opacity[1].trim(), 1) : 1) >= 0.5)) return undefined;
-  return found[0] > EVEN ? 'var(--pele-fg-on-light,#1f1f1f)' : 'var(--pele-fg-on-dark,#fff)';
+  return found[0] > EVEN ? ON_LIGHT : ON_DARK;
 }
 
 export function inkFill(style: { shape: string; text: string }, fallback?: string): string {

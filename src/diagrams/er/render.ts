@@ -4,6 +4,7 @@ import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num, sharedStyle, spanStyle, textStyle, type IconResolver } from '../../svg/builder.js';
 import { clusterTitleX, markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, routePath } from '../../svg/edges.js';
+import { ON_DARK, ON_LIGHT, ink, inkFill } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { ROUNDED, classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
 import { hasMath, labelLine, layoutLabel, lineMiddle, type Label } from '../../text/label.js';
@@ -333,7 +334,7 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${escText(node.id)}">` +
         `<rect x="${num(x)}" y="${num(y)}" width="${num(c.w)}" height="${num(c.h)}" fill="var(--_a)"${setsFill(view.style.shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${rounded(view.style.shape)}/>` +
-        labelSvg(view.label, titleX, y + 8 + view.label.height / 2, ` class="pele-cluster-label" fill="var(--_m)"${view.style.text}`, icons) +
+        labelSvg(view.label, titleX, y + 8 + view.label.height / 2, ` class="pele-cluster-label"${inkFill(view.style, 'var(--_m)')}${view.style.text}`, icons) +
         '</g>';
       continue;
     }
@@ -343,8 +344,10 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
     const x0 = -w / 2;
     const y0 = -h / 2;
     const text = view.style.text;
+    const color = inkFill(view.style);
+    const muted = color || ' fill="var(--_m)"';
     const shape = `x="${num(x0)}" y="${num(y0)}" width="${num(w)}" height="${num(h)}"`;
-    let name = labelSvg(view.label, 0, view.rows.length > 0 ? y0 + view.headH / 2 : 0, ` class="pele-label"${text}`, icons);
+    let name = labelSvg(view.label, 0, view.rows.length > 0 ? y0 + view.headH / 2 : 0, ` class="pele-label"${color}${text}`, icons);
     const display = decodeEntities(node.alias || node.label);
     if (/ internal-link(?: |$)/.test(classes + ' ') && name !== '' && options.links !== false) {
       // The name ends up in an href, so it gets the same check as a URL.
@@ -379,18 +382,21 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
         const baseline = y + ROW_PAD / 2 + rowLine / 2 + view.rowSize * 0.35;
         const [type, attribute, keys, comment] = row.cells;
         cells +=
-          textLeft(type, x0 + view.cols[0], baseline, ` class="pele-er-type" fill="var(--_m)"${text}`, icons, view.mono) +
-          textLeft(attribute, x0 + view.cols[1], baseline, ` class="pele-er-name"${text}`, icons, view.mono) +
-          textLeft(keys, x0 + view.cols[2], baseline, ` class="pele-er-keys" font-size="${view.keySize}" fill="var(--_m)"${text}`, icons, view.mono) +
-          textLeft(comment, x0 + view.cols[3], baseline, ` class="pele-er-comment" fill="var(--_m)"${text}`, icons);
+          textLeft(type, x0 + view.cols[0], baseline, ` class="pele-er-type"${muted}${text}`, icons, view.mono) +
+          textLeft(attribute, x0 + view.cols[1], baseline, ` class="pele-er-name"${color}${text}`, icons, view.mono) +
+          textLeft(keys, x0 + view.cols[2], baseline, ` class="pele-er-keys" font-size="${view.keySize}"${muted}${text}`, icons, view.mono) +
+          textLeft(comment, x0 + view.cols[3], baseline, ` class="pele-er-comment"${muted}${text}`, icons);
         y += row.h;
       }
       const dividerY = num(y0 + view.headH);
+      // Keep row shading light on light fills and dark on dark fills to preserve text contrast.
+      const tone = ink(view.style.shape);
+      const shade = tone === ON_LIGHT ? ON_DARK : tone === ON_DARK ? ON_LIGHT : 'var(--_bg)';
       body =
         `<rect ${shape}${rounded(BOX_ATTRS + view.style.shape)}/>` +
         // Over a fill the diagram chose, the shading is a tint of that fill. The opacity is on the
         // group because the two parts of the last row overlap.
-        `<g class="pele-er-stripes" fill="var(--_bg)"${view.style.shape.includes('fill:') ? ' opacity="0.6"' : ''}>${stripes}</g>` +
+        `<g class="pele-er-stripes" fill="${shade}"${view.style.shape.includes('fill:') ? ' opacity="0.6"' : ''}>${stripes}</g>` +
         `<path class="pele-er-divider" d="M${num(x0)},${dividerY}H${num(x0 + w)}" stroke="${lineColor}"/>` +
         `<rect ${shape} fill="none" stroke="var(--_b)"${rounded(view.style.line)}/>` +
         name +

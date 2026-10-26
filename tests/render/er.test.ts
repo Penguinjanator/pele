@@ -287,7 +287,25 @@ describe('ER diagram rendering', () => {
     expect(svg).toMatch(/data-id="C"[^>]*><rect[^>]* style="rx:var\(--_r\);stroke-width:2px;fill:#bbf;"/);
     expect(svg).toMatch(/<text class="pele-label" style="fill:#fff;"[^>]*>C<\/text>/);
     // Shading over a chosen fill is a tint of it rather than the page background.
-    expect(svg).toContain('<g class="pele-er-stripes" fill="var(--_bg)" opacity="0.6">');
+    expect(svg).toContain('<g class="pele-er-stripes" fill="var(--pele-fg-on-dark,#fff)" opacity="0.6">');
+  });
+
+  it('picks a contrasting text color on fills a style sets', () => {
+    const svg = svgOf(
+      'erDiagram\n A { int id PK "key" }\n B { int id }\n C { int id }\n D { int id }\n subgraph G\n  E\n end\n style A fill:navy\n style B fill:#BBDEFB\n style C fill:#BBDEFB,color:#333\n style G fill:#FFF9C4'
+    );
+    const entity = (id: string): string => new RegExp(`data-id="${id}"[^>]*>(.*?)</g></g>`).exec(svg)![1];
+    expect(entity('A')).toContain('<g class="pele-er-stripes" fill="var(--pele-fg-on-light,#1f1f1f)" opacity="0.6">');
+    for (const cell of ['pele-label', 'pele-er-type', 'pele-er-name', 'pele-er-keys', 'pele-er-comment']) {
+      expect(entity('A')).toMatch(new RegExp(`<text class="${cell}"[^>]* fill="var\\(--pele-fg-on-dark,#fff\\)"`));
+    }
+    expect(entity('B')).toContain('<text class="pele-label" fill="var(--pele-fg-on-light,#1f1f1f)"');
+    expect(entity('B')).toContain('<g class="pele-er-stripes" fill="var(--pele-fg-on-dark,#fff)" opacity="0.6">');
+    expect(entity('C')).not.toContain('--pele-fg-on-light');
+    expect(entity('C')).toContain('<text class="pele-er-type" fill="var(--_m)" style="fill:#333;"');
+    expect(entity('D')).toContain('<g class="pele-er-stripes" fill="var(--_bg)">');
+    expect(entity('D')).not.toContain('--pele-fg-on');
+    expect(svg).toMatch(/data-id="G">.*?<text class="pele-cluster-label" fill="var\(--pele-fg-on-light,#1f1f1f\)"/);
   });
 
   it('formats markdown and keeps unicode in names, attributes and labels', () => {
