@@ -212,6 +212,22 @@ describe('use case diagram rendering', () => {
     expect(body('T')).toContain('fill-opacity="0.5"');
   });
 
+  it('picks a contrasting text color on fills a style sets', () => {
+    const svg = svgOf(
+      'actor A <<Human>>\nU(Use) <<Core>>\nW(Own)\nX(Plain)\njson J@{ "k": "v" }\nsystemBoundary S\n  V\nend\nstyle U fill:#1f3a5f\nstyle A fill:#1f3a5f\nstyle W fill:#1f3a5f,color:#eee\nstyle J fill:navy\nstyle S fill:#FFF9C4'
+    );
+    const node = (id: string): string => new RegExp(`data-id="${id}"[^>]*>(.*?)</g>(?:<g|</g>)`).exec(svg)![1];
+    expect(node('U')).toMatch(/<text class="pele-stereotype"[^>]* fill="var\(--pele-fg-on-dark,#fff\)"/);
+    expect(node('U')).toMatch(/<text class="pele-label" fill="var\(--pele-fg-on-dark,#fff\)"[^>]*>Use</);
+    expect(svg).toMatch(/data-id="A"[^>]*>.*?<text class="pele-stereotype"[^>]* fill="var\(--_m\)"/);
+    expect(svg).toMatch(/data-id="A"[^>]*>.*?<text class="pele-label" x=[^>]*>A</);
+    expect(node('W')).not.toContain('--pele-fg-on');
+    expect(node('J')).toMatch(/<text class="pele-json-key" fill="var\(--pele-fg-on-dark,#fff\)"/);
+    expect(node('J')).toMatch(/<text class="pele-json-value" fill="var\(--pele-fg-on-dark,#fff\)"/);
+    expect(svg).toMatch(/data-id="S">.*?<text class="pele-cluster-label" fill="var\(--pele-fg-on-light,#1f1f1f\)"/);
+    expect(node('X')).not.toContain('--pele-fg-on');
+  });
+
   it('puts an actor that is pointed at on the far side of the boundary', () => {
     const svg = svgOf('actor User\nactor Bank\nsystemBoundary Shop\n  Pay\nend\nUser --> Pay\nPay --> Bank');
     const [box] = boundary(svg, 'Shop');

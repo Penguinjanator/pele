@@ -4,6 +4,7 @@ import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num, type IconResolver } from '../../svg/builder.js';
 import { markCrossings, type Crossings } from '../../svg/cluster.js';
 import { edgeLabelSvg, marker, markerTrim, routePath, type EdgePath } from '../../svg/edges.js';
+import { inkFill } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
 import { labelLine, layoutLabel, lineMiddle, type Label } from '../../text/label.js';
@@ -348,6 +349,8 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
     const id = escText(node.id);
     const textAttrs = view.style.text;
     const shape = view.style.shape;
+    const color = inkFill(view.style);
+    const muted = color || ' fill="var(--_m)"';
     const w = view.w;
     const h = view.h;
 
@@ -355,7 +358,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
       const x = c.x - c.w / 2;
       const y = c.y - c.h / 2;
       const box = ` fill="var(--_a)"${setsFill(shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${shape}`;
-      const titleAttrs = ` class="pele-cluster-label" fill="var(--_m)"${textAttrs}`;
+      const titleAttrs = ` class="pele-cluster-label"${muted}${textAttrs}`;
       let body: string;
       if (node.boundaryType === 'package') {
         const tabW = Math.min(view.label.width + 2 * TAB_PAD + 8, c.w);
@@ -393,14 +396,14 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
       for (const [key, value] of view.rows) {
         const rowH = Math.max(key.height, value.height, Math.round(small * 1.5)) + ROW_PAD;
         cells +=
-          labelSvg(key, x0 + CELL_PAD + key.width / 2, y + rowH / 2, ' class="pele-json-key" fill="var(--_m)"', icons) +
-          leftLabel(value, x0 + view.keyW + CELL_PAD, y + rowH / 2, ` class="pele-json-value"${textAttrs}`, icons);
+          labelSvg(key, x0 + CELL_PAD + key.width / 2, y + rowH / 2, ` class="pele-json-key"${muted}`, icons) +
+          leftLabel(value, x0 + view.keyW + CELL_PAD, y + rowH / 2, ` class="pele-json-value"${color}${textAttrs}`, icons);
         y += rowH;
       }
       body =
         `<rect x="${num(x0)}" y="${num(-h / 2)}" width="${num(w)}" height="${num(h)}"${rounded(SHAPE_ATTRS + shape)}/>` +
         `<path class="pele-json-lines" d="${lines}" fill="none" stroke="var(--_b)"${view.style.line}/>` +
-        labelSvg(view.label, 0, -h / 2 + view.headH / 2, ` class="pele-label" font-weight="var(--_hw)"${textAttrs}`, icons) +
+        labelSvg(view.label, 0, -h / 2 + view.headH / 2, ` class="pele-label" font-weight="var(--_hw)"${color}${textAttrs}`, icons) +
         `<g font-size="${small}">${cells}</g>`;
     } else {
       const labelY = view.stereotype.height / 2;
@@ -432,14 +435,14 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
           view.stereotype,
           0,
           -view.label.height / 2,
-          ` class="pele-stereotype" font-size="${tiny}" fill="var(--_m)"`,
+          ` class="pele-stereotype" font-size="${tiny}"${muted}`,
           icons
         ) +
         labelSvg(
           view.label,
           0,
           labelY,
-          ` class="pele-label"${node.shape === 'note' ? ` font-size="${small}"` : ''}${textAttrs}`,
+          ` class="pele-label"${node.shape === 'note' ? ` font-size="${small}"` : ''}${color}${textAttrs}`,
           icons
         );
     }
