@@ -57,41 +57,53 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
     const name = decodeEntities(node.name).trim();
     const value = showValues ? format(b.value) : '';
     const group = `data-id="${escText(node.name)}">`;
+    const tooltip = (drawn: string | undefined): string => (drawn === name || name === '' ? '' : `<title>${esc(name)}</title>`);
     const rect = `<rect x="${num(x)}" y="${num(y)}" width="${num(b.w)}" height="${num(b.h)}" fill="${color}"`;
+    // Inline font sizes override SVG attributes, so truncate instead of shrinking.
+    const fixed = style.fontSize;
+    const textStyle = (style.bold ? Style.Bold : 0) | (style.italic ? Style.Italic : 0);
 
     if (node.children !== undefined) {
       let text = '';
-      if (b.h >= HEADER) {
+      let drawn: string | undefined;
+      if (b.headed) {
+        const labelSize = fixed ?? small;
+        const valueSize = fixed ?? tiny;
         const room = b.w - 2 * SIDE - 4;
-        const valueWidth = value ? measurer.width(value, tiny, 0) : 0;
-        const withValue = valueWidth > 0 && room - valueWidth - 12 >= 3 * small;
-        const label = fitText(name, withValue ? room - valueWidth - 12 : room, small, small, measurer, Style.Bold);
+        const valueWidth = value ? measurer.width(value, valueSize, textStyle) : 0;
+        const withValue = valueWidth > 0 && room - valueWidth - 12 >= 3 * labelSize;
+        const label =
+          labelSize * LINE <= HEADER - 4
+            ? fitText(name, withValue ? room - valueWidth - 12 : room, labelSize, labelSize, measurer, textStyle | Style.Bold)
+            : undefined;
         const baseline = y + HEADER / 2 + 1;
+        drawn = label?.text;
         if (label) {
-          text += `<text x="${num(x + SIDE + 2)}" y="${num(baseline + small * 0.35)}" font-weight="var(--_hw)"${style.text}>${esc(label.text)}</text>`;
+          text += `<text x="${num(x + SIDE + 2)}" y="${num(baseline + labelSize * 0.35)}" font-weight="var(--_hw)"${style.text}>${esc(label.text)}</text>`;
         }
-        if (withValue) {
-          text += `<text class="pele-value" x="${num(x + b.w - SIDE - 2)}" y="${num(baseline + tiny * 0.35)}" font-size="${tiny}" text-anchor="end" fill="var(--_m)"${style.text}>${esc(value)}</text>`;
+        if (withValue && valueSize * LINE <= HEADER - 4) {
+          text += `<text class="pele-value" x="${num(x + b.w - SIDE - 2)}" y="${num(baseline + valueSize * 0.35)}" font-size="${tiny}" text-anchor="end" fill="var(--_m)"${style.text}>${esc(value)}</text>`;
         }
       }
       // A section is a tint of its color, unless a class gives it a fill of its own.
       const tint = /[";]fill:/.test(style.shape) ? '' : ' fill-opacity="0.12"';
       sections +=
-        `<g class="pele-node pele-section${classNames(node.classSelector ?? '')}" ${group}` +
+        `<g class="pele-node pele-section${classNames(node.classSelector ?? '')}" ${group}${tooltip(drawn)}` +
         `${rect}${rounded(`${tint} stroke="${color}"${style.shape}`)}/>${text}</g>`;
       continue;
     }
 
     let text = '';
     const room = b.w - 8;
-    const tallest = Math.min(size, Math.floor((b.h - 4) / LINE));
-    const label = tallest >= least ? fitText(name, room, tallest, least, measurer) : undefined;
+    const smallest = fixed ?? least;
+    const tallest = Math.min(fixed ?? size, Math.floor((b.h - 4) / LINE));
+    const label = tallest >= smallest ? fitText(name, room, tallest, smallest, measurer, textStyle) : undefined;
     if (label) {
       const cx = num(x + b.w / 2);
       const cy = y + b.h / 2;
-      const valueSize = Math.max(least, Math.round(label.size * 0.8));
+      const valueSize = fixed ?? Math.max(least, Math.round(label.size * 0.8));
       const lines = (label.size + valueSize) * LINE;
-      if (value && lines <= b.h - 4 && measurer.width(value, valueSize, 0) <= room) {
+      if (value && lines <= b.h - 4 && measurer.width(value, valueSize, textStyle) <= room) {
         const first = cy - lines / 2 + (label.size * LINE) / 2;
         const second = cy + lines / 2 - (valueSize * LINE) / 2;
         text =
@@ -101,7 +113,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
         text = `<text x="${cx}" y="${num(cy + label.size * 0.35)}" font-size="${num(label.size)}"${style.text}>${esc(label.text)}</text>`;
       }
     }
-    leaves += `<g class="pele-node pele-leaf${classNames(node.classSelector ?? '')}" ${group}${rect}${rounded(style.shape)}/>${text}</g>`;
+    leaves += `<g class="pele-node pele-leaf${classNames(node.classSelector ?? '')}" ${group}${tooltip(label?.text)}${rect}${rounded(style.shape)}/>${text}</g>`;
   }
 
   const totalWidth = Math.ceil(Math.max(width, title.width) + 2 * pad);

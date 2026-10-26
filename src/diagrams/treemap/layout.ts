@@ -8,6 +8,8 @@ export interface Box {
   // A leaf's own value, or the sum of the leaves under a section.
   value: number;
   children: Box[];
+  // Small sections give their header space to their children.
+  headed: boolean;
   x: number;
   y: number;
   w: number;
@@ -23,7 +25,7 @@ export interface Insets {
 
 function box(node: TreemapNode, parent: Box | undefined, series: number): Box {
   const value = node.children === undefined && Number.isFinite(node.value) && node.value! > 0 ? node.value! : 0;
-  return { node, parent, series, value, children: [], x: 0, y: 0, w: 0, h: 0 };
+  return { node, parent, series, value, children: [], headed: false, x: 0, y: 0, w: 0, h: 0 };
 }
 
 // Lays out boxes[from..to) in the rectangle as one squarified treemap: rows are added along the
@@ -55,12 +57,15 @@ function squarify(boxes: Box[], total: number, x: number, y: number, w: number, 
       const length = i === to - 1 ? side - offset : (b.value * scale) / thickness;
       const bx = w >= h ? x : x + offset;
       const by = w >= h ? y + offset : y;
-      const x0 = Math.round(bx + gap / 2);
-      const y0 = Math.round(by + gap / 2);
-      b.x = x0;
-      b.y = y0;
-      b.w = Math.round(bx + (w >= h ? thickness : length) - gap / 2) - x0;
-      b.h = Math.round(by + (w >= h ? length : thickness) - gap / 2) - y0;
+      const bw = w >= h ? thickness : length;
+      const bh = w >= h ? length : thickness;
+      // Omit the gap if it would erase the box.
+      const gx = Math.round(bx + bw - gap / 2) > Math.round(bx + gap / 2) ? gap / 2 : 0;
+      const gy = Math.round(by + bh - gap / 2) > Math.round(by + gap / 2) ? gap / 2 : 0;
+      b.x = Math.round(bx + gx);
+      b.y = Math.round(by + gy);
+      b.w = Math.round(bx + bw - gx) - b.x;
+      b.h = Math.round(by + bh - gy) - b.y;
       offset += length;
       rest -= b.value;
     }
@@ -75,7 +80,7 @@ function squarify(boxes: Box[], total: number, x: number, y: number, w: number, 
   }
 }
 
-// Returns every box with a size, parents before their children.
+// Returns boxes with positive values, including zero-size boxes, parents before children.
 export function layoutTreemap(roots: TreemapNode[], width: number, height: number, insets: Insets): Box[] {
   const top = roots.map((node, index) => box(node, undefined, index));
   const all = top.slice();
@@ -95,19 +100,29 @@ export function layoutTreemap(roots: TreemapNode[], width: number, height: numbe
   const { gap, header, side } = insets;
   const placed: Box[] = [];
   const place = (children: Box[], x: number, y: number, w: number, h: number): void => {
-    if (w <= 0 || h <= 0) return;
     const shown = children.filter((b) => b.value > 0).sort((a, b) => b.value - a.value);
     let total = 0;
     for (const b of shown) total += b.value;
     if (shown.length === 0 || !Number.isFinite(total)) return;
-    squarify(shown, total, x - gap / 2, y - gap / 2, w + gap, h + gap, gap);
-    for (const b of shown) if (b.w > 0 && b.h > 0) placed.push(b);
+    if (w > 0 && h > 0) squarify(shown, total, x - gap / 2, y - gap / 2, w + gap, h + gap, gap);
+    for (const b of shown) {
+      if (w <= 0 || h <= 0) {
+        b.x = x;
+        b.y = y;
+        b.w = Math.max(0, w);
+        b.h = Math.max(0, h);
+      }
+      placed.push(b);
+    }
   };
 
   place(top, 0, 0, width, height);
   for (let i = 0; i < placed.length; i++) {
     const b = placed[i];
-    if (b.children.length > 0) place(b.children, b.x + side, b.y + header, b.w - 2 * side, b.h - header - side);
+    if (b.children.length === 0) continue;
+    b.headed = b.w > 2 * side && b.h > header + side;
+    if (b.headed) place(b.children, b.x + side, b.y + header, b.w - 2 * side, b.h - header - side);
+    else place(b.children, b.x, b.y, b.w, b.h);
   }
   return placed;
 }

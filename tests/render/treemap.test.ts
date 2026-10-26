@@ -3,7 +3,7 @@ import { formatter } from '../../src/diagrams/treemap/format.js';
 import { layoutTreemap, type Box } from '../../src/diagrams/treemap/layout.js';
 import type { TreemapNode } from '../../src/diagrams/treemap/model.js';
 import { parse, render, supports } from '../../src/index.js';
-import { metricsMeasurer } from '../../src/text/measurer.js';
+import { Style, metricsMeasurer } from '../../src/text/measurer.js';
 import { elements } from '../support/xml.js';
 
 const options = { measurer: metricsMeasurer };
@@ -84,6 +84,34 @@ describe('treemap layout', () => {
     }
     // Every box takes the color of the top-level node above it.
     expect(boxes.map((b) => b.series).sort()).toEqual([0, 0, 0, 0, 0, 1]);
+  });
+
+  it('gives a section too small for its header its whole box', () => {
+    const tree: TreemapNode[] = [{ name: 's', children: [leaf('a', 2), { name: 't', children: [leaf('b', 1), leaf('c', 1)] }] }];
+    const boxes = layoutTreemap(tree, 300, 30, insets);
+    expect(boxes.map((b) => b.node.name).sort()).toEqual(['a', 'b', 'c', 's', 't']);
+    const s = boxes.find((b) => b.node.name === 's')!;
+    expect(s.headed).toBe(false);
+    for (const b of boxes) {
+      if (b === s) continue;
+      expect(b.w * b.h).toBeGreaterThan(0);
+      expect(b.x).toBeGreaterThanOrEqual(s.x);
+      expect(b.y).toBeGreaterThanOrEqual(s.y);
+      expect(b.x + b.w).toBeLessThanOrEqual(s.x + s.w);
+      expect(b.y + b.h).toBeLessThanOrEqual(s.y + s.h);
+    }
+    expect(layoutTreemap(tree, 300, 300, insets).find((b) => b.node.name === 's')!.headed).toBe(true);
+  });
+
+  it('keeps a box thinner than the gap, and one with no room at all', () => {
+    const thin = layoutTreemap([leaf('big', 397), leaf('thin', 3)], 400, 100, insets);
+    expect(thin.map((b) => b.node.name)).toEqual(['big', 'thin']);
+    expect(thin[1].w).toBeGreaterThan(0);
+    expect(overlap(thin[0], thin[1])).toBe(false);
+
+    const speck = layoutTreemap([leaf('big', 1e6), { name: 's', children: [leaf('speck', 1)] }], 100, 100, insets);
+    expect(speck.map((b) => b.node.name)).toEqual(['big', 's', 'speck']);
+    for (const b of speck.slice(1)) expect(b.w * b.h).toBe(0);
   });
 
   it('leaves out what has no positive value', () => {
@@ -219,8 +247,47 @@ describe('treemap rendering', () => {
     );
     expect(svg).toMatch(/font-weight="var\(--_hw\)">A sect[^<]*…</);
     expect(svg).toMatch(/font-size="(9|1[0-5])">A leaf with[^<]*</);
-    expect(svg).not.toContain('>tiny<');
+    expect(svg).not.toMatch(/<text[^>]*>tiny</);
     expect(rects(svg).some((r) => r.id === 'tiny')).toBe(true);
+    expect(svg).toContain('<title>tiny</title>');
+    expect(svg).toContain('<title>A section with a very long name indeed</title>');
+    expect(svg).not.toContain('<title>other</title>');
+  });
+
+  it('draws every node of a large, deep tree', () => {
+    let src = 'treemap\n';
+    let leaves = 0;
+    let sections = 0;
+    for (let i = 0; i < 6; i++) {
+      src += `"top ${i}"\n`;
+      sections++;
+      for (let j = 0; j < 8; j++) {
+        src += `  "mid ${i}.${j}"\n    "inner ${i}.${j}"\n`;
+        sections += 2;
+        for (let k = 0; k < 8; k++, leaves++) src += `      "leaf ${i}.${j}.${k}": ${1 + ((i * 64 + j * 8 + k) % 37) ** 3}\n`;
+      }
+    }
+    const { svg } = render(src, options);
+    expect(svg.match(/class="pele-node pele-leaf"/g)?.length).toBe(leaves);
+    expect(svg.match(/class="pele-node pele-section"/g)?.length).toBe(sections);
+  });
+
+  it('fits text at the font size a class sets', () => {
+    const { svg } = render(
+      'treemap\n"A section with a long name":::head\n  "A leaf with a fairly long name": 30:::big\n  "Another leaf with a long name": 20:::big\n  "rest": 400\nclassDef big font-size:20px\nclassDef head font-size:18px',
+      options
+    );
+    const groups = [...svg.matchAll(/<g class="pele-node pele-(leaf|section) (big|head)"[^>]*>(.*?)<\/g>/g)];
+    expect(groups.length).toBe(3);
+    for (const [, kind, , body] of groups) {
+      const w = Number(/<rect[^>]* width="([\d.]+)"/.exec(body)![1]);
+      const texts = [...body.matchAll(/<text[^>]*>([^<]*)<\/text>/g)].map((m) => m[1]);
+      expect(texts.length).toBeGreaterThan(0);
+      for (const text of texts) {
+        const width = kind === 'leaf' ? metricsMeasurer.width(text, 20, 0) : metricsMeasurer.width(text, 18, Style.Bold);
+        expect(width, text).toBeLessThanOrEqual(w - 8);
+      }
+    }
   });
 
   it('draws the title above, from the diagram or the front matter', () => {
