@@ -482,15 +482,20 @@ describe('block rendering', () => {
     expect(svg).toMatch(/data-id="e"[^>]*>.*?<text class="pele-label" fill="var\(--pele-fg-on-dark,#fff\)"[^>]*>Go</);
   });
 
-  it('cases edges that run over a composite fill a style sets', () => {
+  it('cases edges that cross a composite fill a style sets and inks those inside it', () => {
     const src = 'block\n  block:g\n    a b\n  end\n  c\n  a --> b\n  b --> c\n  c --> c\n  style g fill:#BBDEFB';
     const { svg } = render(src, options);
     const casings = /<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(svg)![1];
-    const cased = [...casings.matchAll(/<path d="([^"]+)"\/>/g)].map((m) => m[1]);
-    const edges = [...svg.matchAll(/class="pele-edge" data-id="([^"]+)"><path d="([^"]+)"/g)].map((m) => [m[1], m[2]]);
+    const edges = [...svg.matchAll(/<g class="pele-edge" data-id="[^"]+"([^>]*)><path d="([^"]+)"/g)].map((m) => [m[1], m[2]]);
     expect(edges).toHaveLength(3);
-    expect(cased).toEqual(edges.slice(0, 2).map((e) => e[1]));
-    expect(render(src.replace('\n  style g fill:#BBDEFB', ''), options).svg).not.toContain('pele-casings');
+    expect(edges.map(([, d]) => casings.includes(`<path d="${d}"/>`))).toEqual([false, true, false]);
+    expect(edges.map(([attrs]) => attrs)).toEqual([' stroke="var(--pele-fg-on-light,#1f1f1f)"', '', '']);
+    expect(render(src.replace('\n  style g fill:#BBDEFB', ''), options).svg).not.toMatch(/pele-casings|--pele-fg-on/);
+    // The second loop on a reaches out past the composite, so it is cased.
+    const loops = render('block\n  block:g\n    a\n  end\n  a --> a\n  a --> a\n  style g fill:white', options).svg;
+    expect(loops).toMatch(/data-id="1-a-a" stroke="var\(--pele-fg-on-light,#1f1f1f\)"/);
+    expect(loops).toMatch(/<g class="pele-edge" data-id="2-a-a"><path d="([^"]+)"/);
+    expect(/<g class="pele-casings"[^>]*>(.*?)<\/g>/.exec(loops)![1]).toContain(`<path d="${/data-id="2-a-a"><path d="([^"]+)"/.exec(loops)![1]}"/>`);
   });
 
   it('draws the front matter title', () => {
