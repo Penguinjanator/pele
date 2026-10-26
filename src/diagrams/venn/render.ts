@@ -1,5 +1,6 @@
 import type { Config } from '../../preprocess.js';
 import { escText, labelSvg, num } from '../../svg/builder.js';
+import { ink } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { resolveStyle, seriesColor, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
@@ -20,6 +21,8 @@ interface Region {
   // What is written in the region: its label first, then its texts. The id is that of a text.
   lines: { id: string | undefined; raw: string; size: number; base: number; label: Label }[];
   style: ResolvedStyle;
+  // Whether its text is written across other circles.
+  across: boolean;
 }
 
 // One key for a list of set ids. Ids may hold any character, so they are not simply joined.
@@ -78,10 +81,12 @@ export function renderVenn(model: VennModel, _config: Config, options: RenderOpt
     const style = styleOf(key);
     const text = subset.label ?? (subset.sets.length === 1 ? subset.sets[0] : undefined);
     const base = (style.bold ? Style.Bold : 0) | (style.italic ? Style.Italic : 0);
-    let spot = findSpot(circles, inside, neighbors[smallest].filter((i) => !within.has(i)));
+    const others = neighbors[smallest].filter((i) => !within.has(i));
+    let spot = findSpot(circles, inside, others);
     // A region that other circles cover, or all but cover, is written across them instead.
-    if (spot.margin < circles[smallest].r * 0.2) spot = findSpot(circles, inside, []);
-    const region: Region = { sets, inside, spot, lines: [], style };
+    const across = others.length > 0 && spot.margin < circles[smallest].r * 0.2;
+    if (across) spot = findSpot(circles, inside, []);
+    const region: Region = { sets, inside, spot, lines: [], style, across };
     if (text) {
       const fontSize = sets.length === 1 ? size : small;
       region.lines.push({ id: undefined, raw: text, size: fontSize, base, label: layoutLabel(text, false, measurer, fontSize, 4000, base) });
@@ -160,6 +165,15 @@ export function renderVenn(model: VennModel, _config: Config, options: RenderOpt
     sets += `<circle class="pele-venn-set" data-id="${escText(c.id)}" cx="${num(c.x)}" cy="${num(c.y)}" r="${num(c.r)}" fill="${color}" fill-opacity="0.2" stroke="${color}"${style.shape}/>`;
   });
 
+  const painted = [...regions.values()].filter((r) => r.sets.length > 1 && r.style.shape !== '');
+  // The fill under a region's text is the last overlap drawn over all of it, or its own circle when the style sets an opacity.
+  const under = (region: Region): string => {
+    if (region.across) return '';
+    let fill = region.sets.length === 1 && /[";]fill-opacity:/.test(region.style.shape) ? region.style.shape : '';
+    for (const other of painted) if (other.sets.every((id) => region.sets.includes(id))) fill = other.style.shape;
+    return fill;
+  };
+
   let overlaps = '';
   let labels = '';
   for (const region of regions.values()) {
@@ -174,12 +188,15 @@ export function renderVenn(model: VennModel, _config: Config, options: RenderOpt
     if (total === 0) continue;
     const x = region.spot.x * scale + ox;
     let y = region.spot.y * scale + oy - total / 2;
+    const fill = under(region);
     let content = '';
     for (const line of region.lines) {
+      const own = line.id === undefined ? region.style.text : styleOf(line.id).text;
+      const color = ink(fill, own);
       const attrs =
         line.id === undefined
-          ? ` class="pele-label"${line.size === size ? '' : ` font-size="${line.size}"`}${region.style.text}`
-          : ` class="pele-venn-text" data-id="${escText(line.id)}" font-size="${tiny}" fill="var(--_m)"${styleOf(line.id).text}`;
+          ? ` class="pele-label"${line.size === size ? '' : ` font-size="${line.size}"`}${color ? ` fill="${color}"` : ''}${own}`
+          : ` class="pele-venn-text" data-id="${escText(line.id)}" font-size="${tiny}" fill="${color ?? 'var(--_m)'}"${own}`;
       content += labelSvg(line.label, x, y + line.label.height / 2, attrs);
       y += line.label.height;
     }
