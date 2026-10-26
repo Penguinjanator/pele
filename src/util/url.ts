@@ -18,41 +18,43 @@ function decode(uri: string): string {
   }
 }
 
-// Follows the algorithm of @braintree/sanitize-url, which Mermaid applies to click targets.
-export function sanitizeUrl(url: string): string {
-  if (!url) return BLANK;
-  let decoded = decode(url.trim());
+// Removes the control characters, entity codes and escapes that could hide a scheme, and with
+// `percent`, percent escapes too. Undefined for a URL wrapped too many times to be a real one.
+function unwrap(url: string, percent: boolean): string | undefined {
+  let out = percent ? decode(url.trim()) : url.trim();
   let more: RegExpMatchArray | null;
   let rounds = 0;
   do {
-    // Each round peels one layer of encoding. A URL wrapped this many times is not a real one.
-    if (++rounds > 32) return BLANK;
-    decoded = decoded
+    if (++rounds > 32) return undefined;
+    out = out
       .replace(RE_CTRL, '')
       .replace(RE_HTML_ENTITIES, (_m, dec) => String.fromCharCode(dec))
       .replace(RE_HTML_CTRL_ENTITY, '')
       .replace(RE_CTRL, '')
       .replace(RE_WS_ESCAPE, '')
       .trim();
-    decoded = decode(decoded);
-    more =
-      decoded.match(RE_CTRL) ||
-      decoded.match(RE_HTML_ENTITIES) ||
-      decoded.match(RE_HTML_CTRL_ENTITY) ||
-      decoded.match(RE_WS_ESCAPE);
+    if (percent) out = decode(out);
+    more = out.match(RE_CTRL) || out.match(RE_HTML_ENTITIES) || out.match(RE_HTML_CTRL_ENTITY) || out.match(RE_WS_ESCAPE);
   } while (more && more.length > 0);
+  return out;
+}
 
-  if (!decoded) return BLANK;
-  if (decoded[0] === '.' || decoded[0] === '/') return decoded;
+// Refuses what @braintree/sanitize-url refuses, the check Mermaid applies to click targets.
+// Unlike it, keeps percent escapes, so `file=A%26B` still names the note `A&B`.
+export function sanitizeUrl(url: string): string {
+  if (!url) return BLANK;
+  const decoded = unwrap(url, true);
+  const kept = unwrap(url, false);
+  if (!decoded || !kept) return BLANK;
+  if (decoded[0] === '.' || decoded[0] === '/') return kept;
 
-  const trimmed = decoded.trimStart();
-  const scheme = trimmed.match(RE_SCHEME);
-  if (!scheme) return decoded;
+  const scheme = decoded.trimStart().match(RE_SCHEME);
+  if (!scheme) return kept;
 
   const protocol = scheme[0].toLowerCase().trim();
   if (RE_INVALID_PROTOCOL.test(protocol)) return BLANK;
 
-  const normalized = trimmed.replace(/\\/g, '/');
+  const normalized = kept.trimStart().replace(/\\/g, '/');
   if (protocol === 'mailto:' || protocol.includes('://')) return normalized;
 
   if (protocol === 'http:' || protocol === 'https:') {
@@ -81,10 +83,16 @@ const RE_NETWORK_PATH = /^[\\/]{2}/;
 
 // Stricter than Mermaid, which lets any scheme but three through: a diagram in a shared note
 // could otherwise open a local file, a network share, or another application.
-function allow(url: string, schemes: readonly string[]): string | undefined {
-  if (RE_NETWORK_PATH.test(url)) return undefined;
+function allowed(url: string, schemes: readonly string[]): boolean {
+  if (RE_NETWORK_PATH.test(url)) return false;
   const scheme = RE_SCHEME_NAME.exec(url);
-  return !scheme || schemes.includes(scheme[1].toLowerCase()) ? url : undefined;
+  return !scheme || schemes.includes(scheme[1].toLowerCase());
+}
+
+// The decoded URL is checked too, for an app that decodes the href before opening it.
+function allow(url: string, schemes: readonly string[]): string | undefined {
+  const decoded = unwrap(url, true);
+  return decoded !== undefined && allowed(url, schemes) && allowed(decoded, schemes) ? url : undefined;
 }
 
 // Both take a URL that sanitizeUrl has passed, and keep it only when it is relative or its

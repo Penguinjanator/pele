@@ -1,8 +1,9 @@
 import { sanitizeUrl as reference } from '@braintree/sanitize-url';
 import { describe, expect, it } from 'vitest';
-import { internalLink, sanitizeUrl } from '../../src/util/url.js';
+import { internalLink, linkUrl, sanitizeUrl } from '../../src/util/url.js';
 
-// Mermaid sanitizes click targets with @braintree/sanitize-url; Pele must give the same answers.
+// Mermaid sanitizes click targets with @braintree/sanitize-url; Pele must give the same answers,
+// apart from keeping percent escapes.
 const URLS = [
   'https://example.com',
   'http://EXAMPLE.com/Path?q=1#frag',
@@ -42,6 +43,21 @@ describe('url sanitizer', () => {
       expect(sanitizeUrl(url)).toBe(reference(url));
     });
   }
+});
+
+describe('percent escapes', () => {
+  it('are kept', () => {
+    for (const url of ['obsidian://open?vault=V&file=A%26B%23C', 'https://example.com/?q=a%26b', 'mailto:a@example.com?subject=a%20b', 'Note%20name', './a%23b.html']) {
+      expect(sanitizeUrl(url)).toBe(url);
+    }
+  });
+
+  it('cannot hide a scheme or a network path', () => {
+    expect(sanitizeUrl('%6A%61%76%61%73%63%72%69%70%74:alert(1)')).toBe('about:blank');
+    for (const url of ['fi%6ce:///etc/passwd', '%2F%2Fevil.example/share', 'obs%69dian://open']) {
+      expect(linkUrl(sanitizeUrl(url), {}), url).toBeUndefined();
+    }
+  });
 });
 
 describe('internal links', () => {
