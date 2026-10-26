@@ -110,6 +110,7 @@ render(source, { monospace: ['members'] });
 | Part | Text |
 | --- | --- |
 | `members` | Attributes and methods in class diagrams, styled by `.pele-member` |
+| `attributes` | Attribute types, names and keys in ER diagrams, styled by `.pele-er-type`, `.pele-er-name` and `.pele-er-keys` |
 
 ## Classes
 
