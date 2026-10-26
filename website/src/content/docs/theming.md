@@ -101,6 +101,16 @@ container.innerHTML = render(source, { fontFamily }).svg;
 
 If you also set `--pele-font` in CSS, use the same font so the labels fit their measured size.
 
+To draw part of a diagram in the monospace font, list it in [`monospace`](/api#renderoptions) instead of styling it with CSS alone, so Pele measures it in that font and makes room for it. Text with a `font-family` set by `style` or `classDef` keeps that font.
+
+```ts
+render(source, { monospace: ['members'] });
+```
+
+| Part | Text |
+| --- | --- |
+| `members` | Attributes and methods in class diagrams, styled by `.pele-member` |
+
 ## Classes
 
 Elements in the SVG have class names. Use them to style one kind of element without changing a variable.

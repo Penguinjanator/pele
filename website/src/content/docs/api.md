@@ -109,6 +109,7 @@ All options are optional.
 | `measurer` | `TextMeasurer` | Measures label text. Defaults to a canvas measurer in browsers and a built-in width table elsewhere. See [Text measurement](#text-measurement). |
 | `fontFamily` | `string` | Label font. Defaults to `sans-serif`. See [Fonts](/theming#fonts). |
 | `fontFamilyMono` | `string` | Monospace label font. Defaults to `monospace`. |
+| `monospace` | `MonospacePart[]` | Parts of the diagram to measure and draw in the monospace font. See [Fonts](/theming#fonts). |
 | `fontSize` | `number` | Base font size in pixels. Defaults to `16`. |
 | `idPrefix` | `string` | Prefixes IDs in the SVG, including the accessibility title and description IDs. Use a unique prefix containing only letters, digits, `-` and `_` for each diagram on a page to avoid shared IDs. `mount()` gives each diagram its own prefix by default. |
 | `responsive` | `boolean` | Allows the SVG to shrink to fit its container. Defaults to `true`. Set `false` for a fixed pixel size. |
