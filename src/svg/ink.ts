@@ -82,7 +82,6 @@ function color(raw: string): [number, number] | undefined {
   return Number.isNaN(lum + alpha) ? undefined : [lum, alpha];
 }
 
-// Styles come from resolveStyle(). Fills below half opacity depend on an unknown background.
 // How opaque a style's fill-opacity and opacity leave its fill, or NaN when either isn't a plain number.
 function opacity(shape: string): number {
   let product = 1;
@@ -90,7 +89,19 @@ function opacity(shape: string): number {
   return product;
 }
 
+const known = new Map<string, string | undefined>();
+
+// Styles come from resolveStyle(). Fills below half opacity depend on an unknown background.
 export function ink(shape: string, text = ''): string | undefined {
+  const key = `${shape}\0${text}`;
+  if (known.has(key)) return known.get(key);
+  if (known.size > 1000) known.clear();
+  const result = pick(shape, text);
+  known.set(key, result);
+  return result;
+}
+
+function pick(shape: string, text: string): string | undefined {
   const fill = RE_FILL.exec(shape);
   const found = fill && !RE_FILL.test(text) ? color(fill[1]) : undefined;
   if (!found) return undefined;
