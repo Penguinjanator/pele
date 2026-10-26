@@ -9,14 +9,32 @@ import type { RenderOptions, Rendered } from '../../types.js';
 import { capWidth, titleRoom } from '../common/fit-width.js';
 import { fitText } from '../common/fit-text.js';
 import { formatter } from './format.js';
-import { layoutTreemap } from './layout.js';
-import type { TreemapModel } from './model.js';
+import { layoutTreemap, type Box } from './layout.js';
+import type { TreemapModel, TreemapNode } from './model.js';
 
 const HEADER = 28;
+const SHORT_HEADER = 18;
 const SIDE = 6;
 const LINE = 1.25;
 
 const titlePart = (raw: string): string => esc(decodeEntities(raw).trim()).trim();
+
+function leafCount(roots: TreemapNode[]): number {
+  let count = 0;
+  const stack = roots.slice();
+  while (stack.length > 0) {
+    const node = stack.pop()!;
+    if (node.children !== undefined) stack.push(...node.children);
+    else if (Number.isFinite(node.value) && node.value! > 0) count++;
+  }
+  return count;
+}
+
+// Caps corners at a quarter of a small box's shorter side; 4px is the default radius.
+function corners(attrs: string, b: Box): string {
+  const cap = Math.min(b.w, b.h) / 4;
+  return cap < 4 ? rounded(attrs).replace('rx:var(--_r)', `rx:min(var(--_r),${num(cap)}px)`) : rounded(attrs);
+}
 
 function option(config: Config, key: string, fallback: number, min: number, max: number): number {
   const value = (config.treemap as Config | undefined)?.[key];
@@ -37,10 +55,13 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
   const height = Math.round(option(config, 'nodeHeight', 40, 1, 400) * 10);
   const showValues = treemap.showValues !== false;
   const format = formatter(typeof treemap.valueFormat === 'string' ? treemap.valueFormat : ',');
+  // Reduce gaps and insets as average leaf area shrinks.
+  const crowd = Math.min(1, Math.max(0, Math.log10((width * height) / Math.max(1, leafCount(model.roots)) / 800)));
   const boxes = layoutTreemap(model.roots, width, height, {
-    gap: option(config, 'padding', 4, 0, 200),
+    gap: option(config, 'padding', Math.round(2 + 2 * crowd), 0, 200),
     header: HEADER,
-    side: SIDE,
+    short: SHORT_HEADER,
+    side: Math.round(3 + 3 * crowd),
   });
 
   const title = layoutLabel(model.title, false, measurer, size, titleRoom(options), Style.Bold);
@@ -77,29 +98,32 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
       let text = '';
       let drawn: string | undefined;
       if (b.headed) {
-        const labelSize = fixed ?? small;
+        const short = b.header < HEADER;
+        const labelSize = fixed ?? (short ? tiny : small);
         const valueSize = fixed ?? tiny;
         const room = b.w - 2 * SIDE - 4;
         const valueWidth = value ? measurer.width(value, valueSize, textStyle) : 0;
-        const withValue = valueWidth > 0 && room - valueWidth - 12 >= 3 * labelSize;
+        const withValue = !short && valueWidth > 0 && room - valueWidth - 12 >= 3 * labelSize;
         const label =
-          labelSize * LINE <= HEADER
+          labelSize * LINE < b.header
             ? fitText(name, withValue ? room - valueWidth - 12 : room, labelSize, labelSize, measurer, textStyle | Style.Bold)
             : undefined;
-        const baseline = y + HEADER / 2 + 1;
+        const baseline = y + b.header / 2 + 1;
         drawn = label?.text;
         if (label) {
-          text += `<text x="${num(x + SIDE + 2)}" y="${num(baseline + labelSize * 0.35)}" font-weight="var(--_hw)"${style.text}>${esc(label.text)}</text>`;
+          text += `<text x="${num(x + SIDE + 2)}" y="${num(baseline + labelSize * 0.35)}" font-weight="var(--_hw)"${short ? ` font-size="${labelSize}"` : ''}${style.text}>${esc(label.text)}</text>`;
         }
         if (withValue && valueSize * LINE <= HEADER) {
           text += `<text class="pele-value" x="${num(x + b.w - SIDE - 2)}" y="${num(baseline + valueSize * 0.35)}" font-size="${tiny}" text-anchor="end" fill="var(--_m)"${style.text}>${esc(value)}</text>`;
         }
       }
-      // A section is a tint of its color, unless a class gives it a fill of its own.
+      // A section is a tint of its color, unless a class gives it a fill of its own. Headerless
+      // sections draw no box, so their children blend into the grid.
       const tint = /[";]fill:/.test(style.shape) ? '' : ' fill-opacity="0.12"';
-      sections +=
-        `<g class="pele-node pele-section${classNames(node.classSelector ?? '')}" ${group}${tooltip(drawn)}` +
-        `${rect}${rounded(`${tint} stroke="${color}"${style.shape}`)}/>${text}</g>`;
+      const shape = b.headed
+        ? `${rect}${corners(`${tint} stroke="${color}"${style.shape}`, b)}/>`
+        : `<rect x="${num(x)}" y="${num(y)}" width="${num(b.w)}" height="${num(b.h)}" fill="none"/>`;
+      sections += `<g class="pele-node pele-section${classNames(node.classSelector ?? '')}" ${group}${tooltip(drawn)}${shape}${text}</g>`;
       continue;
     }
 
@@ -124,7 +148,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
         text = `<text x="${cx}" y="${num(cy + label.size * 0.35)}" font-size="${num(label.size)}"${style.text}>${esc(label.text)}</text>`;
       }
     }
-    leaves += `<g class="pele-node pele-leaf${classNames(node.classSelector ?? '')}" ${group}${tooltip(label?.text)}${rect}${rounded(style.shape)}/>${text}</g>`;
+    leaves += `<g class="pele-node pele-leaf${classNames(node.classSelector ?? '')}" ${group}${tooltip(label?.text)}${rect}${corners(style.shape, b)}/>${text}</g>`;
   }
 
   const totalWidth = Math.ceil(Math.max(width, title.width) + 2 * pad);

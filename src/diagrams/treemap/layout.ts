@@ -10,6 +10,7 @@ export interface Box {
   children: Box[];
   // Small sections give their header space to their children.
   headed: boolean;
+  header: number;
   x: number;
   y: number;
   w: number;
@@ -20,12 +21,13 @@ export interface Insets {
   gap: number;
   // Space a section keeps for its header, and around its children on the other three sides.
   header: number;
+  short: number;
   side: number;
 }
 
 function box(node: TreemapNode, parent: Box | undefined, series: number): Box {
   const value = node.children === undefined && Number.isFinite(node.value) && node.value! > 0 ? node.value! : 0;
-  return { node, parent, series, value, children: [], headed: false, x: 0, y: 0, w: 0, h: 0 };
+  return { node, parent, series, value, children: [], headed: false, header: 0, x: 0, y: 0, w: 0, h: 0 };
 }
 
 const clamp = (v: number, low: number, high: number): number => (v >= low ? Math.min(v, high) : low);
@@ -99,7 +101,7 @@ export function layoutTreemap(roots: TreemapNode[], width: number, height: numbe
     if (b.parent) b.parent.value += b.value;
   }
 
-  const { gap, header, side } = insets;
+  const { gap, header, short, side } = insets;
   const placed: Box[] = [];
   const place = (children: Box[], x: number, y: number, w: number, h: number): void => {
     const shown = children.filter((b) => b.value > 0).sort((a, b) => b.value - a.value);
@@ -124,8 +126,10 @@ export function layoutTreemap(roots: TreemapNode[], width: number, height: numbe
   for (let i = 0; i < placed.length; i++) {
     const b = placed[i];
     if (b.children.length === 0) continue;
-    b.headed = b.w > 2 * side && b.h > header + side;
-    if (b.headed) place(b.children, b.x + side, b.y + header, b.w - 2 * side, b.h - header - side);
+    const top = b.h - header - side >= 12 ? header : short;
+    b.headed = b.w > Math.max(24, 2 * side) && b.h - top - side >= 8;
+    b.header = b.headed ? top : 0;
+    if (b.headed) place(b.children, b.x + side, b.y + top, b.w - 2 * side, b.h - top - side);
     else place(b.children, b.x, b.y, b.w, b.h);
   }
   return placed;

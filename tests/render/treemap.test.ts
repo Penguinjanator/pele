@@ -35,9 +35,37 @@ function rects(svg: string): Rect[] {
   return out;
 }
 
+// Ignore boxes too thin to retain a gap.
+function smallestGap(boxes: Rect[]): number {
+  let least = Infinity;
+  for (const a of boxes) {
+    for (const b of boxes) {
+      if (Math.min(a.w, a.h, b.w, b.h) < 8) continue;
+      if (a.y < b.y + b.h && b.y < a.y + a.h && b.x >= a.x + a.w) least = Math.min(least, b.x - a.x - a.w);
+      if (a.x < b.x + b.w && b.x < a.x + a.w && b.y >= a.y + a.h) least = Math.min(least, b.y - a.y - a.h);
+    }
+  }
+  return least;
+}
+
+function deepTree(): string {
+  let src = 'treemap\n';
+  for (let i = 0; i < 6; i++) {
+    src += `"top ${i}"\n`;
+    for (let j = 0; j < 8; j++) {
+      src += `  "mid ${i}.${j}"\n    "inner ${i}.${j}"\n`;
+      for (let k = 0; k < 8; k++) src += `      "leaf ${i}.${j}.${k}": ${1 + ((i * 64 + j * 8 + k) % 37) ** 3}\n`;
+    }
+  }
+  return src;
+}
+
+const BUDGET =
+  'treemap-beta\n"Budget"\n    "Operations"\n        "Salaries": 700000\n        "Equipment": 200000\n        "Supplies": 100000\n    "Marketing"\n        "Advertising": 400000\n        "Events": 100000';
+
 const overlap = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 const leaf = (name: string, value: number): TreemapNode => ({ name, value });
-const insets = { gap: 4, header: 28, side: 6 };
+const insets = { gap: 4, header: 28, short: 18, side: 6 };
 
 describe('treemap layout', () => {
   it('gives each box an area in proportion to its value', () => {
@@ -287,6 +315,56 @@ describe('treemap rendering', () => {
     const { svg } = render(src, options);
     expect(svg.match(/class="pele-node pele-leaf"/g)?.length).toBe(leaves);
     expect(svg.match(/class="pele-node pele-section"/g)?.length).toBe(sections);
+  });
+
+  it('spaces a crowded treemap more tightly, with one gap throughout', () => {
+    const boxes = rects(render(deepTree(), options).svg);
+    const top = boxes.find((r) => r.id === 'top 0')!;
+    expect(Math.min(...boxes.filter((r) => r.id.startsWith('mid 0.')).map((r) => r.x)) - top.x).toBe(3);
+    const gaps = new Set([smallestGap(boxes.filter((r) => r.id.startsWith('top ')))]);
+    for (let i = 0; i < 6; i++) {
+      gaps.add(smallestGap(boxes.filter((r) => r.id.startsWith(`mid ${i}.`))));
+      for (let j = 0; j < 8; j++) gaps.add(smallestGap(boxes.filter((r) => r.id.startsWith(`leaf ${i}.${j}.`))));
+    }
+    gaps.delete(Infinity);
+    expect([...gaps]).toEqual([2]);
+  });
+
+  it('keeps the spacing of a roomy treemap', () => {
+    const boxes = rects(render(BUDGET, options).svg);
+    const id = (name: string): Rect => boxes.find((r) => r.id === name)!;
+    expect(id('Operations').x - id('Budget').x).toBe(6);
+    expect(id('Operations').y - id('Budget').y).toBe(28);
+    expect(smallestGap(['Salaries', 'Equipment', 'Supplies'].map(id))).toBe(4);
+    expect(smallestGap(['Operations', 'Marketing'].map(id))).toBe(4);
+  });
+
+  it('uses the padding an author sets as the gap', () => {
+    const crowded = rects(render(config('    padding: 6', deepTree()), options).svg);
+    expect(smallestGap(crowded.filter((r) => r.id.startsWith('top ')))).toBe(6);
+    const roomy = rects(render(config('    padding: 1', BUDGET), options).svg);
+    expect(smallestGap(roomy.filter((r) => ['Salaries', 'Equipment', 'Supplies'].includes(r.id)))).toBe(1);
+  });
+
+  it('draws no box for a section without a header', () => {
+    const { svg } = render(config('    nodeHeight: 3', 'treemap\n"Section"\n  "Leaf": 1'), options);
+    expect(svg).toMatch(/data-id="Section"><title>Section<\/title><rect [^>]*fill="none"\/><\/g>/);
+  });
+
+  it('gives a small section a short header', () => {
+    const { svg } = render(config('    nodeHeight: 4', 'treemap\n"Section"\n  "Leaf": 1'), options);
+    const boxes = rects(svg);
+    expect(svg).toMatch(/font-size="12">Section</);
+    expect(boxes.find((r) => r.id === 'Leaf')!.y - boxes.find((r) => r.id === 'Section')!.y).toBe(18);
+    const tall = render(config('    nodeHeight: 4', 'treemap\n"Section":::big\n  "Leaf": 1\nclassDef big font-size:14.4px'), options).svg;
+    expect(tall).not.toMatch(/<text[^>]*>Section</);
+  });
+
+  it('keeps the corners of a small box within a quarter of its shorter side', () => {
+    const { svg } = render('treemap\n"big": 1000\n"small": 4', options);
+    const small = rects(svg).find((r) => r.id === 'small')!;
+    expect(small.attrs.get('style')).toBe(`rx:min(var(--_r),${Math.min(small.w, small.h) / 4}px)`);
+    expect(rects(svg).find((r) => r.id === 'big')!.attrs.get('style')).toBe('rx:var(--_r)');
   });
 
   it('fits text at the font size a class sets', () => {
