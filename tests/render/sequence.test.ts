@@ -199,6 +199,27 @@ describe('sequence rendering', () => {
     expect(step(wrapped)).toBeGreaterThanOrEqual(own[1] - own[0]);
   });
 
+  it('widens gaps within maxWidth before wrapping a message', () => {
+    const lines = (svg: string, id: string): number =>
+      svg.match(new RegExp(`<g class="pele-edge-label" data-id="${id}">(.*?)</g>`))![1].match(/<tspan/g)?.length ?? 1;
+    const reported =
+      'sequenceDiagram\n  participant U as UE\n  participant M as MeNB (LTE anchor)\n  participant S as SgNB (5G, NR leg)\n' +
+      '  M->>S: SgNB Addition Request (DRB-ID, CG-ConfigInfo)\n  M->>U: RRCConnectionReconfiguration (carries the NR SCG config)\n  U->>M: RRCConnectionReconfigurationComplete';
+    const long = 'thisIsAnExtremelyLongMessageIdentifierThatShouldHaveRoomToFit';
+    const cases: [string, string, number, number][] = [
+      [reported, 'i2', 760, 1],
+      [reported, 'i2', 760.5, 1],
+      [`sequenceDiagram\n  A->>B: ${long}`, 'i0', 300.25, 3],
+      [`sequenceDiagram\n  participant A\n  participant B\n  participant C\n  participant D\n  A->>D: ${long}`, 'i0', 450, 2],
+      [`sequenceDiagram\n  A->>+B: ${long}\n  Note right of B: note\n  B-->>-A: ok`, 'i0', 400, 2],
+    ];
+    for (const [source, id, maxWidth, count] of cases) {
+      const result = render(source, { ...options, maxWidth });
+      expect(result.width).toBeLessThanOrEqual(maxWidth);
+      expect(lines(result.svg, id)).toBe(count);
+    }
+  });
+
   it('draws activations, nested ones offset, and ends arrows at their edges', () => {
     const svg = svgOf('sequenceDiagram\n  A->>+B: one\n  A->>+B: two\n  B-->>-A: three\n  B-->>-A: four');
     const x = lifelines(svg);

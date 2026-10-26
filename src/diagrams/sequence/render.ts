@@ -149,7 +149,6 @@ interface View {
   label: Label;
   x: number;
   w: number;
-  room?: number;
 }
 
 interface Frame {
@@ -214,7 +213,7 @@ export function renderSequence(db: SeqDb, config: Config, options: RenderOptions
   return tighten(options, (tight) => draw(db, config, options, tight));
 }
 
-function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean, grow = true): Rendered {
+function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean, hold = 0): Rendered {
   const conf = (config.sequence ?? {}) as Config;
   const size = options.fontSize ?? 16;
   const small = Math.round(size * 0.875);
@@ -322,7 +321,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
         const created = cols[b].createAt === i ? cols[b].size.w / 2 : 0;
         const central = m.centralConnection ? 4 * CENTRAL_R : 0;
         need(Math.min(a, b), Math.max(a, b), (tight ? Math.min(label.width, Math.max(16, wrapW - 16)) : label.width) + 2 * msgPad + ACT_W + badge + created + central);
-        views[i] = { kind: V.Line, a, b, label, x: 0, w: 0, room: wrapW };
+        views[i] = { kind: V.Line, a, b, label, x: 0, w: 0 };
       }
     }
   }
@@ -466,11 +465,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
         } else {
           x0 = Math.min(a.x, b.x);
           x1 = Math.max(a.x, b.x);
-          const room = Math.max(wrapW, x1 - x0 - 2 * msgPad - ACT_W);
-          if ((tight || m.wrap) && room !== view.room) {
-            view.label = text(m.message as string, small, true, room);
-            view.room = room;
-          }
+          if (tight || m.wrap) view.label = text(m.message as string, small, true, Math.max(wrapW, x1 - x0 - 2 * msgPad - ACT_W));
           if (b.createAt === i) {
             if (b.x > a.x) x1 += b.size.w / 2;
             else x0 -= b.size.w / 2;
@@ -487,31 +482,37 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
   };
   layout();
 
-  // Spend unused width on gaps crossed by wrapped messages before placing their rows.
+  // Widen gaps only if it reduces message wrapping.
   let grown = false;
-  if (tight && grow && options.maxWidth !== undefined) {
-    const spare = Math.floor(options.maxWidth - (maxX - minX + 2 * pad));
-    if (spare > 0) {
-      const stretch = new Int32Array(cols.length);
-      for (let i = 0; i < views.length; i++) {
-        const view = views[i];
-        if (view?.kind !== V.Line || view.label.lines.length < 2) continue;
-        if (view.label.lines.length <= text(messages[i].message as string, small, false, Infinity).lines.length) continue;
-        stretch[Math.min(view.a, view.b)]++;
-        stretch[Math.max(view.a, view.b)]--;
-      }
-      let active = 0;
-      let count = 0;
-      for (let i = 0; i < gaps.length; i++) {
-        active += stretch[i];
-        stretch[i] = active > 0 ? 1 : 0;
-        count += stretch[i];
-      }
-      if (count > 0) {
-        const extra = spare / count;
-        for (let i = 0; i < gaps.length; i++) gaps[i] += stretch[i] * extra;
+  if (tight && options.maxWidth !== undefined) {
+    const spare = Math.floor(options.maxWidth) - Math.ceil(maxX - minX + 2 * pad) - hold;
+    const stretch = new Int32Array(cols.length);
+    const wrapped: number[] = [];
+    let lines = 0;
+    for (let i = 0; spare > 0 && i < views.length; i++) {
+      const view = views[i];
+      if (view?.kind !== V.Line || view.label.lines.length <= text(messages[i].message as string, small, false, Infinity).lines.length) continue;
+      wrapped.push(i);
+      lines += view.label.lines.length;
+      stretch[Math.min(view.a, view.b)]++;
+      stretch[Math.max(view.a, view.b)]--;
+    }
+    let active = 0;
+    let crossed = 0;
+    for (let i = 0; i < gaps.length; i++) {
+      active += stretch[i];
+      stretch[i] = active > 0 ? 1 : 0;
+      crossed += stretch[i];
+    }
+    if (crossed > 0) {
+      const before = gaps.slice();
+      for (let i = 0; i < gaps.length; i++) gaps[i] += (stretch[i] * spare) / crossed;
+      layout();
+      for (const i of wrapped) lines -= views[i]!.label.lines.length;
+      grown = lines > 0;
+      if (!grown) {
+        gaps.splice(0, gaps.length, ...before);
         layout();
-        grown = true;
       }
     }
   }
@@ -839,7 +840,8 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
   }
 
   const width = Math.ceil(maxX - minX + 2 * pad);
-  if (grown && width > options.maxWidth!) return draw(db, config, options, tight, false);
+  // Retry with space for activation notes and rounding.
+  if (grown && width > options.maxWidth!) return draw(db, config, options, tight, hold > 0 ? Infinity : width - Math.floor(options.maxWidth!));
   const height = Math.ceil(bottom - minY + 2 * pad);
   const svg = svgDocument(
     'sequence',
