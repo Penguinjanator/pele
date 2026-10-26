@@ -10,7 +10,7 @@ export const ON_LIGHT = 'var(--pele-fg-on-light,#1f1f1f)';
 export const ON_DARK = 'var(--pele-fg-on-dark,#fff)';
 
 const RE_FILL = /[";]fill:([^;"]*)/;
-const RE_FILL_OPACITY = /[";]fill-opacity:([^;"]*)/;
+const RE_OPACITIES = /[";](?:fill-)?opacity:([^;"]*)/g;
 const RE_HEX = /^#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i;
 const RE_FUNCTION = /^(rgba?|hsla?)\(([^()]*)\)$/i;
 const RE_NUMBER = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?(%|deg|grad|rad|turn)?$/i;
@@ -83,13 +83,19 @@ function color(raw: string): [number, number] | undefined {
 }
 
 // Styles come from resolveStyle(). Fills below half opacity depend on an unknown background.
+// How opaque a style's fill-opacity and opacity leave its fill, or NaN when either isn't a plain number.
+function opacity(shape: string): number {
+  let product = 1;
+  for (const [, value] of shape.matchAll(RE_OPACITIES)) product *= amount(value.trim(), 1);
+  return product;
+}
+
 export function ink(shape: string, text = ''): string | undefined {
   const fill = RE_FILL.exec(shape);
   const found = fill && !RE_FILL.test(text) ? color(fill[1]) : undefined;
   if (!found) return undefined;
-  const opacity = RE_FILL_OPACITY.exec(shape);
   // An opacity that isn't a plain number, such as calc() or var(), may still be low.
-  if (!(found[1] * (opacity ? amount(opacity[1].trim(), 1) : 1) >= 0.5)) return undefined;
+  if (!(found[1] * opacity(shape) >= 0.5)) return undefined;
   return found[0] > EVEN ? ON_LIGHT : ON_DARK;
 }
 
@@ -97,8 +103,7 @@ export function ink(shape: string, text = ''): string | undefined {
 export function paints(shape: string): boolean {
   const fill = RE_FILL.exec(shape)?.[1].trim().toLowerCase();
   if (!fill || fill === 'none' || fill === 'transparent') return false;
-  const opacity = RE_FILL_OPACITY.exec(shape);
-  const scale = opacity ? amount(opacity[1].trim(), 1) : 1;
+  const scale = opacity(shape);
   return (color(fill)?.[1] ?? 1) * (Number.isNaN(scale) ? 1 : scale) > 0;
 }
 

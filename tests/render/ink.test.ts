@@ -102,6 +102,9 @@ describe('label ink', () => {
     expect(inkFor('fill:#0009', 'fill-opacity:0.8')).toBeUndefined();
     expect(inkFor('fill:#000', 'fill-opacity:calc(0.1)')).toBeUndefined();
     expect(inkFor('fill:#000', 'fill-opacity:var(--fade)')).toBeUndefined();
+    expect(inkFor('fill:#000', 'opacity:0.4')).toBeUndefined();
+    expect(inkFor('fill:#000', 'opacity:0.8', 'fill-opacity:0.6')).toBeUndefined();
+    expect(inkFor('fill:#000', 'opacity:0.8')).toBe(ON_DARK);
   });
 
   it('leaves a color the style sets', () => {

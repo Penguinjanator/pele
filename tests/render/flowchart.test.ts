@@ -279,6 +279,8 @@ describe('flowchart rendering', () => {
     expect(casings('', 'none')).toBe('');
     expect(casings('', 'transparent')).toBe('');
     expect(casings('', '#0000')).toBe('');
+    const faded = render('flowchart TB\nsubgraph S\n  A --> B\nend\nstyle S fill:black,opacity:0', options).svg;
+    expect(faded).not.toMatch(/pele-casings|--pele-fg-on/);
   });
 
   it('drops style values that could load resources or break out of the attribute', () => {
