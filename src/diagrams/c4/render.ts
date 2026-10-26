@@ -2,8 +2,8 @@ import { tighten, titleRoom } from '../common/fit-width.js';
 import { PeleError } from '../../errors.js';
 import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
-import { ARROW, marker, markerTrim } from '../../svg/edges.js';
-import { inkFill } from '../../svg/ink.js';
+import { ARROW, casingsSvg, edgeCasing, marker, markerTrim, runsInside } from '../../svg/edges.js';
+import { inkFill, paints } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
 import { drawShape } from '../../svg/shapes.js';
 import { resolveStyle, rounded, type ResolvedStyle } from '../../svg/theme.js';
@@ -114,8 +114,13 @@ function draw(db: C4Db, _config: Config, options: RenderOptions, tight: boolean,
   const offset = (value: number | undefined): number => (value ? Math.max(-MAX_OFFSET, Math.min(MAX_OFFSET, value)) : 0);
 
   // Every line is drawn before any label is placed, so that labels can keep off the arrowheads.
+  let casings = '';
   let edgesOut = '';
   const trim = markerTrim('arrow_point');
+  const filled: number[] = [];
+  for (const group of order) {
+    if (group !== root && paints(userStyle(group.boundary.bgColor, undefined, undefined).shape)) filled.push(group.x, group.y, group.x + group.w, group.y + group.h);
+  }
   const lanes = new Lanes();
   for (const group of order) if (group !== root) lanes.frame(group);
   const routes = db.rels.map((rel, index) => {
@@ -130,6 +135,7 @@ function draw(db: C4Db, _config: Config, options: RenderOptions, tight: boolean,
     grow(Math.min(r.x0, r.x1), Math.min(r.y0, r.y1), Math.max(r.x0, r.x1), Math.max(r.y0, r.y1));
     if (startArrow && careful) taken.push(r.sx - ARROW, r.sy - ARROW, r.sx + ARROW, r.sy + ARROW);
     if (endArrow && careful) taken.push(r.ex - ARROW, r.ey - ARROW, r.ex + ARROW, r.ey + ARROW);
+    if (runsInside(r.d, filled)) casings += edgeCasing(r, startArrow ? 'arrow_point' : 'none', endArrow ? 'arrow_point' : 'none', style.line);
     edgesOut +=
       `<g class="pele-edge" data-id="${escText(rel.from + '-' + rel.to)}"${style.line}><path d="${r.d}"/>` +
       (startArrow ? marker('arrow_point', r.sx, r.sy, r.sdx, r.sdy, color) : '') +
@@ -291,6 +297,7 @@ function draw(db: C4Db, _config: Config, options: RenderOptions, tight: boolean,
     labelSvg(title, width / 2, pad + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
       `<g transform="translate(${num(ox)},${num(oy)})">` +
       (clusters ? `<g class="pele-clusters">${clusters}</g>` : '') +
+      casingsSvg(casings) +
       (edgesOut ? `<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round">${edgesOut}</g>` : '') +
       (nodesOut ? `<g class="pele-nodes">${nodesOut}</g>` : '') +
       (labelsOut ? `<g class="pele-edge-labels" font-size="${small}">${labelsOut}</g>` : '') +
