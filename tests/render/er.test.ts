@@ -107,6 +107,43 @@ describe('ER diagram rendering', () => {
     }
   });
 
+  it('measures attribute types, names and keys in the monospace font when monospace lists attributes', () => {
+    const src = 'erDiagram\n  CAR {\n    string registrationNumber PK "The plate number, as issued by the registration office of the country"\n    int wheels FK, UK\n  }';
+    const plain = svgOf(src);
+    const mono = render(src, { ...options, monospace: ['attributes'] }).svg;
+    const comment = (svg: string): string => /<text class="pele-er-comment".*?<\/text>/.exec(svg)![0];
+    for (const cls of ['pele-er-type', 'pele-er-name', 'pele-er-keys']) {
+      expect(mono).toMatch(new RegExp(`<text class="${cls}"[^>]* font-family="var\\(--_fm\\)"`));
+    }
+    expect(plain).not.toContain('font-family="var(--_fm)"');
+    expect(comment(mono)).not.toContain('font-family');
+    expect(comment(mono).replace(/ x="[-\d.]+"/g, '')).toBe(comment(plain).replace(/ x="[-\d.]+"/g, ''));
+    expect(count(comment(mono), '<tspan')).toBe(2);
+    expect(box(mono, 'CAR').w).toBeGreaterThan(box(plain, 'CAR').w);
+    for (const name of ['`a  b`', '`<code>a  b</code>`']) {
+      const spaced = render(`erDiagram\n  A {\n    string ${name}\n  }`, { ...options, monospace: ['attributes'] }).svg;
+      expect(spaced).toMatch(/<text class="pele-er-name" font-family="var\(--_fm\)" xml:space="preserve"><tspan[^>]*>a {2}b<\/tspan>/);
+    }
+  });
+
+  it('ignores monospace values that do not list attributes', () => {
+    const src = 'erDiagram\n  CAR {\n    string registrationNumber PK "The plate"\n  }';
+    const plain = svgOf(src);
+    for (const monospace of [[], ['attribute'], ['members'], 'attributes', { attributes: true }, true, null]) {
+      expect(render(src, { ...options, monospace } as object).svg).toBe(plain);
+    }
+  });
+
+  it("keeps an entity's own font-family on its attributes when monospace lists them", () => {
+    for (const rule of ['style A color:black,font-family:serif', 'classDef serif color:black,font-family:serif\n  class A serif']) {
+      const src = `erDiagram\n  A {\n    string name PK\n  }\n  B {\n    string name PK\n  }\n  ${rule}`;
+      const attributes = (svg: string): string => /data-id="A".*?(<g class="pele-er-attributes".*?<\/g>)/.exec(svg)![1];
+      const svg = render(src, { ...options, monospace: ['attributes'] }).svg;
+      expect(attributes(svg)).toBe(attributes(svgOf(src)));
+      expect(/data-id="B".*$/.exec(svg)![0]).toContain('font-family="var(--_fm)"');
+    }
+  });
+
   it('shades alternate rows and rounds the last one with the box', () => {
     const three = svgOf('erDiagram\n  A {\n int a\n int b\n int c\n }');
     const stripes = /<g class="pele-er-stripes" fill="var\(--_bg\)">(.*?)<\/g>/.exec(three)![1];

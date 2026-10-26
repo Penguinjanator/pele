@@ -62,6 +62,7 @@ interface NodeView {
   cols: number[];
   rowSize: number;
   keySize: number;
+  mono: number;
   // Whether self-relationships loop out of the bottom side rather than the right.
   below: boolean;
 }
@@ -74,12 +75,13 @@ interface Loop {
 }
 
 // Writes a measured label starting at x, with the baseline of its first line at y.
-function textLeft(label: Label, x: number, y: number, attrs: string, icons: IconResolver | undefined): string {
+function textLeft(label: Label, x: number, y: number, attrs: string, icons: IconResolver | undefined, mono = 0): string {
   const lines = label.lines;
   if (lines.length === 0) return '';
   const only = lines.length === 1 && lines[0].length === 1 ? lines[0][0] : undefined;
-  if (only && only.icon === undefined && only.math === undefined && only.style === 0) {
-    return `<text${attrs} x="${num(x)}" y="${num(y)}">${esc(only.text)}</text>`;
+  // The short form collapses repeated spaces in monospace text.
+  if (only && only.icon === undefined && only.math === undefined && only.style === mono && !(mono && only.text.includes('  '))) {
+    return `<text${textStyle(attrs, mono)} x="${num(x)}" y="${num(y)}">${esc(only.text)}</text>`;
   }
   const shared = sharedStyle(label);
   const shift = label.size * 0.35;
@@ -132,6 +134,7 @@ export function renderEr(db: ErDb, config: Config, options: RenderOptions): Rend
 // `turned` draws a diagram that runs across as one that runs down.
 function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean): Rendered {
   const graph = buildErGraph(db);
+  const monospaced = Array.isArray(options.monospace) && options.monospace.includes('attributes');
   const size = options.fontSize ?? 16;
   const smallSize = Math.round(size * 0.875);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
@@ -196,6 +199,7 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
       node.cssStyles.length > 0 ? node.cssCompiledStyles.concat(node.cssStyles) : node.cssCompiledStyles
     );
     const base = (style.bold ? Style.Bold : 0) | (style.italic ? Style.Italic : 0);
+    const mono = monospaced && !/[";]font-family:/.test(style.text) ? Style.Mono : 0;
     const nameSize = style.fontSize ?? size;
     const rowSize = style.fontSize ?? smallSize;
     const keySize = style.fontSize ?? Math.round(size * 0.75);
@@ -206,7 +210,7 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
     // Loops leave by a side the layout keeps free of other edges: the right when ranks run down,
     // the bottom when they run across.
     const below = own.length > 0 && !node.isGroup && horizontal(i);
-    const view: NodeView = { node, style, label, w: 0, h: 0, headH: 0, rows: [], cols: [], rowSize, keySize, below };
+    const view: NodeView = { node, style, label, w: 0, h: 0, headH: 0, rows: [], cols: [], rowSize, keySize, mono, below };
     let reach = 0;
     let bands = 0;
     for (const loop of own) {
@@ -234,9 +238,9 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
         const widths = [0, 0, 0, 0];
         for (const attribute of node.attributes) {
           const cells: Cells = [
-            layoutLabel(cellText(attribute.type), true, measurer, rowSize, NO_WRAP, base),
-            layoutLabel(cellText(attribute.name), true, measurer, rowSize, NO_WRAP, base),
-            layoutLabel(attribute.keys.join(', '), false, measurer, keySize, NO_WRAP, base),
+            layoutLabel(cellText(attribute.type), true, measurer, rowSize, NO_WRAP, base | mono),
+            layoutLabel(cellText(attribute.name), true, measurer, rowSize, NO_WRAP, base | mono),
+            layoutLabel(attribute.keys.join(', '), false, measurer, keySize, NO_WRAP, base | mono),
             layoutLabel(cellText(attribute.comment), true, measurer, rowSize, COMMENT_WRAP, base),
           ];
           let h = rowLine;
@@ -375,9 +379,9 @@ function draw(db: ErDb, config: Config, options: RenderOptions, turned: boolean)
         const baseline = y + ROW_PAD / 2 + rowLine / 2 + view.rowSize * 0.35;
         const [type, attribute, keys, comment] = row.cells;
         cells +=
-          textLeft(type, x0 + view.cols[0], baseline, ` class="pele-er-type" fill="var(--_m)"${text}`, icons) +
-          textLeft(attribute, x0 + view.cols[1], baseline, ` class="pele-er-name"${text}`, icons) +
-          textLeft(keys, x0 + view.cols[2], baseline, ` class="pele-er-keys" font-size="${view.keySize}" fill="var(--_m)"${text}`, icons) +
+          textLeft(type, x0 + view.cols[0], baseline, ` class="pele-er-type" fill="var(--_m)"${text}`, icons, view.mono) +
+          textLeft(attribute, x0 + view.cols[1], baseline, ` class="pele-er-name"${text}`, icons, view.mono) +
+          textLeft(keys, x0 + view.cols[2], baseline, ` class="pele-er-keys" font-size="${view.keySize}" fill="var(--_m)"${text}`, icons, view.mono) +
           textLeft(comment, x0 + view.cols[3], baseline, ` class="pele-er-comment" fill="var(--_m)"${text}`, icons);
         y += row.h;
       }
