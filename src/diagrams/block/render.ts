@@ -2,8 +2,9 @@ import type { Config } from '../../preprocess.js';
 import { titleLabel } from '../../svg/title.js';
 import { escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, edgeLabelSvg, marker, markerTrim, type EdgePath } from '../../svg/edges.js';
+import { inkFill } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
-import { drawShape, shapeInset, shapeSize } from '../../svg/shapes.js';
+import { drawShape, shapeFilled, shapeInset, shapeSize } from '../../svg/shapes.js';
 import { classNames, resolveStyle, rounded, setsFill, type ResolvedStyle } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
@@ -718,7 +719,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
       clusters +=
         `<g class="pele-cluster${classes}" data-id="${id}">` +
         `<rect x="${num(v.x - v.w / 2)}" y="${num(top)}" width="${num(v.w)}" height="${num(v.h)}" fill="var(--_a)"${setsFill(v.style.shape) ? '' : ' fill-opacity="0.5"'} stroke="var(--_b)"${rounded(v.style.shape)}/>` +
-        labelSvg(v.label, v.x, top + (v.head + gap) / 2 + 2, ` class="pele-cluster-label" fill="var(--_m)"${v.style.text}`, icons) +
+        labelSvg(v.label, v.x, top + (v.head + gap) / 2 + 2, ` class="pele-cluster-label"${inkFill(v.style, 'var(--_m)')}${v.style.text}`, icons) +
         '</g>';
       continue;
     }
@@ -728,7 +729,7 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
       (arrow
         ? drawArrow(v.mask, v.bw, v.bh, SHAPE_ATTRS + v.style.shape)
         : drawShape(v.shape, v.bw, v.bh, SHAPE_ATTRS + v.style.shape, LINE_ATTRS + v.style.line)) +
-      labelSvg(v.label, v.dx, v.dy, ` class="pele-label"${v.style.text}`, icons) +
+      labelSvg(v.label, v.dx, v.dy, ` class="pele-label"${arrow || shapeFilled(v.shape) ? inkFill(v.style) : ''}${v.style.text}`, icons) +
       '</g>';
   }
 

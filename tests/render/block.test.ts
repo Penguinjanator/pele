@@ -469,6 +469,19 @@ describe('block rendering', () => {
     expect(svg).toMatch(/data-id="h"><rect [^>]*fill-opacity="0.5"/);
   });
 
+  it('picks a contrasting label color on fills a style sets', () => {
+    const { svg } = render(
+      'block\n  block:g["Group"]\n    a["Light"]\n  end\n  b["Dark"] c["Own"] d["Plain"]\n  e<["Go"]>(right)\n  style g fill:#FFF9C4\n  style a fill:#BBDEFB\n  style b fill:#1f3a5f\n  style c fill:#1f3a5f,color:#eee\n  style e fill:black',
+      options
+    );
+    expect(svg).toMatch(/data-id="g">.*?<text class="pele-cluster-label" fill="var\(--pele-fg-on-light,#1f1f1f\)"[^>]*>Group</);
+    expect(svg).toMatch(/data-id="a"[^>]*>.*?<text class="pele-label" fill="var\(--pele-fg-on-light,#1f1f1f\)"[^>]*>Light</);
+    expect(svg).toMatch(/data-id="b"[^>]*>.*?<text class="pele-label" fill="var\(--pele-fg-on-dark,#fff\)"[^>]*>Dark</);
+    expect(svg).toMatch(/data-id="c"[^>]*>.*?<text class="pele-label" style="fill:#eee;"[^>]*>Own</);
+    expect(svg).toMatch(/data-id="d"[^>]*>.*?<text class="pele-label" x=[^>]*>Plain</);
+    expect(svg).toMatch(/data-id="e"[^>]*>.*?<text class="pele-label" fill="var\(--pele-fg-on-dark,#fff\)"[^>]*>Go</);
+  });
+
   it('draws the front matter title', () => {
     const plain = render('block\n  a', options);
     const titled = render('---\ntitle: Systems\n---\nblock\n  a', options);
