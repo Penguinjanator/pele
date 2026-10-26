@@ -507,7 +507,7 @@ function draw(model: UsecaseModel, config: Config, options: RenderOptions, turne
       if (ce.route.length < 6) continue;
       path = routePath(ce.route, undefined, trim(startType), trim(endType));
     }
-    const under = fillUnder(path.d, [path.sx, path.sy, path.ex, path.ey], fills);
+    const under = fillUnder(path.d, [path.sx, path.sy, path.ex, path.ey], fills, path.tokens);
     const over = under ? edgeInk(under, style?.line) : under;
     const color = over || (style?.stroke ? esc(style.stroke) : 'var(--_l)');
     if (over === '') {

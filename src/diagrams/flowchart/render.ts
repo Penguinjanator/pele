@@ -330,7 +330,7 @@ function draw(db: FlowDb, config: Config, options: RenderOptions, variant: FlowV
         insetRoute(route, route.length - 3, views[ce.dst], cnodes[ce.dst]);
         path = routePath(route, edge.curve, markerTrim(startType), markerTrim(endType), leaves, arrives);
       }
-      const over = overFills(path.d, [path.sx, path.sy, path.ex, path.ey], fills, style?.line);
+      const over = overFills(path.d, [path.sx, path.sy, path.ex, path.ey], fills, style?.line, path.tokens);
       const color = over || (style?.stroke && edge.thickness !== 'invisible' ? esc(style.stroke) : 'var(--_l)');
       let attrs = '';
       if (edge.thickness === 'thick') attrs += ' stroke-width="2.5"';

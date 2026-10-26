@@ -8,6 +8,7 @@ export const ARROW = 8;
 
 export interface EdgePath {
   d: string;
+  tokens?: number[];
   sx: number;
   sy: number;
   sdx: number;
@@ -136,12 +137,20 @@ export function routePath(
     last++;
   }
 
-  let d = `M${num(xs[0])},${num(ys[0])}`;
+  // Keep tokens to avoid parsing d when checking fills.
+  const tokens: number[] = [];
+  const tok = (v: number): string => {
+    tokens.push(written(v));
+    return num(v);
+  };
+  tokens.push(77, 2);
+  let d = `M${tok(xs[0])},${tok(ys[0])}`;
   let atX = xs[0];
   let atY = ys[0];
   const lineTo = (x: number, y: number): void => {
     if (near(x, y, atX, atY)) return;
-    d += `L${num(x)},${num(y)}`;
+    tokens.push(76, 2);
+    d += `L${tok(x)},${tok(y)}`;
     atX = x;
     atY = y;
   };
@@ -154,7 +163,8 @@ export function routePath(
       const k = Math.abs(along) * ease(down ? x - atX : y - atY, along);
       const ux = down ? 0 : Math.sign(along) * k;
       const uy = down ? Math.sign(along) * k : 0;
-      d += `C${num(atX + ux)},${num(atY + uy)} ${num(x - ux)},${num(y - uy)} ${num(x)},${num(y)}`;
+      tokens.push(67, 6);
+      d += `C${tok(atX + ux)},${tok(atY + uy)} ${tok(x - ux)},${tok(y - uy)} ${tok(x)},${tok(y)}`;
       atX = x;
       atY = y;
       continue;
@@ -175,10 +185,15 @@ export function routePath(
     lineTo(x - ux * before, y - uy * before);
     atX = x + vx * after;
     atY = y + vy * after;
-    if (stepped) d += `Q${num(x)},${num(y)} ${num(atX)},${num(atY)}`;
-    else d += `C${num(x - ux * before * (1 - HANDLE))},${num(y - uy * before * (1 - HANDLE))} ${num(x + vx * after * (1 - HANDLE))},${num(y + vy * after * (1 - HANDLE))} ${num(atX)},${num(atY)}`;
+    if (stepped) {
+      tokens.push(81, 4);
+      d += `Q${tok(x)},${tok(y)} ${tok(atX)},${tok(atY)}`;
+    } else {
+      tokens.push(67, 6);
+      d += `C${tok(x - ux * before * (1 - HANDLE))},${tok(y - uy * before * (1 - HANDLE))} ${tok(x + vx * after * (1 - HANDLE))},${tok(y + vy * after * (1 - HANDLE))} ${tok(atX)},${tok(atY)}`;
+    }
   }
-  return { d, sx, sy, sdx: -sdx, sdy: -sdy, ex, ey, edx, edy };
+  return { d, tokens, sx, sy, sdx: -sdx, sdy: -sdy, ex, ey, edx, edy };
 }
 
 export function markerTrim(type: string): number {
@@ -215,49 +230,117 @@ export function marker(type: string, x: number, y: number, dx: number, dy: numbe
   return '';
 }
 
+const TENS = Array.from({ length: 23 }, (_, i) => Number(`1e${i}`));
+
 // Samples curves and arcs; NaN separates subpaths.
 function pathPoints(d: string): number[] {
+  return sample(tokenize(d));
+}
+
+// Each command stores its character code, argument count, and arguments.
+function tokenize(d: string): number[] {
+  const out: number[] = [];
+  let at = -1;
+  for (let i = 0; i < d.length; ) {
+    const c = d.charCodeAt(i);
+    if (c >= 65 && c <= 90 && c !== 69) {
+      at = out.length + 1;
+      out.push(c, 0);
+      i++;
+    } else if (c === 45 || c === 46 || (c >= 48 && c <= 57)) {
+      // Scale exact integers to match Number() rounding; otherwise use Number().
+      let j = c === 45 ? i + 1 : i;
+      let m = 0;
+      let places = -1;
+      for (let k = d.charCodeAt(j); (k >= 48 && k <= 57) || (k === 46 && places < 0); k = d.charCodeAt(++j)) {
+        if (k === 46) places = 0;
+        else {
+          m = m * 10 + k - 48;
+          if (places >= 0) places++;
+        }
+      }
+      let v: number;
+      if ((d.charCodeAt(j) | 32) === 101 || m > Number.MAX_SAFE_INTEGER || places > 22) {
+        for (let k = d.charCodeAt(j); k === 46 || k === 101 || k === 69 || (k >= 48 && k <= 57) || ((k === 45 || k === 43) && (d.charCodeAt(j - 1) | 32) === 101); k = d.charCodeAt(++j));
+        v = Number(d.slice(i, j));
+      } else {
+        v = places > 0 ? m / TENS[places] : m;
+        if (c === 45) v = -v;
+      }
+      if (at >= 0) {
+        out.push(v);
+        out[at]++;
+      }
+      i = j;
+    } else {
+      i++;
+    }
+  }
+  return out;
+}
+
+// Match the value parsed from num() output.
+function written(v: number): number {
+  const n = Math.round(v * 100);
+  return n === 0 ? 0 : n / 100;
+}
+
+function sample(tokens: number[]): number[] {
   const out: number[] = [];
   let x = 0;
   let y = 0;
-  for (const [, cmd, rest] of d.matchAll(/([MLHVCQA])([^MLHVCQA]*)/g)) {
-    const n = (rest.match(/-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi) ?? []).map(Number);
-    if (cmd === 'H' || cmd === 'V') {
-      for (const v of n) {
-        if (cmd === 'H') x = v;
-        else y = v;
+  for (let i = 0; i < tokens.length; ) {
+    const cmd = tokens[i];
+    const count = tokens[i + 1];
+    const s = i + 2;
+    const e = s + count;
+    i = e;
+    if (cmd === 72 || cmd === 86) {
+      for (let k = s; k < e; k++) {
+        if (cmd === 72) x = tokens[k];
+        else y = tokens[k];
         out.push(x, y);
       }
-    } else if (cmd === 'C' || cmd === 'Q') {
-      const step = cmd === 'C' ? 6 : 4;
-      for (let k = 0; k + step <= n.length; k += step) {
-        const xs = [x, ...n.slice(k, k + step).filter((_, i) => i % 2 === 0)];
-        const ys = [y, ...n.slice(k, k + step).filter((_, i) => i % 2 === 1)];
+    } else if (cmd === 67 || cmd === 81) {
+      const cubic = cmd === 67;
+      const step = cubic ? 6 : 4;
+      for (let k = s; k + step <= e; k += step) {
+        const x1 = tokens[k];
+        const y1 = tokens[k + 1];
+        const x2 = tokens[k + 2];
+        const y2 = tokens[k + 3];
+        const x3 = cubic ? tokens[k + 4] : x2;
+        const y3 = cubic ? tokens[k + 5] : y2;
         for (let t = 0.125; t <= 1; t += 0.125) {
-          const px = xs.slice();
-          const py = ys.slice();
-          for (let m = px.length - 1; m > 0; m--) {
-            for (let i = 0; i < m; i++) {
-              px[i] += (px[i + 1] - px[i]) * t;
-              py[i] += (py[i + 1] - py[i]) * t;
-            }
+          // Preserve the original De Casteljau operation order to keep rounding unchanged.
+          let ax = x + (x1 - x) * t;
+          let ay = y + (y1 - y) * t;
+          let bx = x1 + (x2 - x1) * t;
+          let by = y1 + (y2 - y1) * t;
+          if (cubic) {
+            const cx = x2 + (x3 - x2) * t;
+            const cy = y2 + (y3 - y2) * t;
+            ax += (bx - ax) * t;
+            ay += (by - ay) * t;
+            bx += (cx - bx) * t;
+            by += (cy - by) * t;
           }
-          out.push(px[0], py[0]);
+          out.push(ax + (bx - ax) * t, ay + (by - ay) * t);
         }
-        x = xs[xs.length - 1];
-        y = ys[ys.length - 1];
+        x = x3;
+        y = y3;
       }
-    } else if (cmd === 'A') {
-      for (let k = 0; k + 7 <= n.length; k += 7) {
-        arc(out, x, y, n[k], n[k + 1], n[k + 3], n[k + 4], n[k + 5], n[k + 6]);
-        x = n[k + 5];
-        y = n[k + 6];
+    } else if (cmd === 65) {
+      for (let k = s; k + 7 <= e; k += 7) {
+        arc(out, x, y, tokens[k], tokens[k + 1], tokens[k + 3], tokens[k + 4], tokens[k + 5], tokens[k + 6]);
+        x = tokens[k + 5];
+        y = tokens[k + 6];
       }
     } else {
-      for (let k = 0; k + 2 <= n.length; k += 2) {
-        if (cmd === 'M' && k === 0 && out.length > 0) out.push(NaN, NaN);
-        x = n[k];
-        y = n[k + 1];
+      for (let k = s; k + 2 <= e; k += 2) {
+        if (cmd === 77 && k === s && out.length > 0) out.push(NaN, NaN);
+        x = tokens[k];
+        y = tokens[k + 1];
         out.push(x, y);
       }
     }
@@ -288,21 +371,29 @@ function arc(out: number[], x1: number, y1: number, rx: number, ry: number, larg
   for (let i = 1; i <= 8; i++) out.push(cx + rx * Math.cos(from + (turn * i) / 8), cy + ry * Math.sin(from + (turn * i) / 8));
 }
 
+// Test segment overlap with the box using Liang-Barsky clipping.
+function clips(x: number, y: number, dx: number, dy: number, l: number, t: number, r: number, b: number): boolean {
+  let lo = 0;
+  let hi = 1;
+  for (let side = 0; side < 4; side++) {
+    const p = side === 0 ? -dx : side === 1 ? dx : side === 2 ? -dy : dy;
+    const q = side === 0 ? x - l : side === 1 ? r - x : side === 2 ? y - t : b - y;
+    if (p === 0) {
+      if (q < 0) hi = -1;
+    } else if (p < 0) lo = Math.max(lo, q / p);
+    else hi = Math.min(hi, q / p);
+  }
+  return lo < hi;
+}
+
 function enters(points: number[], l: number, t: number, r: number, b: number): boolean {
   for (let k = 0; k + 2 < points.length; k += 2) {
     const x = points[k];
     const y = points[k + 1];
-    const dx = points[k + 2] - x;
-    const dy = points[k + 3] - y;
-    let lo = 0;
-    let hi = 1;
-    for (const [p, q] of [[-dx, x - l], [dx, r - x], [-dy, y - t], [dy, b - y]]) {
-      if (p === 0) {
-        if (q < 0) hi = -1;
-      } else if (p < 0) lo = Math.max(lo, q / p);
-      else hi = Math.min(hi, q / p);
-    }
-    if (lo < hi) return true;
+    const x2 = points[k + 2];
+    const y2 = points[k + 3];
+    if ((x < l && x2 < l) || (x > r && x2 > r) || (y < t && y2 < t) || (y > b && y2 > b)) continue;
+    if (clips(x, y, x2 - x, y2 - y, l, t, r, b)) return true;
   }
   return false;
 }
@@ -314,20 +405,30 @@ export interface Fill {
 }
 
 // The innermost fill holding the whole edge and its marker tips, '' when it crosses a border, or undefined off fills.
-export function fillUnder(d: string, tips: number[], fills: Fill[]): Fill | '' | undefined {
+export function fillUnder(d: string, tips: number[], fills: Fill[], tokens?: number[]): Fill | '' | undefined {
   if (fills.length === 0) return undefined;
-  const points = pathPoints(d);
+  const points = tokens ? sample(tokens) : pathPoints(d);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (let k = 0; k < points.length + tips.length; k += 2) {
+    const x = k < points.length ? points[k] : tips[k - points.length];
+    const y = k < points.length ? points[k + 1] : tips[k + 1 - points.length];
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
   let holder: Fill | undefined;
   let least = Infinity;
   for (const fill of fills) {
     const [l, t, r, b] = fill.box;
+    if (maxX < l + 0.5 || minX > r - 0.5 || maxY < t + 0.5 || minY > b - 0.5) continue;
     let touched = enters(points, l + 0.5, t + 0.5, r - 0.5, b - 0.5);
     for (let k = 0; k < tips.length && !touched; k += 2) touched = tips[k] > l + 0.5 && tips[k] < r - 0.5 && tips[k + 1] > t + 0.5 && tips[k + 1] < b - 0.5;
     if (!touched) continue;
-    const all = points.concat(tips);
-    for (let k = 0; k < all.length; k += 2) {
-      if (!Number.isNaN(all[k]) && !(all[k] >= l && all[k] <= r && all[k + 1] >= t && all[k + 1] <= b)) return '';
-    }
+    if (minX < l || maxX > r || minY < t || maxY > b) return '';
     const area = (r - l) * (b - t);
     if (area < least) {
       least = area;
@@ -349,8 +450,8 @@ export function hollowOn(markers: string, fill: Fill): string {
 }
 
 // The ink of the innermost fill that holds the whole edge, '' for a casing where it crosses a border, or undefined off fills.
-export function overFills(d: string, tips: number[], fills: Fill[], line = ''): string | undefined {
-  const fill = fillUnder(d, tips, fills);
+export function overFills(d: string, tips: number[], fills: Fill[], line = '', tokens?: number[]): string | undefined {
+  const fill = fillUnder(d, tips, fills, tokens);
   return fill ? edgeInk(fill, line) : fill;
 }
 
@@ -358,7 +459,7 @@ const CASE = 4;
 
 // A wider page-colored stroke under an edge, as faint as it; markers drop their class so marker styles skip it.
 export function casing(d: string, markers: string, line = '', thick = false): string {
-  const decl = (prop: string): string | undefined => new RegExp(`[";]${prop}:([^;"]+);`).exec(line)?.[1].trim();
+  const decl = (prop: string): string | undefined => (line.includes(prop) ? new RegExp(`[";]${prop}:([^;"]+);`).exec(line)?.[1].trim() : undefined);
   const stroke = decl('stroke');
   if (stroke === 'none' || stroke === 'transparent') return '';
   const width = thick ? '2.5' : decl('stroke-width');

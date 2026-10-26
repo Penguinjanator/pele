@@ -650,7 +650,7 @@ function draw(db: StateDb, config: Config, options: RenderOptions, turned: boole
       }
       path = routePath(route, typeof curve === 'string' ? curve : undefined, 0, markerTrim(endType), leaves, arrives);
     }
-    const over = overFills(path.d, [path.ex, path.ey], fills);
+    const over = overFills(path.d, [path.ex, path.ey], fills, '', path.tokens);
     if (over === '') casings += edgeCasing(path, 'none', endType);
     const kind = note ? `pele-note-edge" stroke="${over || 'var(--_b)'}" stroke-dasharray="3 4` : over ? `pele-transition" stroke="${over}` : 'pele-transition';
     edgesOut +=

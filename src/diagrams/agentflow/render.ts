@@ -356,7 +356,7 @@ function draw(db: AgentflowDb, config: Config, options: RenderOptions, turned: b
         ? resolveStyle(edge.cssCompiledStyles.concat(edge.style))
         : undefined;
     const endType = edge.arrowTypeEnd;
-    const over = overFills(path.d, [path.ex, path.ey], fills, style?.line);
+    const over = overFills(path.d, [path.ex, path.ey], fills, style?.line, path.tokens);
     const color = over || (style?.stroke ? esc(style.stroke) : 'var(--_l)');
     const kind = edge.thickness === 'dotted' ? 'reference' : endType === 'arrow_cross' ? 'failure' : 'sequence';
     const classes = classNames(edge.classes.replace(/edge-thickness-normal|edge-pattern-solid|flowchart-link/g, ''));
