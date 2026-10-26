@@ -299,6 +299,17 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
     numbering.shown[i] ? Math.max(BADGE_H, measurer.width(String(numbering.index[i]), tiny, 0) + 8) : 0;
 
   const views = new Array<View | undefined>(count);
+  const sized = new Array<Map<number, Label> | undefined>(count);
+  const sizedText = (i: number, room: number): Label => {
+    let known = sized[i];
+    if (!known) {
+      if (room === wrapW) return views[i]!.label;
+      sized[i] = known = new Map([[wrapW, views[i]!.label]]);
+    }
+    let label = known.get(room);
+    if (!label) known.set(room, (label = messageText(messages[i].message as string, true, room)));
+    return label;
+  };
   for (let i = 0; i < count; i++) {
     const m = messages[i];
     const a = m.from === undefined ? undefined : colOf.get(m.from);
@@ -468,7 +479,7 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
         } else {
           x0 = Math.min(a.x, b.x);
           x1 = Math.max(a.x, b.x);
-          if (tight || m.wrap) view.label = messageText(m.message as string, true, Math.max(wrapW, x1 - x0 - 2 * msgPad - ACT_W));
+          if (tight || m.wrap) view.label = sizedText(i, Math.max(wrapW, x1 - x0 - 2 * msgPad - ACT_W));
           if (b.createAt === i) {
             if (b.x > a.x) x1 += b.size.w / 2;
             else x0 -= b.size.w / 2;
@@ -526,10 +537,12 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
       const even = (g: number): number => (stretch[g] * spare) / crossed;
       let counts = spread(even);
       const missing = sum(want);
-      if (byNeed && crossed > 1 && missing > 0) {
+      // Allow for rounding error.
+      const needs = (g: number): number => (want[g] * (spare - 0.01)) / missing;
+      // Reducing wrapping requires at least one gap wider than the even split.
+      if (byNeed && crossed > 1 && missing > 0 && gaps.some((_, g) => needs(g) > even(g))) {
         const first = counts;
-        // Allow for rounding error.
-        counts = spread((g) => (want[g] * (spare - 0.01)) / missing);
+        counts = spread(needs);
         uneven = sum(counts) < sum(first) && counts.every((n, k) => n <= first[k]);
         if (!uneven) counts = spread(even);
       }
