@@ -13,6 +13,8 @@ Switch between light and dark colors without re-rendering the diagram.
 | --- | --- | --- |
 | `--pele-bg` | `#ffffff` | Backgrounds |
 | `--pele-fg` | `#1f1f1f` | Text |
+| `--pele-fg-on-light` | `#1f1f1f` | Text on light fills set in the source |
+| `--pele-fg-on-dark` | `#ffffff` | Text on dark fills set in the source |
 | `--pele-muted` | `#6e6e6e` | Secondary text |
 | `--pele-line` | `#1f1f1f` | Edges and arrowheads |
 | `--pele-surface` | `#f3f3f3` | Node fill |
@@ -154,3 +156,5 @@ flowchart LR
 ```
 
 Colors set this way are fixed. They do not change with the theme.
+
+When the source sets a fill, labels on it use `--pele-fg-on-light` or `--pele-fg-on-dark`, whichever contrasts more with the fill, so they stay readable in light and dark themes. A `color` set in the source still wins.
