@@ -582,7 +582,12 @@ function draw(db: SeqDb, config: Config, options: RenderOptions, tight: boolean,
     return lo < xs.length && xs[lo] < x1;
   };
   const stack: Frame[] = [];
-  const inkOf = (fill: string | undefined): string | undefined => (fill ? ink(resolveStyle([`fill:${fill}`]).shape) : undefined);
+  const inks = new Map<string, string | undefined>();
+  const inkOf = (fill: string | undefined): string | undefined => {
+    if (!fill) return undefined;
+    if (!inks.has(fill)) inks.set(fill, ink(resolveStyle([`fill:${fill}`]).shape));
+    return inks.get(fill);
+  };
   const inkOn = (fill: string | undefined): string => {
     const color = inkOf(fill);
     return color ? ` fill="${color}"` : '';
