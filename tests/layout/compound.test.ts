@@ -667,6 +667,22 @@ describe('compound layout', () => {
     }
   });
 
+  it('runs an edge into a group straight when only its bends need to move', () => {
+    const nodes = [group(100), group(101)];
+    const leaf = (parent: number): number => {
+      const v = nodes.push(cnode(54, 48, parent)) - 1;
+      nodes[v].seq = v;
+      nodes[v].span = 24;
+      return v;
+    };
+    const [a1, a2, a3, b1, b2, c, d] = [leaf(0), leaf(0), leaf(0), leaf(1), leaf(1), leaf(-1), leaf(-1)];
+    const edges = [edge(a1, a2), edge(a1, a3), edge(b1, b2), edge(a2, b1), edge(a3, b1), edge(b2, a1), edge(c, 0), edge(c, 1), edge(0, d), edge(1, d)];
+    compoundLayout(nodes, edges, 'TB', OPTIONS);
+    const route = edges[7].route;
+    const x = route[route.length - 3];
+    for (let k = 0; k < route.length; k += 3) if (route[k + 1] > nodes[c].y + nodes[c].h / 2 + 24) expect(route[k]).toBeCloseTo(x, 5);
+  });
+
   it('orders the nodes of a row of groups as one drawing, so that the edges between them do not cross', () => {
     const nodes = [group(100), group(101), group(102)];
     const stage = (g: number): number[] =>

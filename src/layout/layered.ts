@@ -167,6 +167,8 @@ const TWIN = 1;
 // A node, with whatever it is already in line with, moves this far at most to bring one more of
 // its edges into line.
 const SNAP = 12;
+// Bends with no node in line with them move this far at most to bring an edge into line.
+const BEND_SNAP = 24;
 // An end that cannot be brought into line leans towards where its edge goes, but keeps this far
 // from the ends of the part of its side that edges spread along. On a narrow node that leaves
 // it in the middle.
@@ -1233,8 +1235,8 @@ function settle(g: Graph, nodes: LNode[], xs: Float64Array, EFK: Uint8Array, ETK
   }
 }
 
-// Brings edges that are nearly straight into line, by moving a node a little across the flow
-// along with everything it is in line with already, where the nodes beside them leave room.
+// Brings edges that are nearly straight into line, by moving a node or bend a little across the
+// flow along with everything it is in line with already, where the nodes beside them leave room.
 // What is in line stays in line, so each move leaves one more edge straight.
 function snap(g: Graph, xs: Float64Array, empty: Uint8Array | undefined, opt: LayeredOptions): void {
   const { n, KIND, RANK, EF, ET, EFD, ETD, layerStart, order, pos } = g;
@@ -1275,7 +1277,7 @@ function snap(g: Graph, xs: Float64Array, empty: Uint8Array | undefined, opt: La
   for (let k = 0; k < a.length; k++) {
     const d = Math.abs(off(k));
     if (d < 0.01) join(a[k], b[k]);
-    else if (d <= SNAP) near.push(k);
+    else if (d <= BEND_SNAP) near.push(k);
   }
   if (near.length === 0) return;
   near.sort((x, y) => Math.abs(off(x)) - Math.abs(off(y)) || x - y);
@@ -1297,13 +1299,14 @@ function snap(g: Graph, xs: Float64Array, empty: Uint8Array | undefined, opt: La
       join(a[k], b[k]);
       continue;
     }
-    if (Math.abs(d) > SNAP || block[a[k]] === block[b[k]]) continue;
+    if (Math.abs(d) > BEND_SNAP || block[a[k]] === block[b[k]]) continue;
     // The smaller of the two blocks moves, if it can; else the other.
     const upper = block[a[k]];
     const lower = block[b[k]];
     const first = members[upper].length <= members[lower].length ? upper : lower;
     for (const id of [first, first === upper ? lower : upper]) {
       const shift = id === upper ? d : -d;
+      if (Math.abs(d) > SNAP && !members[id].every((v) => KIND[v] === Kind.Dummy)) continue;
       if (!free(id, shift)) continue;
       for (const v of members[id]) xs[v] += shift;
       join(a[k], b[k]);
