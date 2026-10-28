@@ -4,6 +4,7 @@ import Search from '../components/Search.astro';
 import MobileDocsMenu from '../components/MobileDocsMenu.astro';
 import { playgroundExample, sampleGroups } from '../lib/examples';
 import { storageKey, minimumWidth } from '../scripts/playground-columns';
+import { version } from '../../../package.json';
 import '../styles/playground.scss';
 
 const corpora = import.meta.glob<unknown>('../../../tests/corpus/*-docs.json', { eager: true, import: 'default' });
@@ -57,6 +58,7 @@ const resizeTitle = 'Drag to resize. Use arrow keys when focused. Double-click t
       <div class="playground-brand">
         <a class="wordmark" href="/" aria-label="Pele home">Pele</a>
         <h1>Playground</h1>
+        <a class="playground-version" href={`https://github.com/obsidianmd/pele/releases/tag/${version}`} title={`Pele ${version} release notes`} aria-label={`Pele ${version} release notes`}>{version}</a>
       </div>
       <div class="playground-actions">
           <button class="header-action" type="button" id="playground-settings" aria-label="Playground settings" title="Settings" aria-haspopup="menu" aria-expanded="false" aria-controls="playground-settings-menu">

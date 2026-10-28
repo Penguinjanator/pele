@@ -30,7 +30,7 @@
 
   .playground-brand {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 6px;
     flex-shrink: 0;
   }
@@ -39,6 +39,16 @@
     font-size: inherit;
     font-weight: 300;
     font-size: var(--font-size-heading);
+  }
+  .playground-version {
+    margin-inline-start: 4px;
+    color: var(--muted);
+    font-size: var(--font-size-xs);
+    text-decoration: none;
+
+    &:hover { color: var(--paper); }
+
+    @media (max-width: 419px) { display: none; }
   }
   .playground-actions {
     position: relative;
