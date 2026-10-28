@@ -7,6 +7,7 @@ import { mermaidAutocomplete } from './playground-autocomplete';
 import { createPlaygroundEditor } from './playground-editor';
 import { setupPlaygroundColumns } from './playground-columns';
 import { setupPlaygroundCopy } from './playground-copy';
+import { setupArrowKeys } from './playground-keys';
 import { playgroundMath } from './playground-math';
 import { renderMermaid } from './playground-mermaid';
 import { setupPlaygroundSettings } from './playground-settings';
@@ -234,22 +235,8 @@ function setView(next: View) {
   showOutputStatus();
   void updateMermaid();
 }
-viewButtons.forEach((button, index) => {
-  button.addEventListener('click', () => setView(button.dataset.view as View));
-  button.addEventListener('keydown', (event) => {
-    const forward = getComputedStyle(button).direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
-    const backward = forward === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft';
-    let next: number;
-    if (event.key === forward) next = (index + 1) % viewButtons.length;
-    else if (event.key === backward) next = (index + viewButtons.length - 1) % viewButtons.length;
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = viewButtons.length - 1;
-    else return;
-    event.preventDefault();
-    viewButtons[next].click();
-    viewButtons[next].focus();
-  });
-});
+viewButtons.forEach((button) => button.addEventListener('click', () => setView(button.dataset.view as View)));
+setupArrowKeys(viewButtons);
 
 const wrapButton = document.querySelector<HTMLButtonElement>('#wrap-lines')!;
 wrapButton.setAttribute('aria-checked', String(initialWrap));

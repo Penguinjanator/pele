@@ -1,3 +1,5 @@
+import { isRtl } from './playground-keys';
+
 export const storageKey = 'pele:playground:column-widths';
 export const minimumWidth = 180;
 
@@ -46,7 +48,7 @@ export function setupPlaygroundColumns() {
   }
 
   // In a right-to-left page the first column is on the right, so moving right narrows it.
-  const sign = () => getComputedStyle(columns).direction === 'rtl' ? -1 : 1;
+  const sign = () => isRtl(columns) ? -1 : 1;
 
   handles.forEach((handle, index) => {
     let drag: { pointerId: number; x: number; widths: number[] } | undefined;

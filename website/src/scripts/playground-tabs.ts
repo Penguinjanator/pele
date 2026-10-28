@@ -1,3 +1,5 @@
+import { setupArrowKeys } from './playground-keys';
+
 export function setupPlaygroundTabs() {
   const root = document.querySelector<HTMLElement>('.playground')!;
   const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-playground-tab]')];
@@ -16,25 +18,13 @@ export function setupPlaygroundTabs() {
     });
   };
 
-  tabs.forEach((tab, index) => {
+  tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
       root.dataset.activePanel = tab.dataset.playgroundTab;
       update();
     });
-    tab.addEventListener('keydown', (event) => {
-      const forward = getComputedStyle(tab).direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
-      const backward = forward === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft';
-      let next: number;
-      if (event.key === forward) next = (index + 1) % tabs.length;
-      else if (event.key === backward) next = (index + tabs.length - 1) % tabs.length;
-      else if (event.key === 'Home') next = 0;
-      else if (event.key === 'End') next = tabs.length - 1;
-      else return;
-      event.preventDefault();
-      tabs[next].click();
-      tabs[next].focus();
-    });
   });
+  setupArrowKeys(tabs);
   mobile.addEventListener('change', update);
   update();
 }

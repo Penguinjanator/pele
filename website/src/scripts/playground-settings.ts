@@ -1,4 +1,4 @@
-const isRtl = (element: Element) => getComputedStyle(element).direction === 'rtl';
+import { isRtl } from './playground-keys';
 
 export function setupPlaygroundSettings() {
   const trigger = document.querySelector<HTMLButtonElement>('#playground-settings')!;
