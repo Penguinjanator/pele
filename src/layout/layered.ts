@@ -162,6 +162,8 @@ const LEVEL_TOUCH = 4;
 const CROSSED_SLOPE = 0.5;
 // How far out of line two points may be and still count as in line.
 const IN_LINE = 0.5;
+// How far apart two edges may be at both ends and still count as twins.
+const TWIN = 1;
 // A node, with whatever it is already in line with, moves this far at most to bring one more of
 // its edges into line.
 const SNAP = 12;
@@ -1026,7 +1028,7 @@ function alignPorts(g: Graph, xs: Float64Array, empty: Uint8Array | undefined): 
       if (KIND[v] !== kind || (start ? succStart[v + 1] - succStart[v] : predStart[v + 1] - predStart[v]) !== 1) break;
       const e = follow(g, empty, start ? succE[succStart[v]] : predE[predStart[v]], start ? 1 : 0);
       const at = start ? xs[ET[e]] + ETD[e] : xs[EF[e]] + EFD[e];
-      if (to.length > 0 && at < to[to.length - 1] + IN_LINE) break;
+      if (to.length > 0 && at < to[to.length - 1] + TWIN) break;
       to.push(at);
     }
     if (to.length === 0 || to.length !== end - s) continue;
@@ -1607,7 +1609,7 @@ function straighten(g: Graph, xs: Float64Array, empty: Uint8Array, firstDummy: I
     for (let i = 0; i < row.length; ) {
       twins.length = 0;
       let j = i;
-      for (; j < row.length && Math.abs(from[row[j]] - from[row[i]]) < 1 && Math.abs(to[row[j]] - to[row[i]]) < 1; j++) twins.push(row[j]);
+      for (; j < row.length && Math.abs(from[row[j]] - from[row[i]]) < TWIN && Math.abs(to[row[j]] - to[row[i]]) < TWIN; j++) twins.push(row[j]);
       // The twins keep the order the rank gave them, so that two edges do not swap sides on the way.
       twins.sort((a, b) => g.pos[a] - g.pos[b]);
       for (let k = 0; k < twins.length; k++) {

@@ -646,6 +646,27 @@ describe('compound layout', () => {
     }
   });
 
+  it('keeps edges straight when their ends on a node are less than a twin apart', () => {
+    const nodes = [group(100), cnode(48, 48, 0), cnode(70, 66, 0), cnode(48, 48)];
+    nodes.forEach((node, i) => {
+      if (i > 0) node.seq = i;
+    });
+    nodes[1].span = 24;
+    nodes[2].span = 0.995;
+    nodes[3].span = 24;
+    const edges = [edge(1, 2, 40, 16), edge(2, 3), edge(3, 2)];
+    compoundLayout(nodes, edges, 'TB', OPTIONS);
+    for (const e of edges.slice(1)) {
+      const xs = e.route.filter((_, k) => k % 3 === 0);
+      const lo = Math.min(xs[0], xs[xs.length - 1]);
+      const hi = Math.max(xs[0], xs[xs.length - 1]);
+      for (const x of xs) {
+        expect(x).toBeGreaterThanOrEqual(lo - 1);
+        expect(x).toBeLessThanOrEqual(hi + 1);
+      }
+    }
+  });
+
   it('orders the nodes of a row of groups as one drawing, so that the edges between them do not cross', () => {
     const nodes = [group(100), group(101), group(102)];
     const stage = (g: number): number[] =>
