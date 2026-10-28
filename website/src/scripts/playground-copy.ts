@@ -1,21 +1,24 @@
-export function setupPlaygroundCopy(name: string, label: string, getValue: () => string) {
+export function setupPlaygroundCopy(name: string, getLabel: () => string, getValue: () => string) {
   const button = document.querySelector<HTMLButtonElement>(`#copy-${name}`)!;
   const copyIcon = button.innerHTML;
   let timer: number | undefined;
   let revision = 0;
   let previous: string | undefined;
+  let previousLabel: string | undefined;
   const reset = () => {
     window.clearTimeout(timer);
     delete button.dataset.copied;
-    button.title = label;
-    button.setAttribute('aria-label', label);
+    button.title = getLabel();
+    button.setAttribute('aria-label', button.title);
     button.innerHTML = copyIcon;
   };
   const refresh = () => {
     const value = getValue();
+    const label = getLabel();
     button.disabled = !value;
-    if (previous !== value) {
+    if (previous !== value || previousLabel !== label) {
       previous = value;
+      previousLabel = label;
       revision++;
       reset();
     }

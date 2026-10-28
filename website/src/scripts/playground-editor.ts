@@ -6,14 +6,14 @@ import { defaultKeymap, history, historyKeymap, indentWithTab, isolateHistory } 
 
 const silentChange = Annotation.define<boolean>();
 
-export function createPlaygroundEditor(name: 'input' | 'output', label: string, extensions: Extension[], wrap: boolean) {
+export function createPlaygroundEditor(name: 'input' | 'output' | 'css', label: string, extensions: Extension[], wrap: boolean) {
   const root = document.querySelector<HTMLElement>(`[data-editor="${name}"]`)!;
   const initialValue = root.querySelector('textarea')!.value;
   const readonly = name === 'output';
   const limit = readonly ? Infinity : playgroundLimits.source;
   const value = initialValue.length <= limit ? initialValue : '';
   const status = document.getElementById(`${name}-status`)!;
-  const showSizeError = () => setStatus(status, playgroundSizeError, 'error');
+  const showSizeError = () => setStatus(status, playgroundSizeError(name === 'css' ? 'CSS' : 'Source'), 'error');
   if (initialValue.length > limit) showSizeError();
   const listeners: (() => void)[] = [];
   const wrapping = new Compartment();

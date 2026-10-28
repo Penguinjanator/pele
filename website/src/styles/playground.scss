@@ -109,28 +109,31 @@
 
   h2 { margin: 0; font-size: inherit; font-weight: 400; }
 }
-.playground-language {
-  color: var(--muted);
-}
 @container (max-width: 240px) {
   .playground-panel-header { padding-inline: 12px; gap: 8px; }
-  .playground-language { display: none; }
 }
 .playground-copy { flex-shrink: 0; }
-.playground-language + .playground-copy { margin-inline-start: auto; }
-.playground-output-views { margin-inline-end: auto; }
-.playground-panel-header:has(.playground-output-views) { gap: 8px; }
+.playground-views { margin-inline-end: auto; }
 @container (max-width: 520px) {
-  .playground-panel-header:has(.playground-output-views) h2 { display: none; }
+  #output-panel h2 { display: none; }
 }
 @container (max-width: 400px) {
-  .playground-panel-header:has(.playground-output-views) { padding-inline: 12px; gap: 6px; }
-  .playground-output-views {
+  .playground-panel-header { padding-inline: 12px; gap: 6px; }
+  .playground-views {
     font-size: var(--font-size-menu);
 
     > button { padding-inline: 6px; }
   }
 }
+@container (max-width: 280px) {
+  #input-panel h2 { display: none; }
+}
+
+#input-panel {
+  &[data-language="mermaid"] :is([data-editor="css"], #css-status),
+  &[data-language="css"] :is([data-editor="input"], #input-status) { display: none; }
+}
+#css-status:empty { display: none; }
 
 #output-panel {
   &:not([data-view="svg"]) > .playground-editor,
@@ -165,6 +168,8 @@
   min-width: 0;
   min-height: 0;
   margin: 0;
+  // Keeps CSS from the CSS tab from drawing the diagram over the controls around it.
+  contain: paint;
 
   figcaption {
     display: flex;

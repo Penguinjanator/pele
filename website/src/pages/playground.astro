@@ -119,10 +119,13 @@ const resizeTitle = 'Drag to resize. Use arrow keys when focused. Double-click t
       ))}
     </div>
     <div class="playground-columns">
-      <section class="playground-panel" id="input-panel" aria-labelledby="input-heading">
+      <section class="playground-panel" id="input-panel" aria-labelledby="input-heading" data-language="mermaid">
         <header class="playground-panel-header">
           <h2 id="input-heading">Source</h2>
-          <span class="playground-language">Mermaid</span>
+          <div class="segmented-control playground-views" style="--segment-count: 2" role="group" aria-label="Source language">
+            <button type="button" data-language="mermaid" aria-pressed="true">Mermaid</button>
+            <button type="button" data-language="css" aria-pressed="false">CSS</button>
+          </div>
           <button type="button" class="doc-code-copy playground-copy" id="copy-input" title="Copy source" aria-label="Copy source">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
           </button>
@@ -130,7 +133,11 @@ const resizeTitle = 'Drag to resize. Use arrow keys when focused. Double-click t
         <div class="playground-editor" data-editor="input">
           <textarea id="playground-input" aria-label="Mermaid source" aria-describedby="input-status" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off">{playgroundExample}</textarea>
         </div>
+        <div class="playground-editor" data-editor="css">
+          <textarea id="playground-css" aria-label="CSS for the Pele preview" aria-describedby="css-status" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
+        </div>
         <div class="playground-status" id="input-status" role="status" aria-atomic="true"></div>
+        <div class="playground-status" id="css-status" role="status" aria-atomic="true"></div>
       </section>
       <div
         class="playground-resizer"
@@ -145,7 +152,7 @@ const resizeTitle = 'Drag to resize. Use arrow keys when focused. Double-click t
       <section class="playground-panel" id="output-panel" aria-labelledby="output-heading" data-view="pele">
         <header class="playground-panel-header">
           <h2 id="output-heading">Output</h2>
-          <div class="segmented-control playground-output-views" style={`--segment-count: ${views.length}`} role="group" aria-label="Output view">
+          <div class="segmented-control playground-views" style={`--segment-count: ${views.length}`} role="group" aria-label="Output view">
             {views.map((view, index) => <button type="button" data-view={view.id} aria-pressed={index === 0}>{view.label}</button>)}
           </div>
           <button type="button" class="doc-code-copy playground-copy" id="copy-output" title="Copy SVG" aria-label="Copy SVG" disabled>

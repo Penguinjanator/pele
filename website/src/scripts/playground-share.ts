@@ -1,6 +1,4 @@
-import { playgroundHref } from '../lib/playground-link';
-
-export function setupPlaygroundShare(getSource: () => string) {
+export function setupPlaygroundShare(getHref: () => string) {
   const button = document.querySelector<HTMLButtonElement>('#share-playground')!;
   const label = button.querySelector<HTMLElement>('.menu-label')!;
   const icon = button.querySelector('svg')!;
@@ -18,7 +16,7 @@ export function setupPlaygroundShare(getSource: () => string) {
     window.clearTimeout(timer);
     reset();
     try {
-      const url = new URL(playgroundHref(getSource()), window.location.origin).href;
+      const url = new URL(getHref(), window.location.origin).href;
       await navigator.clipboard.writeText(url);
       if (current !== revision) return;
       label.textContent = 'Link copied';

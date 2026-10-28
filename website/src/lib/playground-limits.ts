@@ -5,4 +5,4 @@ export const playgroundLimits = Object.freeze({
 
 export const maxHighlightLineLength = 2_000;
 
-export const playgroundSizeError = `Source is too large. The limit is ${playgroundLimits.source.toLocaleString()} characters.`;
+export const playgroundSizeError = (what: 'Source' | 'CSS') => `${what} is too large. The limit is ${playgroundLimits.source.toLocaleString()} characters.`;
