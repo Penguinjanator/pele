@@ -44,7 +44,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    margin-left: auto;
+    margin-inline-start: auto;
   }
   #playground-settings {
     &[aria-expanded="true"] { color: #f2f0e5; }
@@ -55,7 +55,7 @@
 }
 #playground-settings-menu {
   z-index: 20;
-  right: 0;
+  inset-inline: auto 0;
   min-width: 180px;
 }
 
@@ -104,7 +104,7 @@
   gap: 8px;
   height: 54px;
   flex-shrink: 0;
-  padding: 0 12px 0 20px;
+  padding-inline: 20px 12px;
   border-bottom: 1px solid var(--line);
 
   h2 { margin: 0; font-size: inherit; font-weight: 400; }
@@ -117,8 +117,8 @@
   .playground-language { display: none; }
 }
 .playground-copy { flex-shrink: 0; }
-.playground-language + .playground-copy { margin-left: auto; }
-.playground-output-views { margin-right: auto; }
+.playground-language + .playground-copy { margin-inline-start: auto; }
+.playground-output-views { margin-inline-end: auto; }
 .playground-panel-header:has(.playground-output-views) { gap: 8px; }
 @container (max-width: 520px) {
   .playground-panel-header:has(.playground-output-views) h2 { display: none; }
@@ -178,6 +178,8 @@
 }
 .playground-diagram-canvas {
   display: flex;
+  // Diagrams are laid out left to right whatever the page direction; Pele's SVG sets this itself.
+  direction: ltr;
   flex: 1;
   min-height: 0;
   overflow: auto;
@@ -205,7 +207,7 @@
   }
   #output-panel[data-view="compare"] .playground-diagram + .playground-diagram {
     border-top: 0;
-    border-left: 1px solid var(--pele-surface-alt);
+    border-inline-start: 1px solid var(--pele-surface-alt);
   }
 }
 .playground-copy:disabled { opacity: 0.45; cursor: default; }
@@ -215,6 +217,8 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  // Code reads left to right in every language.
+  direction: ltr;
 
   // Plain fallback if JavaScript is unavailable; all active editors use CodeMirror.
   textarea {
@@ -291,7 +295,7 @@
   overflow-wrap: anywhere;
 
 }
-#output-status { text-align: right; }
+#output-status { text-align: end; }
 #output-status[data-state=''] { color: var(--muted); }
 #output-status .playground-status-message { justify-content: flex-end; }
 
@@ -302,7 +306,7 @@
   background: transparent;
   padding: 4px 0;
   color: inherit;
-  text-align: left;
+  text-align: start;
   cursor: pointer;
 
   @media (hover: hover) {
@@ -311,7 +315,8 @@
   &:not(button) { cursor: default; }
 }
 .playground-diagnostic-detail {
-  margin: 4px 0 0 22px;
+  margin-block: 4px 0;
+  margin-inline-start: 22px;
   overflow-x: auto;
   color: var(--muted);
   font-family: var(--font-mono);
@@ -354,7 +359,7 @@
     .playground-actions {
       grid-row: 1;
       grid-column: 2;
-      margin-left: 0;
+      margin-inline-start: 0;
     }
     > .filter-search-trigger {
       grid-row: 1;

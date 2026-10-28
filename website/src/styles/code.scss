@@ -1,5 +1,7 @@
 .doc-code {
   position: relative;
+  // Code reads left to right in every language.
+  direction: ltr;
   margin: 28px 0;
   overflow: hidden;
   border-radius: var(--radius-panel);
@@ -156,6 +158,8 @@
   padding: 0.12em 0.24em;
   font-family: var(--font-mono);
   font-size: var(--font-size-small);
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .code-word {

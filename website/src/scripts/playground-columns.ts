@@ -45,6 +45,9 @@ export function setupPlaygroundColumns() {
     apply(next);
   }
 
+  // In a right-to-left page the first column is on the right, so moving right narrows it.
+  const sign = () => getComputedStyle(columns).direction === 'rtl' ? -1 : 1;
+
   handles.forEach((handle, index) => {
     let drag: { pointerId: number; x: number; widths: number[] } | undefined;
 
@@ -67,7 +70,7 @@ export function setupPlaygroundColumns() {
     });
     handle.addEventListener('pointermove', (event) => {
       if (!drag || event.pointerId !== drag.pointerId) return;
-      resize(index, drag.widths, event.clientX - drag.x);
+      resize(index, drag.widths, (event.clientX - drag.x) * sign());
     });
     handle.addEventListener('pointerup', finish);
     handle.addEventListener('pointercancel', finish);
@@ -79,8 +82,8 @@ export function setupPlaygroundColumns() {
       const values = widths();
       const step = event.shiftKey ? 40 : 16;
       let delta: number;
-      if (event.key === 'ArrowLeft') delta = -step;
-      else if (event.key === 'ArrowRight') delta = step;
+      if (event.key === 'ArrowLeft') delta = -step * sign();
+      else if (event.key === 'ArrowRight') delta = step * sign();
       else if (event.key === 'Home') delta = -values[index];
       else if (event.key === 'End') delta = values[index + 1];
       else return;

@@ -13,7 +13,7 @@
   justify-content: space-between;
   gap: 16px;
   min-height: 28px;
-  margin-right: -8px;
+  margin-inline-end: -8px;
   color: var(--muted);
   font-size: var(--font-size-small);
 }
@@ -117,6 +117,8 @@
 }
 
 .compare-drawing {
+  // Diagrams are laid out left to right whatever the page direction; Pele's SVG sets this itself.
+  direction: ltr;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   place-items: center;

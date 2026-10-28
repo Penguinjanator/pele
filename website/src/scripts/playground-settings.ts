@@ -1,3 +1,5 @@
+const isRtl = (element: Element) => getComputedStyle(element).direction === 'rtl';
+
 export function setupPlaygroundSettings() {
   const trigger = document.querySelector<HTMLButtonElement>('#playground-settings')!;
   const menu = document.querySelector<HTMLElement>('#playground-settings-menu')!;
@@ -10,9 +12,11 @@ export function setupPlaygroundSettings() {
     sampleTrigger.setAttribute('aria-expanded', 'false');
   };
   const openSamples = (focus = true) => {
-    samples.classList.remove('opens-left');
+    samples.classList.remove('opens-start');
     samples.hidden = false;
-    if (samples.getBoundingClientRect().right > window.innerWidth - 8) samples.classList.add('opens-left');
+    const box = samples.getBoundingClientRect();
+    const overflows = isRtl(samples) ? box.left < 8 : box.right > window.innerWidth - 8;
+    if (overflows) samples.classList.add('opens-start');
     sampleTrigger.setAttribute('aria-expanded', 'true');
     if (focus) sampleItems[0].focus();
   };
@@ -60,12 +64,14 @@ export function setupPlaygroundSettings() {
     const inSamples = samples.contains(document.activeElement);
     const currentItems = inSamples ? sampleItems : items;
     const index = currentItems.indexOf(document.activeElement as HTMLButtonElement);
-    if (event.key === 'ArrowRight' && document.activeElement === sampleTrigger) {
+    const opener = isRtl(menu) ? 'ArrowLeft' : 'ArrowRight';
+    const closer = opener === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft';
+    if (event.key === opener && document.activeElement === sampleTrigger) {
       event.preventDefault();
       openSamples();
       return;
     }
-    if (inSamples && (event.key === 'ArrowLeft' || event.key === 'Escape')) {
+    if (inSamples && (event.key === closer || event.key === 'Escape')) {
       event.preventDefault();
       closeSamples();
       sampleTrigger.focus();

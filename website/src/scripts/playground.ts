@@ -237,9 +237,11 @@ function setView(next: View) {
 viewButtons.forEach((button, index) => {
   button.addEventListener('click', () => setView(button.dataset.view as View));
   button.addEventListener('keydown', (event) => {
+    const forward = getComputedStyle(button).direction === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+    const backward = forward === 'ArrowLeft' ? 'ArrowRight' : 'ArrowLeft';
     let next: number;
-    if (event.key === 'ArrowRight') next = (index + 1) % viewButtons.length;
-    else if (event.key === 'ArrowLeft') next = (index + viewButtons.length - 1) % viewButtons.length;
+    if (event.key === forward) next = (index + 1) % viewButtons.length;
+    else if (event.key === backward) next = (index + viewButtons.length - 1) % viewButtons.length;
     else if (event.key === 'Home') next = 0;
     else if (event.key === 'End') next = viewButtons.length - 1;
     else return;

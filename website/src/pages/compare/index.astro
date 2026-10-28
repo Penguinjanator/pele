@@ -11,7 +11,7 @@ const count = (page: (typeof pages)[number]): number => page.sources.length + pa
       <a class="compare-row" href={`/compare/${page.type}`}>
         <span class="compare-row-title">{page.title}</span>
         <span>{count(page)} {count(page) === 1 ? 'diagram' : 'diagrams'}</span>
-        <span aria-hidden="true">→</span>
+        <span class="rtl-mirror" aria-hidden="true">→</span>
       </a>
     ))}
   </div>

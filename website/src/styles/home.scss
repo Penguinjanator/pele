@@ -74,7 +74,7 @@
   padding: 12px 20px 24px;
 
   & + & {
-    border-left: 1px solid var(--line);
+    border-inline-start: 1px solid var(--line);
   }
 }
 
@@ -83,11 +83,11 @@
   align-items: center;
   gap: 8px;
   min-height: 28px;
-  margin-right: -10px;
+  margin-inline-end: -10px;
   color: var(--muted);
   font-size: var(--font-size-small);
 
-  .doc-code-actions { margin-left: auto; }
+  .doc-code-actions { margin-inline-start: auto; }
   // Taller than the row, which has to stay level with the label beside it.
   .playground-link { margin-block: -3px; }
 }
@@ -148,7 +148,7 @@
     background: transparent;
     color: inherit;
     font: inherit;
-    text-align: left;
+    text-align: start;
     cursor: pointer;
 
     @media (hover: hover) {
@@ -158,7 +158,7 @@
 }
 .home-example-time {
   color: var(--muted);
-  text-align: right;
+  text-align: end;
 }
 .home-example-block[data-error] .home-example-figure svg { opacity: 0.4; }
 
@@ -340,11 +340,11 @@
 
   .home-example-block + .home-example-block {
     border-top: 1px solid var(--line);
-    border-left: 0;
+    border-inline-start: 0;
   }
 }
 
 @media (max-width: 480px) {
   .home-example-block { padding-inline: 16px; }
-  .home-example-label { margin-right: -6px; }
+  .home-example-label { margin-inline-end: -6px; }
 }
