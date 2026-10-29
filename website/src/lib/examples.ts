@@ -324,7 +324,7 @@ function overlap(a: string, b: string): number {
 }
 
 // Pele uses CSS variables for colors, so any other fill or stroke in the SVG is a color the example chose.
-// The source is checked too, for theme variables, which Pele does not draw, and for styles nothing uses.
+// The source is checked too, for theme variables and for styles nothing uses.
 const RE_OWN_PAINT = /(?:fill|stroke)(?:="|:)(?!none|currentColor|var\()/;
 const RE_OWN_STYLE = /themeVariables|\b(?:fill|stroke)\s*:/;
 const ownColors = (source: string, svg: string): boolean => RE_OWN_PAINT.test(svg) || RE_OWN_STYLE.test(source);

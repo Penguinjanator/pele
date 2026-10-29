@@ -158,3 +158,31 @@ flowchart LR
 Colors set this way are fixed. They do not change with the theme.
 
 A diagram can define fill colors with `style`, `classDef`, or a sequence `rect` or `box`. Labels on a fill automatically use whichever of `--pele-fg-on-light` and `--pele-fg-on-dark` contrasts more with it.
+
+### Series palettes
+
+Mermaid's palette theme variables replace the `--pele-series-*` colors in a diagram. Pele reads only the first eight colors of each palette:
+
+| Diagram | Theme variables |
+| --- | --- |
+| XY chart | `xyChart.plotColorPalette`, a comma-separated list |
+| Pie chart | `pie1` to `pie8` |
+| Git graph | `git0` to `git7` |
+| Timeline, radar, treemap | `cScale0` to `cScale7` |
+| Mindmap | `cScale1` to `cScale8` |
+| Venn diagram | `venn1` to `venn8` |
+
+```mermaid
+---
+config:
+  themeVariables:
+    xyChart:
+      plotColorPalette: "#205ea6, #bc5215"
+---
+xychart
+  x-axis [jan, feb, mar]
+  bar [3, 5, 2]
+  line [2, 4, 3]
+```
+
+Like other styles in the diagram, palette colors don't change with the theme. Use a CSS variable such as `var(--pele-accent)` as a color to follow the theme. Other `themeVariables` colors don't apply.

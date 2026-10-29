@@ -5,6 +5,7 @@ import { withIcons } from './text/icons.js';
 import { withMath } from './text/math.js';
 import { cleanupComments, encodeEntities, normalizeLineBreaks, preprocess, type Config } from './preprocess.js';
 import type { DiagramModel } from './models.js';
+import { paletteStyle, withPalette } from './svg/palette.js';
 import { mountWith, type MountOptions, type Mounted } from './mount.js';
 import type { Diagram, RenderOptions, RenderResult } from './types.js';
 
@@ -169,8 +170,10 @@ export function render(source: string | DiagramModel, options: RenderOptions = {
     const resolve = options.icons;
     const icons = resolve && ((name: string) => resolve(decodeEntities(name)));
     const rendered = tagErrors({ type, mermaidType }, () =>
-      withMath(diagram.math ? options.math : undefined, () =>
-        withIcons(icons, () => diagram.render(model, config, { ...options, responsive, icons }))
+      withPalette(paletteStyle(type, config), () =>
+        withMath(diagram.math ? options.math : undefined, () =>
+          withIcons(icons, () => diagram.render(model, config, { ...options, responsive, icons }))
+        )
       )
     );
     const outputLimit = options.outputLimit ?? DEFAULT_OUTPUT_LIMIT;

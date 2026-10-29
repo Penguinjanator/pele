@@ -57,7 +57,7 @@ Pele supports frontmatter, `%%{init}%%` directives, comments, and accessibility 
 
 Pele uses its own layout. Node positions, spacing, and edge paths differ from Mermaid.
 
-Set colors with [CSS variables](/theming). Mermaid themes and `themeVariables` colors do not apply.
+Set colors with [CSS variables](/theming). Mermaid themes don't apply, and `themeVariables` colors apply only as [series palettes](/theming#series-palettes).
 
 ### Sizing
 

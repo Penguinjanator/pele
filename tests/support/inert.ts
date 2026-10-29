@@ -19,6 +19,7 @@ const STYLE_PROPERTIES = new Set([
   'text-decoration', 'letter-spacing', 'word-spacing', 'max-width',
 ]);
 const ROOT_STYLES = new Set(['height:auto', 'color:var(--_fg)', 'text-transform:none', 'direction:ltr']);
+const RE_ROOT_SERIES = /^--pele-series-[1-8]$/;
 const RE_ROOT_FONT = /^font:\d+(?:\.\d+)?(?:e[-+]?\d+)?px sans-serif$/;
 const NUMERIC = new Set(['x', 'y', 'width', 'height', 'r', 'cx', 'cy', 'rx', 'ry']);
 
@@ -55,7 +56,7 @@ export function inertProblem(svg: string): string | undefined {
           const trimmed = decl.trim();
           if (trimmed === '') continue;
           const prop = decl.slice(0, decl.indexOf(':')).trim();
-          const root = el.name === 'svg' && (ROOT_STYLES.has(trimmed) || RE_ROOT_FONT.test(trimmed));
+          const root = el.name === 'svg' && (ROOT_STYLES.has(trimmed) || RE_ROOT_FONT.test(trimmed) || RE_ROOT_SERIES.test(prop));
           if (!root && !STYLE_PROPERTIES.has(prop) && !prop.startsWith('--_')) return `style property ${prop}`;
         }
       } else if (name === 'fill' || name === 'stroke' || name === 'font-family' || name === 'rx') {
