@@ -2,6 +2,7 @@ import type { Config } from '../../preprocess.js';
 import { escText, labelSvg, num } from '../../svg/builder.js';
 import { ARROW, marker } from '../../svg/edges.js';
 import { svgDocument } from '../../svg/root.js';
+import { seriesInkFill } from '../../svg/palette.js';
 import { rounded, seriesColor } from '../../svg/theme.js';
 import type { Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
@@ -79,8 +80,13 @@ function draw(model: TimelineModel, config: Config, options: RenderOptions, vert
   const eventW = eventTextW() + 2 * PAD_X;
   const chipHeight = (label: Label): number => Math.max(label.height, lineHeight) + 2 * PAD_Y;
   const eventHeight = (label: Label): number => Math.max(label.height, Math.round(small * 1.5)) + 2 * PAD_Y;
-  const colorOf = (group: Group, period: number): string =>
-    group.section >= 0 ? seriesColor(group.section) : hasSections ? 'var(--_m)' : seriesColor(multicolor ? period : 0);
+  const seriesOf = (group: Group, period: number): number | undefined =>
+    group.section >= 0 ? group.section : hasSections ? undefined : multicolor ? period : 0;
+  const colorOf = (group: Group, period: number): string => {
+    const series = seriesOf(group, period);
+    return series === undefined ? 'var(--_m)' : seriesColor(series);
+  };
+  const onColor = (series: number | undefined): string => (series === undefined ? '' : seriesInkFill(series)) || ON_COLOR;
 
   let hasEvents = false;
   for (const labels of eventLabels) if (labels.length > 0) hasEvents = true;
@@ -104,9 +110,9 @@ function draw(model: TimelineModel, config: Config, options: RenderOptions, vert
     fitLabel(model.sections[group.section], measurer, size, w - 2 * PAD_X, Style.Bold);
   const header = (group: Group, label: Label, x: number, y: number, w: number, h: number): string =>
     box(x, y, w, h, ` fill="${seriesColor(group.section)}"`) +
-    labelSvg(label, x + w / 2, y + h / 2, ' font-weight="var(--_hw)"' + ON_COLOR);
-  const period = (i: number, color: string, x: number, y: number, h: number): string =>
-    box(x, y, colW, h, ` fill="${color}"`) + labelSvg(periodLabels[i], x + colW / 2, y + h / 2, ON_COLOR);
+    labelSvg(label, x + w / 2, y + h / 2, ' font-weight="var(--_hw)"' + onColor(group.section));
+  const period = (i: number, group: Group, color: string, x: number, y: number, h: number): string =>
+    box(x, y, colW, h, ` fill="${color}"`) + labelSvg(periodLabels[i], x + colW / 2, y + h / 2, onColor(seriesOf(group, i)));
   const event = (label: Label, color: string, x: number, y: number, h: number): string =>
     '<g class="pele-node pele-event">' +
     box(x, y, eventW, h, ` fill="${color}" fill-opacity="0.16"`) +
@@ -154,7 +160,7 @@ function draw(model: TimelineModel, config: Config, options: RenderOptions, vert
         if (cards) d += `M${num(axisX)},${num(cy)}H${num(spineX)}V${num(last)}`;
         body +=
           openPeriod(i) +
-          period(i, color, left, cy - h / 2, h) +
+          period(i, group, color, left, cy - h / 2, h) +
           `<path class="pele-edge" d="${d}"${LINE}/>` +
           dot(axisX, cy, color) +
           cards +
@@ -211,7 +217,7 @@ function draw(model: TimelineModel, config: Config, options: RenderOptions, vert
         bottom = Math.max(bottom, ey - EVENT_GAP);
         body +=
           openPeriod(i) +
-          period(i, color, x, periodsY, chipH) +
+          period(i, group, color, x, periodsY, chipH) +
           `<path class="pele-edge" d="${d}"${LINE}/>` +
           dot(cx, axisY, color) +
           cards +

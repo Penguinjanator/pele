@@ -185,4 +185,4 @@ xychart
   line [2, 4, 3]
 ```
 
-Like other styles in the diagram, palette colors don't change with the theme. Use a CSS variable such as `var(--pele-accent)` as a color to follow the theme. Other `themeVariables` colors don't apply.
+Palette colors are fixed, like other styles in the diagram. They don't change with the theme. To follow the theme, use a Pele CSS variable such as `var(--pele-accent)` as a palette color. Only `--pele-*` variables work. Labels on a palette color use whichever of `--pele-fg-on-light` and `--pele-fg-on-dark` contrasts more with it. Other `themeVariables` colors don't apply.

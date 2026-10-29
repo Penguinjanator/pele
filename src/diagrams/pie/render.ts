@@ -1,6 +1,7 @@
 import type { Config } from '../../preprocess.js';
 import { escText, labelSvg, num } from '../../svg/builder.js';
 import { svgDocument } from '../../svg/root.js';
+import { seriesInkFill } from '../../svg/palette.js';
 import { seriesColor } from '../../svg/theme.js';
 import { layoutLabel, type Label } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
@@ -126,7 +127,7 @@ function draw(model: PieModel, config: Config, options: RenderOptions, radius: n
       outside += `<text x="${num(x)}" y="${num(y + small * 0.35)}">${text}</text>`;
     } else {
       const r = radius * textPosition;
-      labels += `<text x="${num(Math.sin(mid) * r)}" y="${num(-Math.cos(mid) * r + small * 0.35)}">${text}</text>`;
+      labels += `<text x="${num(Math.sin(mid) * r)}" y="${num(-Math.cos(mid) * r + small * 0.35)}"${seriesInkFill(index)}>${text}</text>`;
     }
     angle = end;
   });

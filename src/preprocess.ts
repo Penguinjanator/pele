@@ -95,7 +95,7 @@ function matchFrontMatter(text: string): FrontMatter | undefined {
   return undefined;
 }
 
-function isRecord(value: unknown): value is Config {
+export function isRecord(value: unknown): value is Config {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 

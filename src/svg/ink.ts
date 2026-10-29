@@ -49,6 +49,13 @@ function args(body: string, hsl: boolean): string[] | undefined {
   return percent === (hsl ? 2 : 3) || (!hsl && percent === 0) ? list : undefined;
 }
 
+// A hex color or one of CSS's named colors.
+export function plainColor(raw: string): boolean {
+  const value = raw.trim().toLowerCase();
+  const name = value.replace('grey', 'gray');
+  return RE_HEX.test(value) || DARK.has(name) || LIGHT.has(name) || value === 'transparent' || value === 'currentcolor';
+}
+
 // Luminance and alpha; named colors use 0 or 1 to preserve the contrast choice.
 function color(raw: string): [number, number] | undefined {
   const value = raw.trim().toLowerCase();

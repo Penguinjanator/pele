@@ -2,7 +2,8 @@ import type { Config } from '../../preprocess.js';
 import { esc, escText, labelSvg, num } from '../../svg/builder.js';
 import { inkFill } from '../../svg/ink.js';
 import { svgDocument } from '../../svg/root.js';
-import { classNames, resolveStyle, rounded, seriesColor } from '../../svg/theme.js';
+import { seriesInkFill } from '../../svg/palette.js';
+import { classNames, resolveStyle, rounded, seriesColor, setsFill } from '../../svg/theme.js';
 import { decodeEntities } from '../../text/entities.js';
 import { layoutLabel } from '../../text/label.js';
 import { Style, defaultMeasurer } from '../../text/measurer.js';
@@ -94,7 +95,7 @@ export function renderTreemap(model: TreemapModel, config: Config, options: Rend
     // Inline font sizes override SVG attributes, so truncate instead of shrinking.
     const fixed = style.fontSize;
     const textStyle = (style.bold ? Style.Bold : 0) | (style.italic ? Style.Italic : 0);
-    const ink = inkFill(style);
+    const ink = setsFill(style.shape) ? inkFill(style) : seriesInkFill(b.series);
 
     if (node.children !== undefined) {
       let text = '';

@@ -1,6 +1,7 @@
 import type { DiagramType } from '../detect.js';
-import type { Config } from '../preprocess.js';
+import { isRecord, type Config } from '../preprocess.js';
 import { esc } from './builder.js';
+import { ink, plainColor } from './ink.js';
 
 // Mermaid's palette theme variables, which set a diagram's own series colors. `first` is the
 // number of the variable for the first series. Mindmap branches start at cScale1, as cScale0
@@ -18,6 +19,7 @@ const PALETTES: Partial<Record<DiagramType, { prefix: string; first: number; rep
 const SLOTS = 8;
 const RE_CHARS = /^[\w\s#%.,+\-/()]{1,200}$/;
 const RE_FUNCTION = /([\w-]*)\s*\(/g;
+const RE_VAR = /var\(\s*([\w-]*)/gi;
 const FUNCTIONS = new Set([
   'rgb',
   'rgba',
@@ -34,15 +36,15 @@ const FUNCTIONS = new Set([
   'var',
 ]);
 
-function record(value: unknown): Config {
-  return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Config) : {};
-}
+const record = (value: unknown): Config => (isRecord(value) ? value : {});
 
-// A color that can't load a resource or end its declaration.
+// A color that can't load a resource, end its declaration or read the page's own variables.
+// Values outside functions are checked as colors, so a typo keeps the theme color.
 function safeColor(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const color = value.trim();
   if (!RE_CHARS.test(color)) return undefined;
+  if (!color.includes('(')) return plainColor(color) ? color : undefined;
   let depth = 0;
   for (const char of color) {
     if (char === '(') depth++;
@@ -51,6 +53,9 @@ function safeColor(value: unknown): string | undefined {
   if (depth !== 0) return undefined;
   for (const [, name] of color.matchAll(RE_FUNCTION)) {
     if (!FUNCTIONS.has(name.toLowerCase())) return undefined;
+  }
+  for (const [, name] of color.matchAll(RE_VAR)) {
+    if (!name.startsWith('--pele-')) return undefined;
   }
   return color;
 }
@@ -86,26 +91,37 @@ function entries(type: DiagramType, vars: Config): { list: unknown[]; repeat: bo
   return { list, repeat: palette.repeat === true };
 }
 
+export interface Palette {
+  style: string;
+  // Label colors for text on each series, where the contrast of its color is known.
+  inks: (string | undefined)[];
+}
+
+const NONE: Palette = { style: '', inks: [] };
+
 // The --pele-series-* declarations for the palette a diagram's theme variables set. An entry
 // that isn't a usable color leaves its series in the theme's color.
-export function paletteStyle(type: DiagramType, config: Config): string {
+export function palette(type: DiagramType, config: Config): Palette {
   const found = entries(type, record(config.themeVariables));
-  if (found === undefined || found.list.length === 0) return '';
+  if (found === undefined || found.list.length === 0) return NONE;
   const { list, repeat } = found;
   let style = '';
+  const inks: (string | undefined)[] = [];
   for (let i = 0; i < SLOTS; i++) {
     if (!repeat && i >= list.length) break;
     const color = safeColor(list[i % list.length]);
-    if (color !== undefined) style += `;--pele-series-${i + 1}:${color}`;
+    if (color === undefined) continue;
+    style += `;--pele-series-${i + 1}:${color}`;
+    inks[i] = ink(`;fill:${color}`);
   }
-  return esc(style);
+  return style === '' ? NONE : { style: esc(style), inks };
 }
 
-let current = '';
+let current = NONE;
 
-export function withPalette<T>(style: string, run: () => T): T {
+export function withPalette<T>(next: Palette, run: () => T): T {
   const outer = current;
-  current = style;
+  current = next;
   try {
     return run();
   } finally {
@@ -113,4 +129,10 @@ export function withPalette<T>(style: string, run: () => T): T {
   }
 }
 
-export const currentPalette = (): string => current;
+export const paletteStyle = (): string => current.style;
+
+// A fill for a label on the series color, when the palette sets one that needs it.
+export function seriesInkFill(index: number): string {
+  const color = current.inks[((index % SLOTS) + SLOTS) % SLOTS];
+  return color ? ` fill="${color}"` : '';
+}

@@ -94,7 +94,7 @@ line [5,15,25,35]`;
     });
   });
 
-  it('drops values that are not plain colors and keeps the theme color in their place', () => {
+  it('drops values that are not colors and keeps the theme color in their place', () => {
     const unsafe = [
       'url(https://example.com/a.svg)',
       'url(//example.com/a.svg)',
@@ -107,6 +107,10 @@ line [5,15,25,35]`;
       'red}',
       'javascript:alert(1)',
       '/*',
+      'reddish',
+      '#ff00000',
+      'var(--page-color)',
+      'color-mix(in srgb, var(--page-color) 50%, red)',
     ];
     for (const value of unsafe) {
       const { svg } = render(themed({ pie1: value, pie2: 'blue' }, PIE), options);
@@ -116,6 +120,27 @@ line [5,15,25,35]`;
     }
     const list = render(themed({ xyChart: { plotColorPalette: 'url(a), blue' } }, XYCHART), options).svg;
     expect(series(list)).toEqual({ 2: 'blue', 4: 'blue', 6: 'blue', 8: 'blue' });
+  });
+
+  it('picks label colors that contrast with palette colors', () => {
+    const ON_LIGHT = 'fill="var(--pele-fg-on-light,#1f1f1f)"';
+    const ON_DARK = 'fill="var(--pele-fg-on-dark,#fff)"';
+    const pie = render(themed({ pie1: '#ffeb3b', pie2: 'navy', pie3: 'var(--pele-accent)' }, 'pie\n  "A": 1\n  "B": 1\n  "C": 1'), options).svg;
+    const labels = [...pie.matchAll(/<text [^>]*>\d+%</g)].map((m) => m[0]);
+    expect(labels[0]).toContain(ON_LIGHT);
+    expect(labels[1]).toContain(ON_DARK);
+    expect(labels[2]).not.toContain('fill=');
+    expect(pie).toContain('class="pele-slice-labels"');
+
+    const git = render(themed({ git0: '#ffeb3b' }, 'gitGraph\n  commit\n  branch dev\n  commit'), options).svg;
+    expect(git).toMatch(new RegExp(`class="pele-label" ${ON_LIGHT.replace(/[()]/g, '\\$&')}`));
+    expect(git).toContain('class="pele-label" fill="var(--_bg)"');
+
+    const timeline = render(themed({ cScale0: '#ffeb3b' }, 'timeline\n  section S\n    2001 : a'), options).svg;
+    expect(timeline.split(ON_LIGHT).length - 1).toBe(2);
+
+    const treemap = render(themed({ cScale0: '#ffeb3b' }, 'treemap\n"a": 1\n"b": 1'), options).svg;
+    expect(treemap.split(ON_LIGHT).length - 1).toBe(2);
   });
 
   it('leaves the output unchanged without a palette', () => {
