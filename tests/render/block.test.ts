@@ -55,6 +55,14 @@ function labelBoxes(svg: string): Box[] {
   });
 }
 
+function nodeLabel(svg: string, id: string): string[] {
+  const at = svg.indexOf(`data-id="${id}"`);
+  const body = svg.slice(svg.lastIndexOf('<g class="pele-node', at), svg.indexOf('</g>', at));
+  const inner = /<text class="pele-label"[^>]*>([\s\S]*?)<\/text>/.exec(body)?.[1] ?? '';
+  const lines = [...inner.matchAll(/<tspan(?:\s[^>]*)?>([\s\S]*?)<\/tspan>/g)].map((m) => m[1]);
+  return lines.length > 0 ? lines : inner === '' ? [] : [inner];
+}
+
 function expectSeparateLabels(src: string, count: number): void {
   const result = render(src, options);
   const model = parse(src);
@@ -159,6 +167,24 @@ describe('block rendering', () => {
     expect(at.get('c')!.x).toBeCloseTo(a.x + (a.w + 12) / 2, 1);
     expect(d.x).toBeCloseTo(a.x + 2 * (a.w + 12), 1);
     expect(d.y).toBe(at.get('c')!.y);
+  });
+
+  it('uses the wider cell to wrap a spanning block label', () => {
+    const text = 'Something long long long long long long';
+    const { svg } = render(`block\n  1["Something"]\n  2["${text}"]:2\n  3["${text}"]:5\n  4["${text}"]:2\n  5["Something"]`, options);
+    expect(nodeLabel(svg, '3')).toEqual([text]);
+    expect(nodeLabel(svg, '2')).toHaveLength(2);
+  });
+
+  it('keeps fixed shapes and explicit line breaks when a block spans columns', () => {
+    const text = 'Something long long long long long long';
+    const fixed = render(`block\n  a(("${text}")) c{"${text}"} d["${text}"]:5`, options);
+    expect(nodeLabel(fixed.svg, 'a')).toHaveLength(2);
+    expect(nodeLabel(fixed.svg, 'c')).toHaveLength(2);
+    expect(nodeLabel(fixed.svg, 'd')).toEqual([text]);
+
+    const broken = render(`block\n  a["${text}<br>tail"]:5 b c d e`, options);
+    expect(nodeLabel(broken.svg, 'a')).toEqual(['Something long long long long long', 'long', 'tail']);
   });
 
   it('stops a block that is wider than the rest of its row at the last column', () => {

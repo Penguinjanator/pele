@@ -726,12 +726,25 @@ function draw(model: BlockModel, config: Config, options: RenderOptions, tight: 
       continue;
     }
     const arrow = v.kind === Kind.Arrow;
+    let label = v.label;
+    // Reuse a wider cell without changing the node size or the routes computed from it.
+    if (
+      v.span > 1 &&
+      v.label.width > 0 &&
+      v.label.lines.length > 1 &&
+      v.bw > v.nw &&
+      (arrow || !FIXED.has(v.shape))
+    ) {
+      const textStyle = (v.style.bold ? Style.Bold : 0) | (v.style.italic ? Style.Italic : 0);
+      const room = v.label.width + (v.bw - v.nw);
+      label = layoutLabel(v.block.label, false, measurer, v.label.size, room, textStyle);
+    }
     nodes +=
       `<g class="pele-node pele-shape-${arrow ? 'block-arrow' : v.shape}${classes}" data-id="${id}" transform="translate(${num(v.x)},${num(v.y)})">` +
       (arrow
         ? drawArrow(v.mask, v.bw, v.bh, SHAPE_ATTRS + v.style.shape)
         : drawShape(v.shape, v.bw, v.bh, SHAPE_ATTRS + v.style.shape, LINE_ATTRS + v.style.line)) +
-      labelSvg(v.label, v.dx, v.dy, ` class="pele-label"${arrow || shapeFilled(v.shape) ? inkFill(v.style) : ''}${v.style.text}`, icons) +
+      labelSvg(label, v.dx, v.dy, ` class="pele-label"${arrow || shapeFilled(v.shape) ? inkFill(v.style) : ''}${v.style.text}`, icons) +
       '</g>';
   }
 
