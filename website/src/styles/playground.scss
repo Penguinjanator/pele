@@ -388,6 +388,7 @@
   }
   .playground-tabs { display: grid; flex-shrink: 0; margin: 0 8px 8px; }
   .playground-tabs > button { min-height: 40px; }
+  .playground-panel-header h2 { display: none; }
   #playground-settings > span { display: none; }
   // Anchor the menu to the header so the inline sample list has room.
   .playground-header .playground-actions { position: static; }
