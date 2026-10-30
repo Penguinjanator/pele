@@ -876,6 +876,8 @@ export function rank(nodes: LNode[], edges: LEdge[], step: number): void {
   }
 
   const r = new Int32Array(n);
+  // Start ports go above every node later, so they don't push their targets down a rank.
+  for (let i = 0; i < n; i++) if (nodes[i].kind === Kind.StartPort) r[i] = -step;
   const indeg = new Int32Array(n);
   for (let i = 0; i < n; i++) indeg[i] = inStart[i + 1] - inStart[i];
   const topo = new Int32Array(n);

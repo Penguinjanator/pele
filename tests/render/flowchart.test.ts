@@ -262,7 +262,7 @@ describe('flowchart rendering', () => {
   });
 
   it('cases an edge whose curve runs into a filled subgraph', () => {
-    const { svg } = render('flowchart LR\nsubgraph S\n  A\n  B\nend\nD\nE --> A\nD --> F\nF --> C\nB --> C\nstyle S fill:white', options);
+    const { svg } = render('flowchart LR\nsubgraph S\n  A\n  B --> G\nend\nD\nE --> A\nD --> F\nF --> C\nB --> C\nstyle S fill:white', options);
     const casings = /<g class="pele-casings"[^>]*>(.*)<\/g><g class="pele-edges"/.exec(svg)![1];
     const edge = (id: string): string => new RegExp(`data-id="${id}"><path d="([^"]+)"`).exec(svg)![1];
     expect(casings).toContain(`<path d="${edge('L_F_C_0')}"/>`);
@@ -328,6 +328,13 @@ describe('flowchart rendering', () => {
     expect(at('a1')[0]).toBe(at('a2')[0]);
     expect(at('b1')[1]).toBe(at('b2')[1]);
     expect(at('c1')[0]).toBe(at('c2')[0]);
+  });
+
+  it('lines up unlinked subgraph members with the member an outside edge enters', () => {
+    const { svg } = render('flowchart TB\n  subgraph S\n    a\n    b\n    c\n  end\n  x --> a', options);
+    const y = (id: string): number => Number(new RegExp(`data-id="${id}" transform="translate\\([-\\d.]+,([-\\d.]+)`).exec(svg)![1]);
+    expect(y('b')).toBe(y('a'));
+    expect(y('c')).toBe(y('a'));
   });
 
   it('gives edges arrowheads without marker definitions', () => {
