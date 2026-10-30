@@ -27,14 +27,25 @@ function length(config: Config, key: string, fallback: number, max: number): num
   return typeof value === 'number' && value >= 0 ? Math.min(value, max) : fallback;
 }
 
+// Mermaid's quadrantChart font size keys; without them the sizes follow fontSize.
+function textSize(config: Config, key: string, fallback: number): number {
+  const value = setting(config, key);
+  return typeof value === 'number' && Number.isFinite(value) ? Math.min(72, Math.max(4, value)) : fallback;
+}
+
 function hex(color: string): string {
   return color.startsWith('#') ? color : '#' + color;
 }
 
 export function renderQuadrant(model: QuadrantModel, config: Config, options: RenderOptions): Rendered {
   const size = options.fontSize ?? 16;
-  const axisSize = Math.round(size * 0.875);
-  const pointSize = Math.round(size * 0.75);
+  const titleSize = textSize(config, 'titleFontSize', size);
+  const quadrantSize = textSize(config, 'quadrantLabelFontSize', size);
+  const xAxisSize = textSize(config, 'xAxisLabelFontSize', Math.round(size * 0.875));
+  const yAxisSize = textSize(config, 'yAxisLabelFontSize', Math.round(size * 0.875));
+  const pointSize = textSize(config, 'pointLabelFontSize', Math.round(size * 0.75));
+  // Sizes that differ from the one a label inherits.
+  const sizeAttr = (own: number, inherited: number): string => (own === inherited ? '' : ` font-size="${own}"`);
   const measurer = options.measurer ?? defaultMeasurer(options.fontFamily, options.fontFamilyMono);
   const natural = Math.round(Math.max(100, length(config, 'chartWidth', 500, 4000)));
   const width = Math.round(capWidth(options, natural, 280));
@@ -47,7 +58,7 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
   const label = (text: QuadrantText | undefined, fontSize: number, max: number): Label =>
     layoutLabel(text?.text, text?.type === 'markdown', measurer, fontSize, Math.max(max, 40));
 
-  const title = layoutLabel(model.title, false, measurer, size, Math.max(width - 2 * outer, 40), Style.Bold);
+  const title = layoutLabel(model.title, false, measurer, titleSize, Math.max(width - 2 * outer, 40), Style.Bold);
   const titlePad = length(config, 'titlePadding', 10, 200);
   const titleSpace = title.height > 0 ? title.height + titlePad : 0;
 
@@ -58,13 +69,13 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
   const yRight = setting(config, 'yAxisPosition') === 'right';
 
   const side = width - 2 * outer;
-  const xLeft = label(model.xAxisLeft, axisSize, model.xAxisRight ? side / 2 - 16 : side);
-  const xRight = label(model.xAxisRight, axisSize, side / 2 - 16);
+  const xLeft = label(model.xAxisLeft, xAxisSize, model.xAxisRight ? side / 2 - 16 : side);
+  const xRight = label(model.xAxisRight, xAxisSize, side / 2 - 16);
   const xHeight = Math.max(xLeft.height, xRight.height);
   const xSpace = hasX ? xHeight + xPad : 0;
   const tall = height - 2 * outer - titleSpace - xSpace;
-  const yBottom = label(model.yAxisBottom, axisSize, model.yAxisTop ? tall / 2 - 16 : tall);
-  const yTop = label(model.yAxisTop, axisSize, tall / 2 - 16);
+  const yBottom = label(model.yAxisBottom, yAxisSize, model.yAxisTop ? tall / 2 - 16 : tall);
+  const yTop = label(model.yAxisTop, yAxisSize, tall / 2 - 16);
   const yHeight = Math.max(yBottom.height, yTop.height);
   const ySpace = hasY ? yHeight + yPad : 0;
 
@@ -92,14 +103,14 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
   for (let k = 0; k < 4; k++) {
     const x = k === 0 || k === 3 ? left + w - tileW : left;
     const y = k < 2 ? top : top + h - tileH;
-    const text = label(model.quadrants[k], size, tileW - 16);
+    const text = label(model.quadrants[k], quadrantSize, tileW - 16);
     const cx = x + tileW / 2;
     const cy = hasPoints ? y + textTop + text.height / 2 : y + tileH / 2;
     taken.push(cx - text.width / 2, cy - text.height / 2, cx + text.width / 2, cy + text.height / 2);
     quadrants +=
       `<g class="pele-quadrant" data-id="${k + 1}">` +
       `<rect x="${num(x)}" y="${num(y)}" width="${num(tileW)}" height="${num(tileH)}"${ROUNDED}/>` +
-      labelSvg(text, cx, cy, ' class="pele-label" fill="var(--_fg)" stroke="none"') +
+      labelSvg(text, cx, cy, ` class="pele-label"${sizeAttr(quadrantSize, size)} fill="var(--_fg)" stroke="none"`) +
       '</g>';
   }
 
@@ -113,7 +124,7 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
   if (hasY) {
     const x = yRight ? left + w + yPad + yHeight / 2 : left - yPad - yHeight / 2;
     const turned = (text: Label, y: number): string =>
-      text.height > 0 ? `<g transform="translate(${num(x)},${num(y)}) rotate(-90)">${labelSvg(text, 0, 0, '')}</g>` : '';
+      text.height > 0 ? `<g transform="translate(${num(x)},${num(y)}) rotate(-90)"${sizeAttr(yAxisSize, xAxisSize)}>${labelSvg(text, 0, 0, '')}</g>` : '';
     axes +=
       turned(yBottom, yTop.height > 0 ? top + (h * 3) / 4 : top + h - yBottom.width / 2) + turned(yTop, top + h / 4);
   }
@@ -142,7 +153,8 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
       cx,
       cy,
       reach: r + (strokeWidth ? Math.min(parseInt(strokeWidth), 400) / 2 : 0),
-      text: label(point.text, pointSize, 200),
+      // Mermaid keeps point labels on one line; wrap only what is wider than the plot.
+      text: label(point.text, pointSize, w),
     });
     circles.push(
       `<circle class="pele-point${classNames(point.className)}" data-id="${escText(point.text.text)}" cx="${num(cx)}" cy="${num(cy)}" r="${num(r)}"${
@@ -191,9 +203,9 @@ export function renderQuadrant(model: QuadrantModel, config: Config, options: Re
 
   // Mermaid puts each new point under the ones before it.
   const content =
-    labelSvg(title, width / 2, titlePad / 2 + title.height / 2, ' class="pele-title" font-weight="var(--_tw)"') +
+    labelSvg(title, width / 2, titlePad / 2 + title.height / 2, ` class="pele-title"${sizeAttr(titleSize, size)} font-weight="var(--_tw)"`) +
     `<g class="pele-quadrants" fill="var(--_s)" stroke="var(--_b)">${quadrants}</g>` +
-    (axes ? `<g class="pele-axis-labels" font-size="${axisSize}" fill="var(--_m)">${axes}</g>` : '') +
+    (axes ? `<g class="pele-axis-labels" font-size="${xAxisSize}" fill="var(--_m)">${axes}</g>` : '') +
     (dots.length > 0
       ? `<g class="pele-points" fill="${fill}">${circles.reverse().join('')}</g>` +
         `<g class="pele-point-labels" font-size="${pointSize}">${labels}</g>`

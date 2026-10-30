@@ -139,6 +139,40 @@ describe('quadrant chart rendering', () => {
     expect(render(config('    chartWidth: "wide"\n    pointRadius: -3'), options).svg).toBe(plain.svg);
   });
 
+  it('sizes text with the quadrantChart font size settings', () => {
+    const src = `quadrantChart
+  title Garden plan
+  x-axis Low effort --> High effort
+  y-axis Low value --> High value
+  quadrant-1 Big bets
+  Herb spiral: [0.3, 0.7]`;
+    const config = (body: string): string => `---\nconfig:\n  quadrantChart:\n${body}\n---\n${src}`;
+    const plain = render(src, { ...options, fontSize: 16 }).svg;
+    expect(plain).toContain('class="pele-title" font-weight');
+    expect(plain).toContain('<g class="pele-axis-labels" font-size="14"');
+    expect(plain).toContain('<g class="pele-point-labels" font-size="12"');
+    const sized = render(
+      config(
+        '    titleFontSize: 30\n    quadrantLabelFontSize: 20\n    xAxisLabelFontSize: 11\n' +
+          '    yAxisLabelFontSize: 13\n    pointLabelFontSize: 9'
+      ),
+      { ...options, fontSize: 16 }
+    ).svg;
+    expect(sized).toContain('class="pele-title" font-size="30"');
+    expect(sized).toContain('class="pele-label" font-size="20" fill="var(--_fg)"');
+    expect(sized).toContain('<g class="pele-axis-labels" font-size="11"');
+    expect(sized.match(/rotate\(-90\)" font-size="13"/g)).toHaveLength(2);
+    expect(sized).toContain('<g class="pele-point-labels" font-size="9"');
+    expect(render(config('    titleFontSize: "big"'), { ...options, fontSize: 16 }).svg).toBe(plain);
+    expect(render(config('    pointLabelFontSize: 0'), { ...options, fontSize: 16 }).svg).toContain('<g class="pele-point-labels" font-size="4"');
+  });
+
+  it('keeps a point label on one line when it fits in the plot', () => {
+    const name = 'Drip irrigation for the whole orchard and the vegetable beds';
+    const { svg } = render(`quadrantChart\n ${name}: [0.5, 0.5]`, { ...options, fontSize: 22 });
+    expect(texts(svg)).toContain(name);
+  });
+
   it('keeps point labels off each other and inside the chart', () => {
     const { svg } = render('quadrantChart\n One: [0.5, 0]\n Two: [0.5, 0.02]\n Three: [1, 1]\n Four: [0, 0.5]', options);
     const labels = [...svg.matchAll(/<text class="pele-label" x="([\d.]+)" y="([\d.]+)"/g)].map((m) => [+m[1], +m[2]]);
